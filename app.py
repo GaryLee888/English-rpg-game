@@ -532,7 +532,7 @@ elif st.session_state.page == 'game':
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
         # ==========================================
-        # 答錯的強制學習防跳過模式 (智慧排程 3 秒等待版)
+        # 答錯的強制學習防跳過模式 (2 秒間隔版)
         # ==========================================
         if st.session_state.force_learning:
             v_html = (
@@ -544,6 +544,7 @@ elif st.session_state.page == 'game':
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
+            # --- 2秒間隔的智慧排程播放器 ---
             js_force = f"""
             <div style="text-align:center; margin-bottom: 20px;">
                 <button id="tts-btn" onclick="window.playForce()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold; animation: pulse 2s infinite;">
@@ -605,19 +606,19 @@ elif st.session_state.page == 'game':
                     }};
 
                     msg.onend = function() {{
-                        if (ended) return; // 避免重複觸發
+                        if (ended) return; 
                         ended = true;
                         isSpeaking = false;
                         playCount++;
                         if (playCount < 3) {{
-                            btn.innerText = "⏳ 停頓 3 秒... (" + playCount + "/3)";
-                            timeoutId = setTimeout(speakWord, 3000); // 精準等待 3 秒再唸下一次
+                            btn.innerText = "⏳ 停頓 2 秒... (" + playCount + "/3)";
+                            timeoutId = setTimeout(speakWord, 2000); // 精準等待 2 秒再唸下一次
                         }} else {{
-                            speakWord(); // 觸發完成介面
+                            speakWord(); 
                         }}
                     }};
 
-                    // 手機防禦機制：如果系統攔截了發音，或者播放完沒有回報 end
+                    // 防禦機制
                     setTimeout(() => {{
                         if (!started && playCount === 0) {{
                             isSpeaking = false;
@@ -631,7 +632,7 @@ elif st.session_state.page == 'game':
                     window.speechSynthesis.speak(msg);
                 }}
 
-                // 電腦與平板嘗試自動觸發
+                // 嘗試自動觸發
                 setTimeout(window.playForce, 500);
             </script>
             """
@@ -646,7 +647,7 @@ elif st.session_state.page == 'game':
                 st.rerun()
 
         # ==========================================
-        # 正常答題模式
+        # 正常答題模式 (出題自動循環，聽 1 次解鎖)
         # ==========================================
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log:
@@ -679,37 +680,96 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            auto_script = "setTimeout(() => document.getElementById('normal-tts-btn').click(), 500);" if st.session_state.play_auto_audio else ""
+            # 判斷是否為新進題目，如果是就啟動自動播放
+            auto_script = "setTimeout(window.playNormal, 500);" if st.session_state.play_auto_audio else ""
             st.session_state.play_auto_audio = False 
             
+            # --- 出題畫面：自動循環 2 秒播一次 + 聽完解鎖作答區 ---
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="normal-tts-btn" onclick="window.playNormal()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">
-                    🔊 播放 / 重聽單字
+                <button id="normal-tts-btn" onclick="window.playNormal()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
+                    🔊 準備出題... (若無聲請點擊)
                 </button>
             </div>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
+                // 隱藏作答區 (A/B/C/D 與 鍵盤)
+                setTimeout(() => {{
+                    const answerDiv = window.parent.document.getElementById('answer-zone');
+                    if (answerDiv) answerDiv.style.opacity = '0.3';
+                    if (answerDiv) answerDiv.style.pointerEvents = 'none';
+                }}, 100);
+
+                let isSpeaking = false;
+                let loopTimeout = null;
+
                 window.playNormal = function() {{ 
+                    if (isSpeaking) return;
+                    clearTimeout(loopTimeout);
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
+                    
                     let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     msg.lang = 'en-US'; 
                     msg.rate = 0.9; 
                     msg.volume = {vol}; 
+                    
+                    let started = false;
+                    let ended = false;
+
+                    msg.onstart = function() {{
+                        started = true;
+                        isSpeaking = true;
+                        document.getElementById('normal-tts-btn').innerText = "🔊 播放中...";
+                        document.getElementById('normal-tts-btn').style.animation = "none";
+                    }};
+
+                    msg.onend = function() {{
+                        if(ended) return;
+                        ended = true;
+                        isSpeaking = false;
+                        document.getElementById('normal-tts-btn').innerText = "🔊 播放 / 重聽單字";
+                        
+                        // 聽完 1 次後：解鎖作答區
+                        const answerDiv = window.parent.document.getElementById('answer-zone');
+                        if (answerDiv) {{
+                            answerDiv.style.opacity = '1';
+                            answerDiv.style.pointerEvents = 'auto';
+                        }}
+                        
+                        // 設定 2 秒後自動重播
+                        loopTimeout = setTimeout(window.playNormal, 2000);
+                    }};
+
+                    // 防禦機制：若被手機擋下來
+                    setTimeout(() => {{
+                        if (!started) {{
+                            isSpeaking = false;
+                            document.getElementById('normal-tts-btn').innerText = "👉 手機限制：請點我聽發音解鎖";
+                            document.getElementById('normal-tts-btn').style.animation = "pulse 1.5s infinite";
+                        }} else if (started && !ended) {{
+                            msg.onend();
+                        }}
+                    }}, 3500);
+
                     window.speechSynthesis.speak(msg); 
                 }};
+                
                 {auto_script}
             </script>
             """
             st.components.v1.html(btn_html, height=70)
 
+            # --- 將整個作答區用 div 包覆，讓 JS 控制解鎖 ---
+            st.markdown('<div id="answer-zone" style="transition: opacity 0.5s;">', unsafe_allow_html=True)
+            
             if diff == '簡單':
                 cA, cB = st.columns(2)
                 with cA:
-                    if st.button(f"A. {opts[0]}", use_container_width=True): process_ans(opts[0])
-                    if st.button(f"C. {opts[2]}", use_container_width=True): process_ans(opts[2])
+                    if st.button(f"A. {opts[0]}", use_container_width=True, key="ans_a"): process_ans(opts[0])
+                    if st.button(f"C. {opts[2]}", use_container_width=True, key="ans_c"): process_ans(opts[2])
                 with cB:
-                    if st.button(f"B. {opts[1]}", use_container_width=True): process_ans(opts[1])
-                    if st.button(f"D. {opts[3]}", use_container_width=True): process_ans(opts[3])
+                    if st.button(f"B. {opts[1]}", use_container_width=True, key="ans_b"): process_ans(opts[1])
+                    if st.button(f"D. {opts[3]}", use_container_width=True, key="ans_d"): process_ans(opts[3])
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
                 user_input = st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", value=st.session_state.vk_input, key="text_input_field", autocomplete="off")
@@ -737,6 +797,8 @@ elif st.session_state.page == 'game':
                 c4[1].button("- 連字", on_click=vk_add, args=("-",), use_container_width=True)
                 c4[2].button("🔙 刪除", on_click=vk_del, use_container_width=True)
                 c4[3].button("⚔️ 送出攻擊", type="primary", on_click=vk_submit, use_container_width=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True) # 結束作答區包覆
 
 # ==================== 家長控制台 ====================
 elif st.session_state.page == 'parent':
