@@ -135,29 +135,74 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 網頁設定與自適應 CSS ---
+# --- 網頁設定與全新終極自適應 CSS ---
 st.set_page_config(page_title="英文英雄 RPG", page_icon="⚔️", layout="wide")
 
 st.markdown("""
 <style>
-.block-container { max-width: 1000px; padding-top: 2rem; padding-bottom: 2rem; }
-.arena-bg { position: relative; display: flex; justify-content: space-between; align-items: flex-end; padding: 5%; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 20px 0; min-height: 250px; overflow: hidden; }
+/* 隱藏 Streamlit 頂部預設選單與底部 Footer，讓畫面更像獨立 APP */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+.block-container { max-width: 900px; padding-top: 1rem; padding-bottom: 2rem; }
+
+/* 頂部狀態列水平排版 (手機也會乖乖並排) */
+.status-bar-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    align-items: center;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.status-item {
+    text-align: center;
+    flex: 1 1 20%;
+    min-width: 70px;
+    padding: 5px;
+}
+.status-label { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 2px; }
+.status-value { font-size: 1.2rem; font-weight: bold; color: #2c3e50; }
+
+/* 戰鬥舞台 */
+.arena-bg { position: relative; display: flex; justify-content: space-between; align-items: flex-end; padding: 5%; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 15px 0; min-height: 250px; overflow: hidden; }
 .hero-box, .monster-box { width: 40%; text-align: center; z-index: 5; }
 .vs-box { width: 20%; text-align: center; z-index: 5; align-self: center; }
 .vs-text { color: #f1c40f; font-size: 3rem; font-style: italic; text-shadow: 2px 2px 0 #000; margin:0; }
-.hp-badge { font-size: 1.5rem; margin-bottom: 10px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; }
+.hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; }
 .hp-badge-enemy { color: #ff6b6b; }
-.monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; }
+.monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
+
+/* 圖鑑網格自適應 (電腦8欄，平板6欄，手機4欄) */
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; text-align: center; }
+.dex-item img { width: 100%; max-width: 60px; height: auto; }
+.dex-name { font-size: 0.7rem; color: #555; margin-top: 3px; word-break: keep-all;}
+
+/* 單字框自適應 */
+.vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
+.vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
+.vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
+
+/* 手機版 (寬度 < 600px) 特效微調 */
 @media screen and (max-width: 600px) {
-    .arena-bg { min-height: 180px; padding: 15px 5px; }
-    .vs-text { font-size: 1.8rem; }
-    .hp-badge { font-size: 1rem; padding: 2px 8px; }
+    .arena-bg { min-height: 160px; padding: 15px 5px; }
+    .vs-text { font-size: 1.5rem; }
+    .hp-badge { font-size: 0.8rem; padding: 2px 6px; }
+    .monster-name { font-size: 0.8rem; }
     .m-fx { font-size: 40px !important; }
+    .vocab-word { font-size: 2.5rem; }
+    .vocab-hint-str { font-size: 1.8rem; letter-spacing: 3px;}
+    .status-value { font-size: 1rem; }
 }
-@keyframes heroDash { 0% { transform: scaleX(-1) translateX(0px); } 30% { transform: scaleX(-1) translateX(-50px); } 100% { transform: scaleX(-1) translateX(0px); } }
-@keyframes shakeHurt { 0% { transform: translateX(0); filter: brightness(1); } 20% { transform: translateX(-15px); filter: brightness(2.5) drop-shadow(0 0 25px red); } 40% { transform: translateX(15px); } 60% { transform: translateX(-15px); } 80% { transform: translateX(15px); } 100% { transform: translateX(0); filter: brightness(1); } }
-@keyframes monsterDash { 0% { transform: translateX(0px); } 30% { transform: translateX(-50px); } 100% { transform: translateX(0px); } }
-@keyframes heroHurt { 0% { transform: scaleX(-1) translateX(0); filter: brightness(1); } 20% { transform: scaleX(-1) translateX(-10px); filter: brightness(0.4) sepia(1) hue-rotate(-50deg) saturate(6); } 40% { transform: scaleX(-1) translateX(10px); } 60% { transform: scaleX(-1) translateX(-10px); } 80% { transform: scaleX(-1) translateX(10px); } 100% { transform: scaleX(-1) translateX(0); filter: brightness(1); } }
+
+@keyframes heroDash { 0% { transform: scaleX(-1) translateX(0px); } 30% { transform: scaleX(-1) translateX(-40px); } 100% { transform: scaleX(-1) translateX(0px); } }
+@keyframes shakeHurt { 0% { transform: translateX(0); filter: brightness(1); } 20% { transform: translateX(-10px); filter: brightness(2.5) drop-shadow(0 0 25px red); } 40% { transform: translateX(10px); } 60% { transform: translateX(-10px); } 80% { transform: translateX(10px); } 100% { transform: translateX(0); filter: brightness(1); } }
+@keyframes monsterDash { 0% { transform: translateX(0px); } 30% { transform: translateX(-40px); } 100% { transform: translateX(0px); } }
+@keyframes heroHurt { 0% { transform: scaleX(-1) translateX(0); filter: brightness(1); } 20% { transform: scaleX(-1) translateX(-8px); filter: brightness(0.4) sepia(1) hue-rotate(-50deg) saturate(6); } 40% { transform: scaleX(-1) translateX(8px); } 60% { transform: scaleX(-1) translateX(-8px); } 80% { transform: scaleX(-1) translateX(8px); } 100% { transform: scaleX(-1) translateX(0); filter: brightness(1); } }
 @keyframes mBall { 0% { left: 20%; transform: scale(0.5); opacity: 0; } 30% { opacity: 1; transform: scale(1.5); } 70% { left: 70%; transform: scale(2); opacity: 1; } 100% { left: 80%; transform: scale(0.5); opacity: 0; } }
 @keyframes heroDead { 0% { transform: scaleX(-1) rotate(0deg); filter: grayscale(0%); } 100% { transform: scaleX(-1) rotate(90deg) translateY(20px); filter: grayscale(100%); } }
 .m-fx { position: absolute; top: 40%; font-size: 60px; animation: mBall 0.7s ease-in-out forwards; z-index: 10; }
@@ -300,7 +345,6 @@ elif st.session_state.page == 'game':
 
     def vk_add(char): st.session_state.vk_input += char
     def vk_del(): st.session_state.vk_input = st.session_state.vk_input[:-1]
-    def vk_clear(): st.session_state.vk_input = ""
     def vk_submit():
         ans = st.session_state.get("vk_input", "").strip()
         if not ans: return
@@ -332,27 +376,38 @@ elif st.session_state.page == 'game':
         st.markdown("---")
         if st.button("🚪 登出", use_container_width=True): st.session_state.page = 'login'; st.rerun()
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric(f"👤 {hero_name}", user)
-    c2.metric("🛡️ 等級", f"Lv. {u_data['level']}")
-    c3.metric("🔥 連擊", f"{u_data['combo']} / 10")
-    c4.metric("🎖️ 勳章", u_data['medals'])
+    # --- 頂端狀態列 (自適應 Flexbox) ---
+    st.markdown(f"""
+    <div class="status-bar-container">
+        <div class="status-item"><div class="status-label">👤 {hero_name}</div><div class="status-value">{user}</div></div>
+        <div class="status-item"><div class="status-label">🛡️ 等級</div><div class="status-value">Lv. {u_data['level']}</div></div>
+        <div class="status-item"><div class="status-label">🔥 連擊</div><div class="status-value">{u_data['combo']} / 10</div></div>
+        <div class="status-item"><div class="status-label">🎖️ 勳章</div><div class="status-value">{u_data['medals']}</div></div>
+    </div>
+    """, unsafe_allow_html=True)
 
+    # --- 自適應圖鑑區 ---
     with st.expander(f"📖 冒險圖鑑 (一般: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
         d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 一般怪物"])
         with d_tab1:
             if u_data.get('trophies'):
                 boss_dict = {b['name']: b['url'] for b in BOSSES}
-                t_cols = st.columns(6)
-                for i, t_name in enumerate(u_data['trophies']):
-                    if t_name in boss_dict: t_cols[i % 6].image(boss_dict[t_name], caption=t_name)
+                html_dex = '<div class="dex-grid">'
+                for t_name in u_data['trophies']:
+                    if t_name in boss_dict:
+                        html_dex += f'<div class="dex-item"><img src="{boss_dict[t_name]}"><div class="dex-name">{t_name}</div></div>'
+                html_dex += '</div>'
+                st.markdown(html_dex, unsafe_allow_html=True)
             else: st.write("尚未收集到神獸。")
         with d_tab2:
             if u_data.get('monster_dex'):
                 mon_dict = {m['name']: m['url'] for m in MONSTERS}
-                m_cols = st.columns(8)
-                for i, m_name in enumerate(u_data['monster_dex']):
-                    if m_name in mon_dict: m_cols[i % 8].image(mon_dict[m_name], caption=m_name)
+                html_dex = '<div class="dex-grid">'
+                for m_name in u_data['monster_dex']:
+                    if m_name in mon_dict:
+                        html_dex += f'<div class="dex-item"><img src="{mon_dict[m_name]}"><div class="dex-name">{m_name}</div></div>'
+                html_dex += '</div>'
+                st.markdown(html_dex, unsafe_allow_html=True)
             else: st.write("尚未收集到一般怪物。")
     
     scale_factor = 1 + min(u_data['medals'] * 0.1, 2.0)
@@ -402,8 +457,8 @@ elif st.session_state.page == 'game':
         e_u = st.session_state.current_boss['url']
         e_hp = u_data.get('boss_hp', 3)
         m_hp = 3
-        m_s = m_s.replace("180px", "280px")
         bg_s = "background: linear-gradient(135deg, #2b0b0f 0%, #4a0911 100%); border: 4px solid #ff4500;"
+        m_s = m_s.replace("180px", "260px")
     else:
         enemy = st.session_state.current_monster
         e_n = enemy['name']
@@ -469,47 +524,36 @@ elif st.session_state.page == 'game':
         # --- 答錯的強制學習防跳過模式 ---
         if st.session_state.force_learning:
             v_html = (
-                f'<div style="text-align:center; padding: 5%; background: #fff5f5; border-radius: 12px; border: 3px solid #e74c3c; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 10px;">'
-                f'<h3 style="margin:0; color:#c0392b; font-size: 1.5rem;">❌ 答錯了！請跟著唸 3 次正確答案！</h3>'
-                f'<h1 style="color:#e74c3c; font-size: 4rem; margin: 10px 0; font-weight: 800;">{c_w["en"]} = {c_w["zh"]}</h1>'
+                f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
+                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請跟著唸 3 次正確答案！</h3>'
+                f'<div class="vocab-word" style="color:#e74c3c;">{c_w["en"]} = {c_w["zh"]}</div>'
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # 手機/平板友善的巨大播放按鈕，與倒數計時並存
             js_force = f"""
-            <div style="text-align:center; margin-bottom: 20px;">
-                <button onclick="window.playSingleTTS()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: pulse 2s infinite;">
-                    🔊 點我播放正確發音
-                </button>
-                <p style="color:#7f8c8d; font-size:12px; margin-top:10px;">(📱 手機/平板若無自動發音，請務必手動點擊按鈕)</p>
-            </div>
-            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
                 if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
                 if (window.audioTimeouts) {{ window.audioTimeouts.forEach(clearTimeout); }}
                 window.audioTimeouts = [];
-                
-                window.playSingleTTS = function() {{ 
+                function playT() {{ 
                     let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
                     window.speechSynthesis.speak(m); 
-                }};
-                
-                // 嘗試自動播放 (電腦端通常會成功)
-                window.audioTimeouts.push(setTimeout(window.playSingleTTS, 500));
-                window.audioTimeouts.push(setTimeout(window.playSingleTTS, 3500));
-                window.audioTimeouts.push(setTimeout(window.playSingleTTS, 6500));
+                }}
+                window.audioTimeouts.push(setTimeout(playT, 500));
+                window.audioTimeouts.push(setTimeout(playT, 3500));
+                window.audioTimeouts.push(setTimeout(playT, 6500));
             </script>
             """
-            st.components.v1.html(js_force, height=120)
+            st.components.v1.html(js_force, height=0)
             
             if not st.session_state.get('learning_done', False):
                 lock_ph = st.empty()
                 for i in range(9, 0, -1):
                     lock_ph.markdown(f"""
-                    <div style="background-color: #bdc3c7; color: #ffffff; padding: 10px 25px; text-align: center; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: not-allowed; margin-bottom: 15px;">
+                    <div style="background-color: #bdc3c7; color: #ffffff; padding: 10px; text-align: center; border-radius: 8px; font-weight: bold; cursor: not-allowed; margin-bottom: 15px;">
                         🔒 仔細聽，請跟著唸 3 次正確發音... ( {i} 秒後解鎖 )
                     </div>
                     """, unsafe_allow_html=True)
@@ -526,16 +570,16 @@ elif st.session_state.page == 'game':
                 st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
                 st.rerun()
 
-        # --- 正常答題模式 (支援難度分級與虛擬鍵盤) ---
+        # --- 正常答題模式 ---
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log:
                 st.warning("🔥 累積滿 20 題！進入強制錯題複習模式！")
                 
-            v_html = f'<div style="text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px;"><h3 style="margin:0; color:#7f8c8d; font-size: 1.2rem;">✨ 詠唱單字 ✨ {rev}</h3>'
+            v_html = f'<div class="vocab-card"><h3 style="margin:0; color:#7f8c8d; font-size: 1.2rem;">✨ 詠唱單字 ✨ {rev}</h3>'
             
             if diff == '簡單':
-                v_html += f'<h1 style="color:#2980b9; font-size: 4rem; margin: 10px 0; font-weight: 800;">{c_w["en"]}</h1><h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
-                if c_w.get('hint'): v_html += f'<p style="color: #16a085; font-size: 1.1rem; margin: 0; background: #e8f8f5; padding: 8px; border-radius: 5px; font-weight: bold;">💡 提示：{c_w["hint"]}</p>'
+                v_html += f'<div class="vocab-word">{c_w["en"]}</div><h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
+                if c_w.get('hint'): v_html += f'<p style="color: #16a085; font-size: 1rem; margin: 0; background: #e8f8f5; padding: 8px; border-radius: 5px; font-weight: bold;">💡 提示：{c_w["hint"]}</p>'
             elif diff == '中等':
                 word_en = c_w['en']
                 w_len = len(word_en)
@@ -545,29 +589,28 @@ elif st.session_state.page == 'game':
                     indices = [int(i * (w_len - 1) / (N - 1) + 0.5) for i in range(N)]
                 hint_chars = [char if (i in indices or char in [' ', '-']) else '_' for i, char in enumerate(word_en)]
                 hint_str = " ".join(hint_chars)
-                v_html += f'<h1 style="color:#2980b9; font-size: 2rem; margin: 10px 0; font-weight: 800;">{c_w["zh"]}</h1>'
-                v_html += f'<h2 style="color:#34495e; font-size: 3rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px;">{hint_str}</h2>'
-                v_html += '<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.2rem;">請拼出對應的英文單字</h3>'
+                v_html += f'<h1 style="color:#2980b9; font-size: 1.8rem; margin: 10px 0; font-weight: 800;">{c_w["zh"]}</h1>'
+                v_html += f'<div class="vocab-hint-str">{hint_str}</div>'
+                v_html += '<h3 style="color:#e67e22; margin:0 0 10px 0; font-family: monospace; font-size: 1rem;">請拼出對應的英文單字</h3>'
             elif diff == '困難':
                 word_en = c_w['en']
                 hint_chars = [char if char in [' ', '-'] else '_' for char in word_en]
                 hint_str = " ".join(hint_chars)
-                v_html += f'<h1 style="color:#2980b9; font-size: 2rem; margin: 10px 0; font-weight: 800;">{c_w["zh"]}</h1>'
-                v_html += f'<h2 style="color:#34495e; font-size: 3rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px;">{hint_str}</h2>'
-                v_html += '<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.2rem;">請完全拼出對應的英文單字</h3>'
+                v_html += f'<h1 style="color:#2980b9; font-size: 1.8rem; margin: 10px 0; font-weight: 800;">{c_w["zh"]}</h1>'
+                v_html += f'<div class="vocab-hint-str">{hint_str}</div>'
+                v_html += '<h3 style="color:#e67e22; margin:0 0 10px 0; font-family: monospace; font-size: 1rem;">請完全拼出對應的英文單字</h3>'
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # --- 智能語音連播邏輯 (防點擊重播 & 手機提示) ---
+            # --- 智能語音連播邏輯 ---
             auto_script = ""
             if st.session_state.play_auto_audio:
                 auto_script = "window.audioTimeouts.push(setTimeout(window.playSingleTTS, 500));"
-                st.session_state.play_auto_audio = False # 換題前鎖死，打字不會重播
+                st.session_state.play_auto_audio = False 
             
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button onclick="window.playSingleTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s;">🔊 播放 / 重聽單字</button>
-                <div style="color:#95a5a6; font-size: 12px; margin-top: 8px;">(📱 手機/平板若未自動播放，請手動點擊)</div>
+                <button onclick="window.playSingleTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">🔊 播放 / 重聽單字</button>
             </div>
             <script>
                 if (!window.audioTimeouts) {{ window.audioTimeouts = []; }}
@@ -580,7 +623,7 @@ elif st.session_state.page == 'game':
                 {auto_script}
             </script>
             """
-            st.components.v1.html(btn_html, height=80)
+            st.components.v1.html(btn_html, height=70)
 
             if diff == '簡單':
                 cA, cB = st.columns(2)
@@ -591,9 +634,15 @@ elif st.session_state.page == 'game':
                     if st.button(f"B. {opts[1]}", use_container_width=True): process_ans(opts[1])
                     if st.button(f"D. {opts[3]}", use_container_width=True): process_ans(opts[3])
             else:
-                st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 20px 0;'>", unsafe_allow_html=True)
-                st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", key="vk_input", on_change=vk_submit, autocomplete="off")
-                st.markdown("<div style='text-align:center; color:#95a5a6; font-size:14px; margin-bottom:10px;'>👇 平板專用虛擬鍵盤 👇</div>", unsafe_allow_html=True)
+                st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
+                # 綁定 st.session_state.vk_input 給輸入框
+                user_input = st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", value=st.session_state.vk_input, key="text_input_field", autocomplete="off")
+                
+                # 如果使用者用實體鍵盤打字，把值同步回 vk_input
+                if user_input != st.session_state.vk_input:
+                    st.session_state.vk_input = user_input
+                    
+                st.markdown("<div style='text-align:center; color:#95a5a6; font-size:12px; margin-bottom:10px;'>👇 平板專用虛擬鍵盤 👇</div>", unsafe_allow_html=True)
 
                 k_row1 = ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
                 k_row2 = ["a", "s", "d", "f", "g", "h", "j", "k", "l"]
@@ -609,7 +658,7 @@ elif st.session_state.page == 'game':
                 for i, k in enumerate(k_row3): c3[i+1].button(k.upper(), on_click=vk_add, args=(k,), key=f"vk_{k}", use_container_width=True)
 
                 c4 = st.columns([2, 1, 1, 2])
-                c4[0].button("␣ 空格 (Space)", on_click=vk_add, args=(" ",), use_container_width=True)
+                c4[0].button("␣ 空格", on_click=vk_add, args=(" ",), use_container_width=True)
                 c4[1].button("- 連字", on_click=vk_add, args=("-",), use_container_width=True)
                 c4[2].button("🔙 刪除", on_click=vk_del, use_container_width=True)
                 c4[3].button("⚔️ 送出攻擊", type="primary", on_click=vk_submit, use_container_width=True)
