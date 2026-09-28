@@ -194,6 +194,28 @@ if 'users' not in st.session_state: st.session_state.users = load_json(USERS_FIL
 if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 
+# --- 破解手機靜音機制的常駐後台腳本 ---
+# 將 AudioContext 綁定到 window.parent，確保在任何一次點擊後永久解鎖音效卡
+st.components.v1.html("""
+<script>
+const pDoc = window.parent.document;
+if (!window.parent.gameAudioCtx) {
+    const AudioContext = window.parent.AudioContext || window.parent.webkitAudioContext;
+    if (AudioContext) {
+        window.parent.gameAudioCtx = new AudioContext();
+        const unlockAudio = function() {
+            if (window.parent.gameAudioCtx && window.parent.gameAudioCtx.state === 'suspended') {
+                window.parent.gameAudioCtx.resume();
+            }
+        };
+        // 監聽使用者的任何一次點擊或觸控，順勢解鎖音效卡
+        pDoc.addEventListener('click', unlockAudio, true);
+        pDoc.addEventListener('touchstart', unlockAudio, true);
+    }
+}
+</script>
+""", height=0)
+
 # ==================== 登入大廳 ====================
 if st.session_state.page == 'login':
     st.markdown("<h1 style='text-align: center; color: #2c3e50;'>⚔️ 英文英雄 RPG 大廳</h1><hr>", unsafe_allow_html=True)
@@ -398,33 +420,46 @@ elif st.session_state.page == 'game':
     fx_html = ""
     audio_js = ""
 
+    # 使用 window.parent.gameAudioCtx 確保跨重新載入也能播音效
     if anim == 'attack':
         h_s += " animation: heroDash 0.7s ease-in-out;"
         m_s += " animation: shakeHurt 0.7s ease-in-out 0.2s;"
         fx_html = f'<div class="m-fx">{char_d["fx"]}</div>'
         audio_js = f"""<script>
-        let ctx = new (window.AudioContext || window.webkitAudioContext)(); let osc = ctx.createOscillator(); let gain = ctx.createGain();
-        osc.type = '{char_d["snd_type"]}'; osc.frequency.setValueAtTime({char_d["snd_freq"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d["snd_drop"]}, ctx.currentTime + {char_d["snd_len"]});
-        gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d["snd_len"]});
-        osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d["snd_len"]});
+        let ctx = window.parent.gameAudioCtx;
+        if(ctx) {{
+            if(ctx.state === 'suspended') ctx.resume();
+            let osc = ctx.createOscillator(); let gain = ctx.createGain();
+            osc.type = '{char_d["snd_type"]}'; osc.frequency.setValueAtTime({char_d["snd_freq"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d["snd_drop"]}, ctx.currentTime + {char_d["snd_len"]});
+            gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d["snd_len"]});
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d["snd_len"]});
+        }}
         </script>"""
     elif anim == 'hurt':
         m_s += " animation: monsterDash 0.7s ease-in-out;"
         h_s += " animation: heroHurt 0.7s ease-in-out 0.2s;"
         h_snd = random.choice(HURT_SOUNDS)
         audio_js = f"""<script>
-        let ctx = new (window.AudioContext || window.webkitAudioContext)(); let osc = ctx.createOscillator(); let gain = ctx.createGain();
-        osc.type = '{h_snd["type"]}'; osc.frequency.setValueAtTime({h_snd["f1"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd["f2"]}, ctx.currentTime + {h_snd["len"]});
-        gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd["len"]});
-        osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd["len"]});
+        let ctx = window.parent.gameAudioCtx;
+        if(ctx) {{
+            if(ctx.state === 'suspended') ctx.resume();
+            let osc = ctx.createOscillator(); let gain = ctx.createGain();
+            osc.type = '{h_snd["type"]}'; osc.frequency.setValueAtTime({h_snd["f1"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd["f2"]}, ctx.currentTime + {h_snd["len"]});
+            gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd["len"]});
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd["len"]});
+        }}
         </script>"""
     elif anim == 'dead':
         h_s += " animation: heroDead 1s forwards;"
         audio_js = f"""<script>
-        let ctx = new (window.AudioContext || window.webkitAudioContext)(); let osc = ctx.createOscillator(); let gain = ctx.createGain();
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5);
-        gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5);
-        osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5);
+        let ctx = window.parent.gameAudioCtx;
+        if(ctx) {{
+            if(ctx.state === 'suspended') ctx.resume();
+            let osc = ctx.createOscillator(); let gain = ctx.createGain();
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5);
+            gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5);
+        }}
         </script>"""
 
     is_boss = u_data.get('is_boss_fight', False)
@@ -485,7 +520,6 @@ elif st.session_state.page == 'game':
         
         if anim == 'hurt' or anim == 'dead':
             st.session_state.force_learning = True
-            st.session_state.penalty_start_time = time.time() # 記錄錯誤時間
         else:
             st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
@@ -501,52 +535,87 @@ elif st.session_state.page == 'game':
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
         # ==========================================
-        # 答錯的強制學習防跳過模式 (非卡死版)
+        # 答錯的強制學習防跳過模式 (點擊3次解鎖版)
         # ==========================================
         if st.session_state.force_learning:
             v_html = (
                 f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
-                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請跟著唸 3 次正確答案！</h3>'
+                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請點擊按鈕跟讀 3 次！</h3>'
                 f'<div class="vocab-word" style="color:#e74c3c;">{c_w["en"]} = {c_w["zh"]}</div>'
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # 手機保證有效的巨大手動播放按鈕
+            # 使用 JS 強制隱藏繼續按鈕，直到播完3次才顯示
             js_force = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button onclick="window.playSingleTTS()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; animation: pulse 2s infinite;">
-                    🔊 點我播放正確發音
+                <button id="tts-btn" onclick="window.playAndCount()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; animation: pulse 2s infinite;">
+                    🔊 點我播放正確發音 (0/3)
                 </button>
-                <p style="color:#7f8c8d; font-size:14px; margin-top:10px;">(📱 手機/平板請手動點擊，務必跟著唸 3 次)</p>
             </div>
             <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
-                if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
-                window.playSingleTTS = function() {{ 
+                // 初始化與隱藏 Streamlit 的繼續按鈕
+                setTimeout(() => {{
+                    const btns = window.parent.document.querySelectorAll('button');
+                    btns.forEach(b => {{
+                        if(b.innerText.includes('繼續冒險')) {{
+                            b.style.display = 'none';
+                            window.parent.continueQuestBtn = b;
+                        }}
+                    }});
+                }}, 100);
+
+                let playCount = 0;
+                let isSpeaking = false;
+
+                window.playAndCount = function() {{
+                    if(isSpeaking) return; // 防狂點機制
+                    
                     if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
                     let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
+                    
+                    m.onstart = function() {{ 
+                        isSpeaking = true; 
+                        document.getElementById('tts-btn').style.opacity = '0.5'; 
+                    }};
+                    
+                    m.onend = function() {{ 
+                        isSpeaking = false; 
+                        document.getElementById('tts-btn').style.opacity = '1';
+                        playCount++;
+                        if(playCount < 3) {{
+                            document.getElementById('tts-btn').innerText = '🔊 點我播放正確發音 (' + playCount + '/3)';
+                        }} else {{
+                            document.getElementById('tts-btn').innerText = '✅ 已完成 3 次！請點下方按鈕繼續';
+                            document.getElementById('tts-btn').style.backgroundColor = '#27ae60';
+                            document.getElementById('tts-btn').style.animation = 'none';
+                            // 解鎖放行繼續按鈕
+                            if(window.parent.continueQuestBtn) {{
+                                window.parent.continueQuestBtn.style.display = 'inline-flex';
+                            }}
+                        }}
+                    }};
+                    
+                    // 防卡死機制：如果 iOS 漏接 onend 事件，2.5 秒後強制判定播放完成
+                    setTimeout(() => {{ if(isSpeaking) m.onend(); }}, 2500);
+
                     window.speechSynthesis.speak(m); 
                 }};
-                setTimeout(window.playSingleTTS, 500); // 電腦嘗試自動播放一次
             </script>
             """
             st.components.v1.html(js_force, height=120)
             
-            # 點擊「繼續」時判斷是否過了 6 秒冷卻時間
+            # 此按鈕初始會被上方 JS 隱藏，解鎖後才會出現
             if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
-                elapsed = time.time() - st.session_state.get('penalty_start_time', 0)
-                if elapsed < 6:
-                    st.warning(f"⏳ 記憶冷卻中... 請確實點擊上方喇叭發音，再等 {int(6 - elapsed)} 秒喔！")
-                else:
-                    st.session_state.force_learning = False
-                    st.session_state.play_auto_audio = True
-                    st.session_state.vk_input = ""
-                    st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
-                    st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
-                    st.rerun()
+                st.session_state.force_learning = False
+                st.session_state.play_auto_audio = True
+                st.session_state.vk_input = ""
+                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
+                st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
+                st.rerun()
 
         # ==========================================
         # 正常答題模式 (支援難度分級與虛擬鍵盤)
