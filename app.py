@@ -135,7 +135,7 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 網頁設定與自適應 CSS ---
+# --- 網頁設定與全新終極自適應 CSS ---
 st.set_page_config(page_title="英文英雄 RPG", page_icon="⚔️", layout="wide")
 
 st.markdown("""
@@ -195,7 +195,6 @@ if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 
 # --- 破解手機靜音機制的常駐後台腳本 ---
-# 將 AudioContext 綁定到 window.parent，確保在任何一次點擊後永久解鎖音效卡
 st.components.v1.html("""
 <script>
 const pDoc = window.parent.document;
@@ -208,7 +207,6 @@ if (!window.parent.gameAudioCtx) {
                 window.parent.gameAudioCtx.resume();
             }
         };
-        // 監聽使用者的任何一次點擊或觸控，順勢解鎖音效卡
         pDoc.addEventListener('click', unlockAudio, true);
         pDoc.addEventListener('touchstart', unlockAudio, true);
     }
@@ -352,7 +350,6 @@ elif st.session_state.page == 'game':
         if ans.lower() == c_w['en'].lower(): process_ans(c_w['zh'])
         else: process_ans("WRONG_ANSWER")
 
-    # --- 側邊欄 ---
     with st.sidebar:
         new_vol = st.slider("🔊 遊戲與發音音量", min_value=0.0, max_value=1.0, value=vol, step=0.1)
         if new_vol != vol:
@@ -377,7 +374,6 @@ elif st.session_state.page == 'game':
         st.markdown("---")
         if st.button("🚪 登出", use_container_width=True): st.session_state.page = 'login'; st.rerun()
 
-    # --- 頂端狀態列 (自適應 Flexbox) ---
     st.markdown(f"""
     <div class="status-bar-container">
         <div class="status-item"><div class="status-label">👤 {hero_name}</div><div class="status-value">{user}</div></div>
@@ -387,7 +383,6 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 自適應圖鑑區 ---
     with st.expander(f"📖 冒險圖鑑 (一般: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
         d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 一般怪物"])
         with d_tab1:
@@ -420,7 +415,6 @@ elif st.session_state.page == 'game':
     fx_html = ""
     audio_js = ""
 
-    # 使用 window.parent.gameAudioCtx 確保跨重新載入也能播音效
     if anim == 'attack':
         h_s += " animation: heroDash 0.7s ease-in-out;"
         m_s += " animation: shakeHurt 0.7s ease-in-out 0.2s;"
@@ -535,28 +529,27 @@ elif st.session_state.page == 'game':
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
         # ==========================================
-        # 答錯的強制學習防跳過模式 (點擊3次解鎖版)
+        # 答錯的強制學習防跳過模式 (自動偷點精靈版)
         # ==========================================
         if st.session_state.force_learning:
             v_html = (
                 f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
-                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請點擊按鈕跟讀 3 次！</h3>'
+                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請跟著唸 3 次正確答案！</h3>'
                 f'<div class="vocab-word" style="color:#e74c3c;">{c_w["en"]} = {c_w["zh"]}</div>'
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # 使用 JS 強制隱藏繼續按鈕，直到播完3次才顯示
             js_force = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="tts-btn" onclick="window.playAndCount()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; animation: pulse 2s infinite;">
-                    🔊 點我播放正確發音 (0/3)
+                <button id="tts-btn" onclick="window.manualPlay()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; animation: pulse 2s infinite;">
+                    🔊 自動播放中... (若無聲請點我) (0/3)
                 </button>
             </div>
             <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
-                // 初始化與隱藏 Streamlit 的繼續按鈕
+                // 隱藏 Streamlit 的繼續冒險按鈕
                 setTimeout(() => {{
                     const btns = window.parent.document.querySelectorAll('button');
                     btns.forEach(b => {{
@@ -570,9 +563,8 @@ elif st.session_state.page == 'game':
                 let playCount = 0;
                 let isSpeaking = false;
 
-                window.playAndCount = function() {{
-                    if(isSpeaking) return; // 防狂點機制
-                    
+                window.manualPlay = function() {{
+                    if(isSpeaking) return; 
                     if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
                     let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
@@ -586,29 +578,44 @@ elif st.session_state.page == 'game':
                         isSpeaking = false; 
                         document.getElementById('tts-btn').style.opacity = '1';
                         playCount++;
-                        if(playCount < 3) {{
-                            document.getElementById('tts-btn').innerText = '🔊 點我播放正確發音 (' + playCount + '/3)';
-                        }} else {{
-                            document.getElementById('tts-btn').innerText = '✅ 已完成 3 次！請點下方按鈕繼續';
-                            document.getElementById('tts-btn').style.backgroundColor = '#27ae60';
-                            document.getElementById('tts-btn').style.animation = 'none';
-                            // 解鎖放行繼續按鈕
-                            if(window.parent.continueQuestBtn) {{
-                                window.parent.continueQuestBtn.style.display = 'inline-flex';
-                            }}
-                        }}
+                        updateBtnState();
                     }};
                     
-                    // 防卡死機制：如果 iOS 漏接 onend 事件，2.5 秒後強制判定播放完成
+                    // 防卡死機制
                     setTimeout(() => {{ if(isSpeaking) m.onend(); }}, 2500);
 
                     window.speechSynthesis.speak(m); 
                 }};
+
+                function updateBtnState() {{
+                    if(playCount < 3) {{
+                        document.getElementById('tts-btn').innerText = '🔊 自動播放中... (若無聲請點我) (' + playCount + '/3)';
+                    }} else {{
+                        document.getElementById('tts-btn').innerText = '✅ 已完成 3 次！請點下方按鈕繼續';
+                        document.getElementById('tts-btn').style.backgroundColor = '#27ae60';
+                        document.getElementById('tts-btn').style.animation = 'none';
+                        if(window.parent.continueQuestBtn) {{
+                            window.parent.continueQuestBtn.style.display = 'inline-flex';
+                        }}
+                    }}
+                }}
+
+                // --- 核心：自動偷點精靈 ---
+                setTimeout(() => document.getElementById('tts-btn').click(), 500);
+                setTimeout(() => document.getElementById('tts-btn').click(), 3500);
+                setTimeout(() => document.getElementById('tts-btn').click(), 6500);
+
+                // 終極防呆：9.5秒後如果瀏覽器依然攔截偷點，強制解鎖繼續按鈕
+                setTimeout(() => {{
+                    if(playCount < 3) {{
+                        playCount = 3;
+                        updateBtnState();
+                    }}
+                }}, 9500);
             </script>
             """
             st.components.v1.html(js_force, height=120)
             
-            # 此按鈕初始會被上方 JS 隱藏，解鎖後才會出現
             if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
                 st.session_state.force_learning = False
                 st.session_state.play_auto_audio = True
@@ -618,7 +625,7 @@ elif st.session_state.page == 'game':
                 st.rerun()
 
         # ==========================================
-        # 正常答題模式 (支援難度分級與虛擬鍵盤)
+        # 正常答題模式
         # ==========================================
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log:
@@ -651,24 +658,23 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            auto_script = ""
+            auto_click_js = ""
             if st.session_state.play_auto_audio:
-                auto_script = "window.audioTimeouts.push(setTimeout(window.playSingleTTS, 500));"
+                auto_click_js = "setTimeout(() => document.getElementById('normal-tts-btn').click(), 500);"
                 st.session_state.play_auto_audio = False 
             
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button onclick="window.playSingleTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">🔊 播放 / 重聽單字</button>
+                <button id="normal-tts-btn" onclick="window.playSingleTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">🔊 播放 / 重聽單字</button>
             </div>
             <script>
-                if (!window.audioTimeouts) {{ window.audioTimeouts = []; }}
                 window.playSingleTTS = function() {{ 
                     if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
                     let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = {vol}; 
                     window.speechSynthesis.speak(msg); 
                 }};
-                {auto_script}
+                {auto_click_js}
             </script>
             """
             st.components.v1.html(btn_html, height=70)
