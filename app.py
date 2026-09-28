@@ -7,8 +7,7 @@ def setup_environment():
     required_packages = {
         "streamlit": "streamlit",
         "pandas": "pandas",
-        "eng-to-ipa": "eng_to_ipa",
-        "gTTS": "gtts"  # 這次我們新增了 Google Text-to-Speech 引擎！
+        "eng-to-ipa": "eng_to_ipa"
     }
     missing = []
     for pip_name, import_name in required_packages.items():
@@ -37,9 +36,6 @@ import time
 import eng_to_ipa as ipa
 from datetime import datetime
 import pandas as pd
-import base64
-import io
-from gtts import gTTS
 
 # --- 檔案設定 ---
 USERS_FILE = "users_db.json"
@@ -139,45 +135,7 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 神級語音產生器 (使用原生 HTML5 Audio，100% 防手機卡死) ---
-def render_custom_audio(text, repeat=1, vol=0.8, autoplay=True):
-    try:
-        # 使用頓號強制 Google 語音產生自然停頓
-        speak_text = ((text + ",  ") * repeat).strip()
-        tts = gTTS(text=speak_text, lang='en', slow=False)
-        fp = io.BytesIO()
-        tts.write_to_fp(fp)
-        fp.seek(0)
-        b64 = base64.b64encode(fp.read()).decode()
-        
-        auto_str = "autoplay" if autoplay else ""
-        
-        html = f"""
-        <div style="text-align: center; margin-bottom: 10px; background: #ecf0f1; padding: 10px; border-radius: 10px;">
-            <p style="color:#e74c3c; font-size:14px; margin: 0 0 8px 0; font-weight: bold;">🔊 語音播放器 (若手機無聲，請直接點擊下方 ▶️ 播放)</p>
-            <audio id="vocabAudio" {auto_str} controls style="width: 100%; max-width: 400px; height: 45px; border-radius: 8px;">
-                <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-            </audio>
-        </div>
-        <script>
-            var audio = document.getElementById("vocabAudio");
-            if(audio) {{
-                audio.volume = {vol};
-                if("{auto_str}" === "autoplay") {{
-                    var playPromise = audio.play();
-                    if (playPromise !== undefined) {{
-                        playPromise.catch(error => {{ console.log("Autoplay blocked by OS"); }});
-                    }}
-                }}
-            }}
-        </script>
-        """
-        st.components.v1.html(html, height=100)
-    except Exception as e:
-        st.error(f"語音生成失敗，請檢查網路連線。")
-
-
-# --- 網頁設定與全新終極自適應 CSS ---
+# --- 網頁設定與自適應 CSS ---
 st.set_page_config(page_title="英文英雄 RPG", page_icon="⚔️", layout="wide")
 
 st.markdown("""
@@ -236,23 +194,24 @@ if 'users' not in st.session_state: st.session_state.users = load_json(USERS_FIL
 if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 
-# --- 全域音效解鎖器：只要摸一下螢幕，後續的戰鬥特效就會響！ ---
+# --- 破解手機靜音機制的常駐後台腳本 ---
+# 將 AudioContext 綁定到 window.parent，確保在任何一次點擊後永久解鎖音效卡
 st.components.v1.html("""
 <script>
+const pDoc = window.parent.document;
 if (!window.parent.gameAudioCtx) {
-    window.parent.gameAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-}
-const unlock = function() {
-    if (window.parent.gameAudioCtx && window.parent.gameAudioCtx.state === 'suspended') {
-        window.parent.gameAudioCtx.resume();
+    const AudioContext = window.parent.AudioContext || window.parent.webkitAudioContext;
+    if (AudioContext) {
+        window.parent.gameAudioCtx = new AudioContext();
+        const unlockAudio = function() {
+            if (window.parent.gameAudioCtx && window.parent.gameAudioCtx.state === 'suspended') {
+                window.parent.gameAudioCtx.resume();
+            }
+        };
+        // 監聽使用者的任何一次點擊或觸控，順勢解鎖音效卡
+        pDoc.addEventListener('click', unlockAudio, true);
+        pDoc.addEventListener('touchstart', unlockAudio, true);
     }
-};
-// 捕捉所有點擊，強制啟動音效卡
-document.addEventListener('click', unlock, true);
-document.addEventListener('touchstart', unlock, true);
-if(window.parent && window.parent.document) {
-    window.parent.document.addEventListener('click', unlock, true);
-    window.parent.document.addEventListener('touchstart', unlock, true);
 }
 </script>
 """, height=0)
@@ -418,7 +377,7 @@ elif st.session_state.page == 'game':
         st.markdown("---")
         if st.button("🚪 登出", use_container_width=True): st.session_state.page = 'login'; st.rerun()
 
-    # --- 頂端狀態列 ---
+    # --- 頂端狀態列 (自適應 Flexbox) ---
     st.markdown(f"""
     <div class="status-bar-container">
         <div class="status-item"><div class="status-label">👤 {hero_name}</div><div class="status-value">{user}</div></div>
@@ -461,6 +420,7 @@ elif st.session_state.page == 'game':
     fx_html = ""
     audio_js = ""
 
+    # 使用 window.parent.gameAudioCtx 確保跨重新載入也能播音效
     if anim == 'attack':
         h_s += " animation: heroDash 0.7s ease-in-out;"
         m_s += " animation: shakeHurt 0.7s ease-in-out 0.2s;"
@@ -560,7 +520,6 @@ elif st.session_state.page == 'game':
         
         if anim == 'hurt' or anim == 'dead':
             st.session_state.force_learning = True
-            st.session_state.learning_done = False 
         else:
             st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
@@ -576,51 +535,90 @@ elif st.session_state.page == 'game':
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
         # ==========================================
-        # 答錯的強制學習防跳過模式 (神級 MP3 語音版)
+        # 答錯的強制學習防跳過模式 (點擊3次解鎖版)
         # ==========================================
         if st.session_state.force_learning:
             v_html = (
                 f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
-                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請仔細聽 3 次正確發音！</h3>'
+                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請點擊按鈕跟讀 3 次！</h3>'
                 f'<div class="vocab-word" style="color:#e74c3c;">{c_w["en"]} = {c_w["zh"]}</div>'
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # 播放重複 3 次的 MP3
-            if not st.session_state.get('learning_done', False):
-                render_custom_audio(c_w['en'], repeat=3, vol=vol, autoplay=True)
-                
-                # 同時進行倒數鎖定
-                lock_ph = st.empty()
-                for i in range(9, 0, -1):
-                    lock_ph.markdown(f"""
-                    <div style="background-color: #bdc3c7; color: #ffffff; padding: 10px; text-align: center; border-radius: 8px; font-weight: bold; margin-bottom: 15px;">
-                        🔒 魔法冷卻中... 請仔細聽發音 ( {i} 秒後解鎖 )
-                    </div>
-                    """, unsafe_allow_html=True)
-                    time.sleep(1)
-                
-                st.session_state.learning_done = True
-                lock_ph.empty()
-            else:
-                # 倒數完畢後，如果畫面重整（例如點選音量），不自動重播
-                render_custom_audio(c_w['en'], repeat=3, vol=vol, autoplay=False)
+            # 使用 JS 強制隱藏繼續按鈕，直到播完3次才顯示
+            js_force = f"""
+            <div style="text-align:center; margin-bottom: 20px;">
+                <button id="tts-btn" onclick="window.playAndCount()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; animation: pulse 2s infinite;">
+                    🔊 點我播放正確發音 (0/3)
+                </button>
+            </div>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
+            <script>
+                // 初始化與隱藏 Streamlit 的繼續按鈕
+                setTimeout(() => {{
+                    const btns = window.parent.document.querySelectorAll('button');
+                    btns.forEach(b => {{
+                        if(b.innerText.includes('繼續冒險')) {{
+                            b.style.display = 'none';
+                            window.parent.continueQuestBtn = b;
+                        }}
+                    }});
+                }}, 100);
+
+                let playCount = 0;
+                let isSpeaking = false;
+
+                window.playAndCount = function() {{
+                    if(isSpeaking) return; // 防狂點機制
+                    
+                    if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
+                    let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
+                    m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
+                    
+                    m.onstart = function() {{ 
+                        isSpeaking = true; 
+                        document.getElementById('tts-btn').style.opacity = '0.5'; 
+                    }};
+                    
+                    m.onend = function() {{ 
+                        isSpeaking = false; 
+                        document.getElementById('tts-btn').style.opacity = '1';
+                        playCount++;
+                        if(playCount < 3) {{
+                            document.getElementById('tts-btn').innerText = '🔊 點我播放正確發音 (' + playCount + '/3)';
+                        }} else {{
+                            document.getElementById('tts-btn').innerText = '✅ 已完成 3 次！請點下方按鈕繼續';
+                            document.getElementById('tts-btn').style.backgroundColor = '#27ae60';
+                            document.getElementById('tts-btn').style.animation = 'none';
+                            // 解鎖放行繼續按鈕
+                            if(window.parent.continueQuestBtn) {{
+                                window.parent.continueQuestBtn.style.display = 'inline-flex';
+                            }}
+                        }}
+                    }};
+                    
+                    // 防卡死機制：如果 iOS 漏接 onend 事件，2.5 秒後強制判定播放完成
+                    setTimeout(() => {{ if(isSpeaking) m.onend(); }}, 2500);
+
+                    window.speechSynthesis.speak(m); 
+                }};
+            </script>
+            """
+            st.components.v1.html(js_force, height=120)
             
-            # 解鎖後才顯示按鈕 (無需 rerun，直接出現)
-            if st.session_state.get('learning_done', False):
-                if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
-                    st.session_state.force_learning = False
-                    st.session_state.learning_done = False 
-                    st.session_state.play_auto_audio = True
-                    st.session_state.vk_input = ""
-                    st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
-                    st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
-                    st.rerun()
+            # 此按鈕初始會被上方 JS 隱藏，解鎖後才會出現
+            if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
+                st.session_state.force_learning = False
+                st.session_state.play_auto_audio = True
+                st.session_state.vk_input = ""
+                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
+                st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
+                st.rerun()
 
         # ==========================================
-        # 正常答題模式
+        # 正常答題模式 (支援難度分級與虛擬鍵盤)
         # ==========================================
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log:
@@ -653,11 +651,27 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # --- 播放正常發音 1 次 ---
-            autoplay_flag = st.session_state.play_auto_audio
-            st.session_state.play_auto_audio = False # 確保打字或按別的按鈕時不會一直重播
+            auto_script = ""
+            if st.session_state.play_auto_audio:
+                auto_script = "window.audioTimeouts.push(setTimeout(window.playSingleTTS, 500));"
+                st.session_state.play_auto_audio = False 
             
-            render_custom_audio(c_w['en'], repeat=1, vol=vol, autoplay=autoplay_flag)
+            btn_html = f"""
+            <div style="text-align:center; margin-bottom: 20px;">
+                <button onclick="window.playSingleTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">🔊 播放 / 重聽單字</button>
+            </div>
+            <script>
+                if (!window.audioTimeouts) {{ window.audioTimeouts = []; }}
+                window.playSingleTTS = function() {{ 
+                    if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
+                    let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
+                    msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = {vol}; 
+                    window.speechSynthesis.speak(msg); 
+                }};
+                {auto_script}
+            </script>
+            """
+            st.components.v1.html(btn_html, height=70)
 
             if diff == '簡單':
                 cA, cB = st.columns(2)
