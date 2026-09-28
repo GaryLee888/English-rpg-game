@@ -194,8 +194,7 @@ if 'users' not in st.session_state: st.session_state.users = load_json(USERS_FIL
 if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 
-# --- 破解手機靜音機制的常駐後台腳本 ---
-# 將 AudioContext 綁定到 window.parent，確保在任何一次點擊後永久解鎖音效卡
+# --- 破解手機靜音機制 ---
 st.components.v1.html("""
 <script>
 const pDoc = window.parent.document;
@@ -208,7 +207,6 @@ if (!window.parent.gameAudioCtx) {
                 window.parent.gameAudioCtx.resume();
             }
         };
-        // 監聽使用者的任何一次點擊或觸控，順勢解鎖音效卡
         pDoc.addEventListener('click', unlockAudio, true);
         pDoc.addEventListener('touchstart', unlockAudio, true);
     }
@@ -377,7 +375,7 @@ elif st.session_state.page == 'game':
         st.markdown("---")
         if st.button("🚪 登出", use_container_width=True): st.session_state.page = 'login'; st.rerun()
 
-    # --- 頂端狀態列 (自適應 Flexbox) ---
+    # --- 頂端狀態列 ---
     st.markdown(f"""
     <div class="status-bar-container">
         <div class="status-item"><div class="status-label">👤 {hero_name}</div><div class="status-value">{user}</div></div>
@@ -420,7 +418,6 @@ elif st.session_state.page == 'game':
     fx_html = ""
     audio_js = ""
 
-    # 使用 window.parent.gameAudioCtx 確保跨重新載入也能播音效
     if anim == 'attack':
         h_s += " animation: heroDash 0.7s ease-in-out;"
         m_s += " animation: shakeHurt 0.7s ease-in-out 0.2s;"
@@ -535,28 +532,27 @@ elif st.session_state.page == 'game':
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
         # ==========================================
-        # 答錯的強制學習防跳過模式 (點擊3次解鎖版)
+        # 答錯的強制學習防跳過模式 (智慧排程 3 秒等待版)
         # ==========================================
         if st.session_state.force_learning:
             v_html = (
                 f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
-                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請點擊按鈕跟讀 3 次！</h3>'
+                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請跟著唸 3 次正確答案！</h3>'
                 f'<div class="vocab-word" style="color:#e74c3c;">{c_w["en"]} = {c_w["zh"]}</div>'
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # 使用 JS 強制隱藏繼續按鈕，直到播完3次才顯示
             js_force = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="tts-btn" onclick="window.playAndCount()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; animation: pulse 2s infinite;">
-                    🔊 點我播放正確發音 (0/3)
+                <button id="tts-btn" onclick="window.playForce()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold; animation: pulse 2s infinite;">
+                    🔊 準備播放... (若無聲請手動點擊)
                 </button>
             </div>
-            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.02); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
-                // 初始化與隱藏 Streamlit 的繼續按鈕
+                // 隱藏繼續冒險按鈕
                 setTimeout(() => {{
                     const btns = window.parent.document.querySelectorAll('button');
                     btns.forEach(b => {{
@@ -569,46 +565,78 @@ elif st.session_state.page == 'game':
 
                 let playCount = 0;
                 let isSpeaking = false;
+                let timeoutId = null;
 
-                window.playAndCount = function() {{
-                    if(isSpeaking) return; // 防狂點機制
+                window.playForce = function() {{
+                    if (isSpeaking) return; // 防狂點
+                    playCount = 0;
+                    clearTimeout(timeoutId);
+                    speakWord();
+                }};
+
+                function speakWord() {{
+                    let btn = document.getElementById('tts-btn');
+                    if (!btn) return;
                     
-                    if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
-                    let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
-                    m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
-                    
-                    m.onstart = function() {{ 
-                        isSpeaking = true; 
-                        document.getElementById('tts-btn').style.opacity = '0.5'; 
+                    if (playCount >= 3) {{
+                        btn.innerText = "✅ 已完成 3 次！請點下方按鈕繼續";
+                        btn.style.backgroundColor = "#27ae60";
+                        btn.style.animation = "none";
+                        if(window.parent.continueQuestBtn) {{
+                            window.parent.continueQuestBtn.style.display = 'inline-flex';
+                        }}
+                        return;
+                    }}
+
+                    if (window.speechSynthesis) window.speechSynthesis.cancel();
+                    let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
+                    msg.lang = 'en-US'; 
+                    msg.rate = 0.85; 
+                    msg.volume = {vol};
+
+                    let started = false;
+                    let ended = false;
+
+                    msg.onstart = function() {{
+                        started = true;
+                        isSpeaking = true;
+                        btn.innerText = "🔊 播放中，請跟著唸... (" + (playCount + 1) + "/3)";
+                        btn.style.animation = "none";
                     }};
-                    
-                    m.onend = function() {{ 
-                        isSpeaking = false; 
-                        document.getElementById('tts-btn').style.opacity = '1';
+
+                    msg.onend = function() {{
+                        if (ended) return; // 避免重複觸發
+                        ended = true;
+                        isSpeaking = false;
                         playCount++;
-                        if(playCount < 3) {{
-                            document.getElementById('tts-btn').innerText = '🔊 點我播放正確發音 (' + playCount + '/3)';
+                        if (playCount < 3) {{
+                            btn.innerText = "⏳ 停頓 3 秒... (" + playCount + "/3)";
+                            timeoutId = setTimeout(speakWord, 3000); // 精準等待 3 秒再唸下一次
                         }} else {{
-                            document.getElementById('tts-btn').innerText = '✅ 已完成 3 次！請點下方按鈕繼續';
-                            document.getElementById('tts-btn').style.backgroundColor = '#27ae60';
-                            document.getElementById('tts-btn').style.animation = 'none';
-                            // 解鎖放行繼續按鈕
-                            if(window.parent.continueQuestBtn) {{
-                                window.parent.continueQuestBtn.style.display = 'inline-flex';
-                            }}
+                            speakWord(); // 觸發完成介面
                         }}
                     }};
-                    
-                    // 防卡死機制：如果 iOS 漏接 onend 事件，2.5 秒後強制判定播放完成
-                    setTimeout(() => {{ if(isSpeaking) m.onend(); }}, 2500);
 
-                    window.speechSynthesis.speak(m); 
-                }};
+                    // 手機防禦機制：如果系統攔截了發音，或者播放完沒有回報 end
+                    setTimeout(() => {{
+                        if (!started && playCount === 0) {{
+                            isSpeaking = false;
+                            btn.innerText = "👉 手機限制：請點我開始播放";
+                            btn.style.animation = "pulse 1.5s infinite";
+                        }} else if (started && !ended) {{
+                            msg.onend();
+                        }}
+                    }}, 3500);
+
+                    window.speechSynthesis.speak(msg);
+                }}
+
+                // 電腦與平板嘗試自動觸發
+                setTimeout(window.playForce, 500);
             </script>
             """
-            st.components.v1.html(js_force, height=120)
+            st.components.v1.html(js_force, height=80)
             
-            # 此按鈕初始會被上方 JS 隱藏，解鎖後才會出現
             if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
                 st.session_state.force_learning = False
                 st.session_state.play_auto_audio = True
@@ -618,7 +646,7 @@ elif st.session_state.page == 'game':
                 st.rerun()
 
         # ==========================================
-        # 正常答題模式 (支援難度分級與虛擬鍵盤)
+        # 正常答題模式
         # ==========================================
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log:
@@ -651,21 +679,22 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            auto_script = ""
-            if st.session_state.play_auto_audio:
-                auto_script = "window.audioTimeouts.push(setTimeout(window.playSingleTTS, 500));"
-                st.session_state.play_auto_audio = False 
+            auto_script = "setTimeout(() => document.getElementById('normal-tts-btn').click(), 500);" if st.session_state.play_auto_audio else ""
+            st.session_state.play_auto_audio = False 
             
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button onclick="window.playSingleTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">🔊 播放 / 重聽單字</button>
+                <button id="normal-tts-btn" onclick="window.playNormal()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">
+                    🔊 播放 / 重聽單字
+                </button>
             </div>
             <script>
-                if (!window.audioTimeouts) {{ window.audioTimeouts = []; }}
-                window.playSingleTTS = function() {{ 
-                    if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
+                window.playNormal = function() {{ 
+                    if (window.speechSynthesis) window.speechSynthesis.cancel();
                     let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
-                    msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = {vol}; 
+                    msg.lang = 'en-US'; 
+                    msg.rate = 0.9; 
+                    msg.volume = {vol}; 
                     window.speechSynthesis.speak(msg); 
                 }};
                 {auto_script}
