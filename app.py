@@ -167,8 +167,6 @@ st.markdown("""
 if 'settings' not in st.session_state: st.session_state.settings = load_json(SETTINGS_FILE, {"parent_password": "1234", "volume": 0.8})
 if 'page' not in st.session_state: st.session_state.page = 'login'
 if 'users' not in st.session_state: st.session_state.users = load_json(USERS_FILE, {})
-
-# 虛擬鍵盤狀態鎖與初始設定
 if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 
@@ -246,10 +244,9 @@ elif st.session_state.page == 'game':
     
     c_w = st.session_state.current_vocab
 
-    # --- 虛擬鍵盤回呼函數 ---
     def process_ans(s):
-        st.session_state.play_auto_audio = True # 新題目強制重聽發音
-        st.session_state.vk_input = ""          # 清空打字機
+        st.session_state.play_auto_audio = True 
+        st.session_state.vk_input = ""          
         u_data['total_questions'] += 1 
         if s == c_w['zh']:
             u_data['combo'] += 1
@@ -301,22 +298,16 @@ elif st.session_state.page == 'game':
             else: st.session_state.action_anim = 'hurt'
         save_user_data(user, u_data)
 
-    def vk_add(char):
-        st.session_state.vk_input += char
-
-    def vk_del():
-        st.session_state.vk_input = st.session_state.vk_input[:-1]
-
-    def vk_clear():
-        st.session_state.vk_input = ""
-
+    def vk_add(char): st.session_state.vk_input += char
+    def vk_del(): st.session_state.vk_input = st.session_state.vk_input[:-1]
+    def vk_clear(): st.session_state.vk_input = ""
     def vk_submit():
         ans = st.session_state.get("vk_input", "").strip()
         if not ans: return
         if ans.lower() == c_w['en'].lower(): process_ans(c_w['zh'])
         else: process_ans("WRONG_ANSWER")
 
-    # --- UI 開始 ---
+    # --- 側邊欄 ---
     with st.sidebar:
         new_vol = st.slider("🔊 遊戲與發音音量", min_value=0.0, max_value=1.0, value=vol, step=0.1)
         if new_vol != vol:
@@ -486,23 +477,33 @@ elif st.session_state.page == 'game':
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # 自動連播 3 次語音
+            # 手機/平板友善的巨大播放按鈕，與倒數計時並存
             js_force = f"""
+            <div style="text-align:center; margin-bottom: 20px;">
+                <button onclick="window.playSingleTTS()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: pulse 2s infinite;">
+                    🔊 點我播放正確發音
+                </button>
+                <p style="color:#7f8c8d; font-size:12px; margin-top:10px;">(📱 手機/平板若無自動發音，請務必手動點擊按鈕)</p>
+            </div>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
                 if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
                 if (window.audioTimeouts) {{ window.audioTimeouts.forEach(clearTimeout); }}
                 window.audioTimeouts = [];
-                function playT() {{ 
+                
+                window.playSingleTTS = function() {{ 
                     let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
                     window.speechSynthesis.speak(m); 
-                }}
-                window.audioTimeouts.push(setTimeout(playT, 500));
-                window.audioTimeouts.push(setTimeout(playT, 3500));
-                window.audioTimeouts.push(setTimeout(playT, 6500));
+                }};
+                
+                // 嘗試自動播放 (電腦端通常會成功)
+                window.audioTimeouts.push(setTimeout(window.playSingleTTS, 500));
+                window.audioTimeouts.push(setTimeout(window.playSingleTTS, 3500));
+                window.audioTimeouts.push(setTimeout(window.playSingleTTS, 6500));
             </script>
             """
-            st.components.v1.html(js_force, height=0)
+            st.components.v1.html(js_force, height=120)
             
             if not st.session_state.get('learning_done', False):
                 lock_ph = st.empty()
@@ -557,7 +558,7 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # --- 智能語音連播邏輯 (防點擊重播) ---
+            # --- 智能語音連播邏輯 (防點擊重播 & 手機提示) ---
             auto_script = ""
             if st.session_state.play_auto_audio:
                 auto_script = "window.audioTimeouts.push(setTimeout(window.playSingleTTS, 500));"
@@ -566,6 +567,7 @@ elif st.session_state.page == 'game':
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
                 <button onclick="window.playSingleTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s;">🔊 播放 / 重聽單字</button>
+                <div style="color:#95a5a6; font-size: 12px; margin-top: 8px;">(📱 手機/平板若未自動播放，請手動點擊)</div>
             </div>
             <script>
                 if (!window.audioTimeouts) {{ window.audioTimeouts = []; }}
@@ -589,7 +591,6 @@ elif st.session_state.page == 'game':
                     if st.button(f"B. {opts[1]}", use_container_width=True): process_ans(opts[1])
                     if st.button(f"D. {opts[3]}", use_container_width=True): process_ans(opts[3])
             else:
-                # --- 平板專用虛擬鍵盤 ---
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 20px 0;'>", unsafe_allow_html=True)
                 st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", key="vk_input", on_change=vk_submit, autocomplete="off")
                 st.markdown("<div style='text-align:center; color:#95a5a6; font-size:14px; margin-bottom:10px;'>👇 平板專用虛擬鍵盤 👇</div>", unsafe_allow_html=True)
