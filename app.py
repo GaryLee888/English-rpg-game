@@ -7,7 +7,8 @@ def setup_environment():
     required_packages = {
         "streamlit": "streamlit",
         "pandas": "pandas",
-        "eng-to-ipa": "eng_to_ipa"
+        "eng-to-ipa": "eng_to_ipa",
+        "gTTS": "gtts"  # 這次我們新增了 Google Text-to-Speech 引擎！
     }
     missing = []
     for pip_name, import_name in required_packages.items():
@@ -36,6 +37,9 @@ import time
 import eng_to_ipa as ipa
 from datetime import datetime
 import pandas as pd
+import base64
+import io
+from gtts import gTTS
 
 # --- 檔案設定 ---
 USERS_FILE = "users_db.json"
@@ -135,7 +139,45 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 網頁設定與自適應 CSS ---
+# --- 神級語音產生器 (使用原生 HTML5 Audio，100% 防手機卡死) ---
+def render_custom_audio(text, repeat=1, vol=0.8, autoplay=True):
+    try:
+        # 使用頓號強制 Google 語音產生自然停頓
+        speak_text = ((text + ",  ") * repeat).strip()
+        tts = gTTS(text=speak_text, lang='en', slow=False)
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        b64 = base64.b64encode(fp.read()).decode()
+        
+        auto_str = "autoplay" if autoplay else ""
+        
+        html = f"""
+        <div style="text-align: center; margin-bottom: 10px; background: #ecf0f1; padding: 10px; border-radius: 10px;">
+            <p style="color:#e74c3c; font-size:14px; margin: 0 0 8px 0; font-weight: bold;">🔊 語音播放器 (若手機無聲，請直接點擊下方 ▶️ 播放)</p>
+            <audio id="vocabAudio" {auto_str} controls style="width: 100%; max-width: 400px; height: 45px; border-radius: 8px;">
+                <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+            </audio>
+        </div>
+        <script>
+            var audio = document.getElementById("vocabAudio");
+            if(audio) {{
+                audio.volume = {vol};
+                if("{auto_str}" === "autoplay") {{
+                    var playPromise = audio.play();
+                    if (playPromise !== undefined) {{
+                        playPromise.catch(error => {{ console.log("Autoplay blocked by OS"); }});
+                    }}
+                }}
+            }}
+        </script>
+        """
+        st.components.v1.html(html, height=100)
+    except Exception as e:
+        st.error(f"語音生成失敗，請檢查網路連線。")
+
+
+# --- 網頁設定與全新終極自適應 CSS ---
 st.set_page_config(page_title="英文英雄 RPG", page_icon="⚔️", layout="wide")
 
 st.markdown("""
@@ -194,22 +236,23 @@ if 'users' not in st.session_state: st.session_state.users = load_json(USERS_FIL
 if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 
-# --- 破解手機靜音機制 ---
+# --- 全域音效解鎖器：只要摸一下螢幕，後續的戰鬥特效就會響！ ---
 st.components.v1.html("""
 <script>
-const pDoc = window.parent.document;
 if (!window.parent.gameAudioCtx) {
-    const AudioContext = window.parent.AudioContext || window.parent.webkitAudioContext;
-    if (AudioContext) {
-        window.parent.gameAudioCtx = new AudioContext();
-        const unlockAudio = function() {
-            if (window.parent.gameAudioCtx && window.parent.gameAudioCtx.state === 'suspended') {
-                window.parent.gameAudioCtx.resume();
-            }
-        };
-        pDoc.addEventListener('click', unlockAudio, true);
-        pDoc.addEventListener('touchstart', unlockAudio, true);
+    window.parent.gameAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+const unlock = function() {
+    if (window.parent.gameAudioCtx && window.parent.gameAudioCtx.state === 'suspended') {
+        window.parent.gameAudioCtx.resume();
     }
+};
+// 捕捉所有點擊，強制啟動音效卡
+document.addEventListener('click', unlock, true);
+document.addEventListener('touchstart', unlock, true);
+if(window.parent && window.parent.document) {
+    window.parent.document.addEventListener('click', unlock, true);
+    window.parent.document.addEventListener('touchstart', unlock, true);
 }
 </script>
 """, height=0)
@@ -533,65 +576,39 @@ elif st.session_state.page == 'game':
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
         # ==========================================
-        # 答錯的強制學習防跳過模式 (自動偷點精靈版)
+        # 答錯的強制學習防跳過模式 (神級 MP3 語音版)
         # ==========================================
         if st.session_state.force_learning:
             v_html = (
                 f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
-                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請跟著唸 3 次正確答案！</h3>'
+                f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請仔細聽 3 次正確發音！</h3>'
                 f'<div class="vocab-word" style="color:#e74c3c;">{c_w["en"]} = {c_w["zh"]}</div>'
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # --- 強制偷點與防呆鎖定 ---
-            js_force = f"""
-            <div style="text-align:center; margin-bottom: 20px;">
-                <button id="tts-btn" onclick="playTTS()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold;">
-                    🔊 點擊或等待自動播放 (0/3)
-                </button>
-            </div>
-            <script>
-                let playCount = 0;
-                let btn = document.getElementById('tts-btn');
-                
-                function playTTS() {{
-                    if (window.speechSynthesis) window.speechSynthesis.cancel();
-                    let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
-                    m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
-                    window.speechSynthesis.speak(m); 
-                    
-                    playCount++;
-                    if (playCount < 3) {{
-                        btn.innerText = "🔊 播放中... (" + playCount + "/3)";
-                    }} else {{
-                        btn.innerText = "✅ 已完成 3 次發音！";
-                        btn.style.backgroundColor = "#27ae60";
-                    }}
-                }}
-                
-                // 系統常駐精靈：每隔 3 秒自動偷點 1 次
-                setTimeout(() => btn.click(), 500);
-                setTimeout(() => btn.click(), 3500);
-                setTimeout(() => btn.click(), 6500);
-            </script>
-            """
-            st.components.v1.html(js_force, height=80)
-            
-            # 完美的 Python 端 9 秒防呆鎖定 (不會卡死網頁，按鈕依舊可點)
+            # 播放重複 3 次的 MP3
             if not st.session_state.get('learning_done', False):
+                render_custom_audio(c_w['en'], repeat=3, vol=vol, autoplay=True)
+                
+                # 同時進行倒數鎖定
                 lock_ph = st.empty()
                 for i in range(9, 0, -1):
                     lock_ph.markdown(f"""
                     <div style="background-color: #bdc3c7; color: #ffffff; padding: 10px; text-align: center; border-radius: 8px; font-weight: bold; margin-bottom: 15px;">
-                        🔒 仔細聽，請跟著唸 3 次正確發音... ( {i} 秒後解鎖 )
+                        🔒 魔法冷卻中... 請仔細聽發音 ( {i} 秒後解鎖 )
                     </div>
                     """, unsafe_allow_html=True)
                     time.sleep(1)
+                
                 st.session_state.learning_done = True
-                st.rerun() # 解鎖後重新渲染，釋放出「繼續冒險」按鈕
+                lock_ph.empty()
+            else:
+                # 倒數完畢後，如果畫面重整（例如點選音量），不自動重播
+                render_custom_audio(c_w['en'], repeat=3, vol=vol, autoplay=False)
             
+            # 解鎖後才顯示按鈕 (無需 rerun，直接出現)
             if st.session_state.get('learning_done', False):
                 if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
                     st.session_state.force_learning = False
@@ -636,27 +653,11 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # --- 常駐偷點精靈：新題自動發音 1 次 ---
-            auto_click_script = "setTimeout(() => document.getElementById('normal-tts-btn').click(), 500);" if st.session_state.play_auto_audio else ""
-            st.session_state.play_auto_audio = False # 關閉標記，避免打字時重播
+            # --- 播放正常發音 1 次 ---
+            autoplay_flag = st.session_state.play_auto_audio
+            st.session_state.play_auto_audio = False # 確保打字或按別的按鈕時不會一直重播
             
-            btn_html = f"""
-            <div style="text-align:center; margin-bottom: 20px;">
-                <button id="normal-tts-btn" onclick="playTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">
-                    🔊 播放 / 重聽單字
-                </button>
-            </div>
-            <script>
-                function playTTS() {{
-                    if (window.speechSynthesis) window.speechSynthesis.cancel();
-                    let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
-                    msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = {vol}; 
-                    window.speechSynthesis.speak(msg); 
-                }}
-                {auto_click_script}
-            </script>
-            """
-            st.components.v1.html(btn_html, height=70)
+            render_custom_audio(c_w['en'], repeat=1, vol=vol, autoplay=autoplay_flag)
 
             if diff == '簡單':
                 cA, cB = st.columns(2)
@@ -734,7 +735,7 @@ elif st.session_state.page == 'parent':
                 st.write(", ".join(e_log) if e_log else "無錯題！")
                 
                 st.markdown("#### 🎁 兌換紀錄管理")
-                st.caption("💡 若小孩誤按兌換，可在此刪除紀錄，並在上方手手動將「勳章」數量加回來。")
+                st.caption("💡 若小孩誤按兌換，可在此刪除紀錄，並在上方手動將「勳章」數量加回來。")
                 if d.get('history'):
                     for i, item in enumerate(reversed(d['history'])):
                         hA, hB = st.columns([4, 1])
