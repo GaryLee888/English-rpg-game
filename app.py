@@ -135,40 +135,22 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 網頁設定與全新終極自適應 CSS ---
+# --- 網頁設定與自適應 CSS ---
 st.set_page_config(page_title="英文英雄 RPG", page_icon="⚔️", layout="wide")
 
 st.markdown("""
 <style>
-/* 隱藏 Streamlit 頂部預設選單與底部 Footer，讓畫面更像獨立 APP */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
 
 .block-container { max-width: 900px; padding-top: 1rem; padding-bottom: 2rem; }
 
-/* 頂部狀態列水平排版 (手機也會乖乖並排) */
-.status-bar-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    align-items: center;
-    background-color: #f8f9fa;
-    border-radius: 12px;
-    padding: 10px;
-    margin-bottom: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-.status-item {
-    text-align: center;
-    flex: 1 1 20%;
-    min-width: 70px;
-    padding: 5px;
-}
+.status-bar-container { display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; background-color: #f8f9fa; border-radius: 12px; padding: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.status-item { text-align: center; flex: 1 1 20%; min-width: 70px; padding: 5px; }
 .status-label { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 2px; }
 .status-value { font-size: 1.2rem; font-weight: bold; color: #2c3e50; }
 
-/* 戰鬥舞台 */
 .arena-bg { position: relative; display: flex; justify-content: space-between; align-items: flex-end; padding: 5%; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 15px 0; min-height: 250px; overflow: hidden; }
 .hero-box, .monster-box { width: 40%; text-align: center; z-index: 5; }
 .vs-box { width: 20%; text-align: center; z-index: 5; align-self: center; }
@@ -177,17 +159,14 @@ header {visibility: hidden;}
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
 
-/* 圖鑑網格自適應 (電腦8欄，平板6欄，手機4欄) */
 .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; text-align: center; }
 .dex-item img { width: 100%; max-width: 60px; height: auto; }
 .dex-name { font-size: 0.7rem; color: #555; margin-top: 3px; word-break: keep-all;}
 
-/* 單字框自適應 */
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
 
-/* 手機版 (寬度 < 600px) 特效微調 */
 @media screen and (max-width: 600px) {
     .arena-bg { min-height: 160px; padding: 15px 5px; }
     .vs-text { font-size: 1.5rem; }
@@ -506,7 +485,7 @@ elif st.session_state.page == 'game':
         
         if anim == 'hurt' or anim == 'dead':
             st.session_state.force_learning = True
-            st.session_state.learning_done = False 
+            st.session_state.penalty_start_time = time.time() # 記錄錯誤時間
         else:
             st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
@@ -521,7 +500,9 @@ elif st.session_state.page == 'game':
         ipa_d = f"[{ipa_txt}]" if ipa_txt and '*' not in ipa_txt else ""
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
-        # --- 答錯的強制學習防跳過模式 ---
+        # ==========================================
+        # 答錯的強制學習防跳過模式 (非卡死版)
+        # ==========================================
         if st.session_state.force_learning:
             v_html = (
                 f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
@@ -532,45 +513,44 @@ elif st.session_state.page == 'game':
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
+            # 手機保證有效的巨大手動播放按鈕
             js_force = f"""
+            <div style="text-align:center; margin-bottom: 20px;">
+                <button onclick="window.playSingleTTS()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; animation: pulse 2s infinite;">
+                    🔊 點我播放正確發音
+                </button>
+                <p style="color:#7f8c8d; font-size:14px; margin-top:10px;">(📱 手機/平板請手動點擊，務必跟著唸 3 次)</p>
+            </div>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
                 if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
-                if (window.audioTimeouts) {{ window.audioTimeouts.forEach(clearTimeout); }}
-                window.audioTimeouts = [];
-                function playT() {{ 
+                window.playSingleTTS = function() {{ 
+                    if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
                     let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
                     window.speechSynthesis.speak(m); 
-                }}
-                window.audioTimeouts.push(setTimeout(playT, 500));
-                window.audioTimeouts.push(setTimeout(playT, 3500));
-                window.audioTimeouts.push(setTimeout(playT, 6500));
+                }};
+                setTimeout(window.playSingleTTS, 500); // 電腦嘗試自動播放一次
             </script>
             """
-            st.components.v1.html(js_force, height=0)
+            st.components.v1.html(js_force, height=120)
             
-            if not st.session_state.get('learning_done', False):
-                lock_ph = st.empty()
-                for i in range(9, 0, -1):
-                    lock_ph.markdown(f"""
-                    <div style="background-color: #bdc3c7; color: #ffffff; padding: 10px; text-align: center; border-radius: 8px; font-weight: bold; cursor: not-allowed; margin-bottom: 15px;">
-                        🔒 仔細聽，請跟著唸 3 次正確發音... ( {i} 秒後解鎖 )
-                    </div>
-                    """, unsafe_allow_html=True)
-                    time.sleep(1)
-                st.session_state.learning_done = True
-                lock_ph.empty()
-            
+            # 點擊「繼續」時判斷是否過了 6 秒冷卻時間
             if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
-                st.session_state.force_learning = False
-                st.session_state.learning_done = False 
-                st.session_state.play_auto_audio = True
-                st.session_state.vk_input = ""
-                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
-                st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
-                st.rerun()
+                elapsed = time.time() - st.session_state.get('penalty_start_time', 0)
+                if elapsed < 6:
+                    st.warning(f"⏳ 記憶冷卻中... 請確實點擊上方喇叭發音，再等 {int(6 - elapsed)} 秒喔！")
+                else:
+                    st.session_state.force_learning = False
+                    st.session_state.play_auto_audio = True
+                    st.session_state.vk_input = ""
+                    st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
+                    st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
+                    st.rerun()
 
-        # --- 正常答題模式 ---
+        # ==========================================
+        # 正常答題模式 (支援難度分級與虛擬鍵盤)
+        # ==========================================
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log:
                 st.warning("🔥 累積滿 20 題！進入強制錯題複習模式！")
@@ -602,7 +582,6 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # --- 智能語音連播邏輯 ---
             auto_script = ""
             if st.session_state.play_auto_audio:
                 auto_script = "window.audioTimeouts.push(setTimeout(window.playSingleTTS, 500));"
@@ -635,10 +614,8 @@ elif st.session_state.page == 'game':
                     if st.button(f"D. {opts[3]}", use_container_width=True): process_ans(opts[3])
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
-                # 綁定 st.session_state.vk_input 給輸入框
                 user_input = st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", value=st.session_state.vk_input, key="text_input_field", autocomplete="off")
                 
-                # 如果使用者用實體鍵盤打字，把值同步回 vk_input
                 if user_input != st.session_state.vk_input:
                     st.session_state.vk_input = user_input
                     
