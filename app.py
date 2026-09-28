@@ -135,7 +135,7 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 網頁設定與全新終極自適應 CSS ---
+# --- 網頁設定與自適應 CSS ---
 st.set_page_config(page_title="英文英雄 RPG", page_icon="⚔️", layout="wide")
 
 st.markdown("""
@@ -194,7 +194,7 @@ if 'users' not in st.session_state: st.session_state.users = load_json(USERS_FIL
 if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 
-# --- 破解手機靜音機制的常駐後台腳本 ---
+# --- 破解手機靜音機制 ---
 st.components.v1.html("""
 <script>
 const pDoc = window.parent.document;
@@ -350,6 +350,7 @@ elif st.session_state.page == 'game':
         if ans.lower() == c_w['en'].lower(): process_ans(c_w['zh'])
         else: process_ans("WRONG_ANSWER")
 
+    # --- 側邊欄 ---
     with st.sidebar:
         new_vol = st.slider("🔊 遊戲與發音音量", min_value=0.0, max_value=1.0, value=vol, step=0.1)
         if new_vol != vol:
@@ -374,6 +375,7 @@ elif st.session_state.page == 'game':
         st.markdown("---")
         if st.button("🚪 登出", use_container_width=True): st.session_state.page = 'login'; st.rerun()
 
+    # --- 頂端狀態列 ---
     st.markdown(f"""
     <div class="status-bar-container">
         <div class="status-item"><div class="status-label">👤 {hero_name}</div><div class="status-value">{user}</div></div>
@@ -383,6 +385,7 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
+    # --- 自適應圖鑑區 ---
     with st.expander(f"📖 冒險圖鑑 (一般: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
         d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 一般怪物"])
         with d_tab1:
@@ -514,6 +517,7 @@ elif st.session_state.page == 'game':
         
         if anim == 'hurt' or anim == 'dead':
             st.session_state.force_learning = True
+            st.session_state.learning_done = False 
         else:
             st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
@@ -541,88 +545,62 @@ elif st.session_state.page == 'game':
             )
             st.markdown(v_html, unsafe_allow_html=True)
             
+            # --- 強制偷點與防呆鎖定 ---
             js_force = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="tts-btn" onclick="window.manualPlay()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; animation: pulse 2s infinite;">
-                    🔊 自動播放中... (若無聲請點我) (0/3)
+                <button id="tts-btn" onclick="playTTS()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold;">
+                    🔊 點擊或等待自動播放 (0/3)
                 </button>
             </div>
-            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
-                // 隱藏 Streamlit 的繼續冒險按鈕
-                setTimeout(() => {{
-                    const btns = window.parent.document.querySelectorAll('button');
-                    btns.forEach(b => {{
-                        if(b.innerText.includes('繼續冒險')) {{
-                            b.style.display = 'none';
-                            window.parent.continueQuestBtn = b;
-                        }}
-                    }});
-                }}, 100);
-
                 let playCount = 0;
-                let isSpeaking = false;
-
-                window.manualPlay = function() {{
-                    if(isSpeaking) return; 
-                    if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
+                let btn = document.getElementById('tts-btn');
+                
+                function playTTS() {{
+                    if (window.speechSynthesis) window.speechSynthesis.cancel();
                     let m = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     m.lang='en-US'; m.rate=0.9; m.volume={vol}; 
-                    
-                    m.onstart = function() {{ 
-                        isSpeaking = true; 
-                        document.getElementById('tts-btn').style.opacity = '0.5'; 
-                    }};
-                    
-                    m.onend = function() {{ 
-                        isSpeaking = false; 
-                        document.getElementById('tts-btn').style.opacity = '1';
-                        playCount++;
-                        updateBtnState();
-                    }};
-                    
-                    // 防卡死機制
-                    setTimeout(() => {{ if(isSpeaking) m.onend(); }}, 2500);
-
                     window.speechSynthesis.speak(m); 
-                }};
-
-                function updateBtnState() {{
-                    if(playCount < 3) {{
-                        document.getElementById('tts-btn').innerText = '🔊 自動播放中... (若無聲請點我) (' + playCount + '/3)';
+                    
+                    playCount++;
+                    if (playCount < 3) {{
+                        btn.innerText = "🔊 播放中... (" + playCount + "/3)";
                     }} else {{
-                        document.getElementById('tts-btn').innerText = '✅ 已完成 3 次！請點下方按鈕繼續';
-                        document.getElementById('tts-btn').style.backgroundColor = '#27ae60';
-                        document.getElementById('tts-btn').style.animation = 'none';
-                        if(window.parent.continueQuestBtn) {{
-                            window.parent.continueQuestBtn.style.display = 'inline-flex';
-                        }}
+                        btn.innerText = "✅ 已完成 3 次發音！";
+                        btn.style.backgroundColor = "#27ae60";
                     }}
                 }}
-
-                // --- 核心：自動偷點精靈 ---
-                setTimeout(() => document.getElementById('tts-btn').click(), 500);
-                setTimeout(() => document.getElementById('tts-btn').click(), 3500);
-                setTimeout(() => document.getElementById('tts-btn').click(), 6500);
-
-                // 終極防呆：9.5秒後如果瀏覽器依然攔截偷點，強制解鎖繼續按鈕
-                setTimeout(() => {{
-                    if(playCount < 3) {{
-                        playCount = 3;
-                        updateBtnState();
-                    }}
-                }}, 9500);
+                
+                // 系統常駐精靈：每隔 3 秒自動偷點 1 次
+                setTimeout(() => btn.click(), 500);
+                setTimeout(() => btn.click(), 3500);
+                setTimeout(() => btn.click(), 6500);
             </script>
             """
-            st.components.v1.html(js_force, height=120)
+            st.components.v1.html(js_force, height=80)
             
-            if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
-                st.session_state.force_learning = False
-                st.session_state.play_auto_audio = True
-                st.session_state.vk_input = ""
-                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
-                st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
-                st.rerun()
+            # 完美的 Python 端 9 秒防呆鎖定 (不會卡死網頁，按鈕依舊可點)
+            if not st.session_state.get('learning_done', False):
+                lock_ph = st.empty()
+                for i in range(9, 0, -1):
+                    lock_ph.markdown(f"""
+                    <div style="background-color: #bdc3c7; color: #ffffff; padding: 10px; text-align: center; border-radius: 8px; font-weight: bold; margin-bottom: 15px;">
+                        🔒 仔細聽，請跟著唸 3 次正確發音... ( {i} 秒後解鎖 )
+                    </div>
+                    """, unsafe_allow_html=True)
+                    time.sleep(1)
+                st.session_state.learning_done = True
+                st.rerun() # 解鎖後重新渲染，釋放出「繼續冒險」按鈕
+            
+            if st.session_state.get('learning_done', False):
+                if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
+                    st.session_state.force_learning = False
+                    st.session_state.learning_done = False 
+                    st.session_state.play_auto_audio = True
+                    st.session_state.vk_input = ""
+                    st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
+                    st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
+                    st.rerun()
 
         # ==========================================
         # 正常答題模式
@@ -658,23 +636,24 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            auto_click_js = ""
-            if st.session_state.play_auto_audio:
-                auto_click_js = "setTimeout(() => document.getElementById('normal-tts-btn').click(), 500);"
-                st.session_state.play_auto_audio = False 
+            # --- 常駐偷點精靈：新題自動發音 1 次 ---
+            auto_click_script = "setTimeout(() => document.getElementById('normal-tts-btn').click(), 500);" if st.session_state.play_auto_audio else ""
+            st.session_state.play_auto_audio = False # 關閉標記，避免打字時重播
             
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="normal-tts-btn" onclick="window.playSingleTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">🔊 播放 / 重聽單字</button>
+                <button id="normal-tts-btn" onclick="playTTS()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">
+                    🔊 播放 / 重聽單字
+                </button>
             </div>
             <script>
-                window.playSingleTTS = function() {{ 
-                    if (window.speechSynthesis) {{ window.speechSynthesis.cancel(); }}
+                function playTTS() {{
+                    if (window.speechSynthesis) window.speechSynthesis.cancel();
                     let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
                     msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = {vol}; 
                     window.speechSynthesis.speak(msg); 
-                }};
-                {auto_click_js}
+                }}
+                {auto_click_script}
             </script>
             """
             st.components.v1.html(btn_html, height=70)
@@ -755,7 +734,7 @@ elif st.session_state.page == 'parent':
                 st.write(", ".join(e_log) if e_log else "無錯題！")
                 
                 st.markdown("#### 🎁 兌換紀錄管理")
-                st.caption("💡 若小孩誤按兌換，可在此刪除紀錄，並在上方手動將「勳章」數量加回來。")
+                st.caption("💡 若小孩誤按兌換，可在此刪除紀錄，並在上方手手動將「勳章」數量加回來。")
                 if d.get('history'):
                     for i, item in enumerate(reversed(d['history'])):
                         hA, hB = st.columns([4, 1])
