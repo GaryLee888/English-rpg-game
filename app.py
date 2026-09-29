@@ -40,6 +40,7 @@ import streamlit as st
 ADMIN_FILE = "admin_settings.json"
 PARENTS_FILE = "parents_db.json"
 USERS_FILE = "users_db.json"
+SHARE_FILE = "share_codes.json"  # 新增題庫分享碼資料庫
 VOCAB_FILES = {
     "國小": "vocab_elementary.csv",
     "國中": "vocab_junior.csv",
@@ -135,6 +136,7 @@ def init_system():
     if not os.path.exists(ADMIN_FILE): save_json(ADMIN_FILE, {"password": "1234", "default_hero_limit": 3})
     if not os.path.exists(PARENTS_FILE): save_json(PARENTS_FILE, {})
     if not os.path.exists(USERS_FILE): save_json(USERS_FILE, {})
+    if not os.path.exists(SHARE_FILE): save_json(SHARE_FILE, {})
     if not os.path.exists(VOCAB_FILES["國小"]): pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}).to_csv(VOCAB_FILES["國小"], index=False, encoding="utf-8-sig")
     if not os.path.exists(VOCAB_FILES["國中"]): pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}).to_csv(VOCAB_FILES["國中"], index=False, encoding="utf-8-sig")
     if not os.path.exists(VOCAB_FILES["多益"]): pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}).to_csv(VOCAB_FILES["多益"], index=False, encoding="utf-8-sig")
@@ -155,12 +157,14 @@ def get_parents(): return load_json(PARENTS_FILE, {})
 def save_parents(d): save_json(PARENTS_FILE, d)
 def get_users(): return load_json(USERS_FILE, {})
 def save_users(d): save_json(USERS_FILE, d)
+def get_shares(): return load_json(SHARE_FILE, {})
+def save_shares(d): save_json(SHARE_FILE, d)
 
 def load_user_data(u_key): 
     d = load_json(f"data_{u_key}.json", {
         "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
         "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], 
-        "death_count": 0, "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
+        "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
         "last_login_date": "", "login_streak": 0
     })
     if "vocab_bank" not in d: d["vocab_bank"] = "國小"
@@ -169,6 +173,11 @@ def load_user_data(u_key):
     if "shield_active" not in d: d["shield_active"] = False
     if "last_login_date" not in d: d["last_login_date"] = ""
     if "login_streak" not in d: d["login_streak"] = 0
+    
+    # 升級時清理不再使用的 death_count
+    if "death_count" in d: del d["death_count"]
+    # 確保庫存資料存在
+    if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
     return d
 
 def save_user_data(u_key, d): save_json(f"data_{u_key}.json", d)
@@ -484,13 +493,14 @@ elif st.session_state.page == 'game':
             else:
                 u_data['hero_hp'] -= 1
                 if u_data['hero_hp'] <= 0:
-                    u_data['exp'] = int(u_data['exp'] * 0.8)
-                    u_data['death_count'] = u_data.get('death_count', 0) + 1
-                    if u_data['death_count'] >= 5:
-                        u_data['level'] = max(1, u_data['level'] - 1)
-                        u_data['death_count'] = 0
+                    # 血量歸零：立刻降 1 級，經驗值退回該等級底線
+                    if u_data['level'] > 1:
+                        u_data['level'] -= 1
                         st.session_state.level_dropped = True
-                    else: st.session_state.level_dropped = False
+                    else:
+                        st.session_state.level_dropped = False
+                        
+                    u_data['exp'] = (u_data['level'] - 1) * 100
                     u_data['hero_hp'] = get_max_hp(u_data['level'])
                     if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
                     st.session_state.action_anim = 'dead'
@@ -503,7 +513,7 @@ elif st.session_state.page == 'game':
         if ans.lower() == c_w['en'].lower(): process_ans(c_w['zh'])
         else: process_ans("WRONG_ANSWER")
 
-    # --- 隱藏用來接收 JS 提交的按鈕 ---
+    # 隱藏送出攻擊的接收按鈕
     st.button("隱藏送出按鈕", on_click=vk_submit, key="hidden_submit_btn")
 
     # --- 側邊欄 ---
@@ -540,7 +550,7 @@ elif st.session_state.page == 'game':
     """, unsafe_allow_html=True)
 
     # --- 🏪 道具商店「一鍵買＆用」 ---
-    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊立刻扣除金幣並發動)</div>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊扣除金幣立即發動)</div>", unsafe_allow_html=True)
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
     if c_btn1.button(f"🧪 藥水 ({store_prices['potion']}G)", use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
@@ -714,8 +724,8 @@ elif st.session_state.page == 'game':
         elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
         elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {10 * diff_multi} EXP、50 G 與 {1 * diff_multi} 枚勳章！")
         elif anim == 'dead': 
-            if st.session_state.get('level_dropped', False): st.error("😭 夥伴寶可夢不支倒地... (扣除 20% EXP，累積倒地 5 次，等級下降 1 級！)")
-            else: st.error(f"😭 夥伴寶可夢不支倒地... (扣除 20% EXP！累積倒地 {u_data.get('death_count', 0)}/5)")
+            if st.session_state.get('level_dropped', False): st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
+            else: st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
         time.sleep(1.8)
         
         st.session_state.action_anim = None
@@ -831,7 +841,6 @@ elif st.session_state.page == 'game':
                 w_len = len(word_en)
                 
                 if st.session_state.magnifier_active:
-                    # 嚴格限制：無論長短，只隨機提示 1 個字母
                     reveal_count = 1
                     r = random.Random(word_en)
                     indices = sorted(r.sample(range(w_len), reveal_count))
@@ -968,7 +977,6 @@ elif st.session_state.page == 'game':
                 <script>
                     let p = window.parent.document;
                     
-                    // 確保隱藏 Python 端的送出按鈕
                     function hideBtn() {
                         p.querySelectorAll('button').forEach(b => {
                             if(b.innerText.includes('隱藏送出按鈕')) {
@@ -980,7 +988,6 @@ elif st.session_state.page == 'game':
                     hideBtn();
                     setInterval(hideBtn, 500);
 
-                    // 點擊鍵盤輸入
                     function tk(char) {
                         let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
                         if(input) {
@@ -990,7 +997,6 @@ elif st.session_state.page == 'game':
                         }
                     }
                     
-                    // 刪除
                     function bk() {
                         let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
                         if(input && input.value.length > 0) {
@@ -1000,12 +1006,11 @@ elif st.session_state.page == 'game':
                         }
                     }
                     
-                    // 神級送出邏輯：強制同步並觸發 Python 端判定
                     function sm() {
                         let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
                         if(input) {
                             input.focus();
-                            input.blur(); // 觸發 Streamlit 的狀態更新
+                            input.blur(); 
                         }
                         setTimeout(() => {
                             p.querySelectorAll('button').forEach(b => {
@@ -1014,7 +1019,6 @@ elif st.session_state.page == 'game':
                         }, 150);
                     }
 
-                    // 支援電腦實體鍵盤 Enter 鍵自動送出
                     if(!window.parent.enterListenerAdded) {
                         p.addEventListener('keydown', function(e) {
                             if(e.key === 'Enter') {
@@ -1177,6 +1181,47 @@ elif st.session_state.page == 'parent':
         c_file = f"vocab_custom_{p_id}.csv"
         v_df = pd.read_csv(c_file) if os.path.exists(c_file) else pd.DataFrame(columns=["en", "zh", "hint"])
         edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("🤝 題庫分享與匯入 (Share & Import)")
+        colA, colB = st.columns(2)
+        with colA:
+            st.markdown("**📤 分享我的題庫**")
+            shares = get_shares()
+            my_code = None
+            for k, v in shares.items():
+                if v == p_id: my_code = k
+            
+            if my_code:
+                st.success(f"您的專屬分享碼：**{my_code}**")
+                st.caption("將此代碼傳給其他家長，他們就能匯入您的單字庫！")
+            else:
+                if st.button("產生專屬分享碼"):
+                    new_code = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=5))
+                    shares[new_code] = p_id
+                    save_shares(shares)
+                    st.rerun()
+        with colB:
+            st.markdown("**📥 匯入他人題庫**")
+            import_code = st.text_input("輸入分享碼 (會附加到您目前的題庫中)")
+            if st.button("確認匯入"):
+                import_code = import_code.strip().upper()
+                shares = get_shares()
+                if import_code in shares:
+                    source_p_id = shares[import_code]
+                    source_file = f"vocab_custom_{source_p_id}.csv"
+                    if os.path.exists(source_file):
+                        src_df = pd.read_csv(source_file)
+                        if os.path.exists(c_file):
+                            curr_df = pd.read_csv(c_file)
+                            merged_df = pd.concat([curr_df, src_df]).drop_duplicates(subset=['en'], keep='last')
+                        else:
+                            merged_df = src_df
+                        merged_df.to_csv(c_file, index=False, encoding="utf-8-sig")
+                        st.success("✅ 匯入成功！已將對方的單字加入您的題庫中。")
+                    else: st.error("對方的題庫目前是空的喔！")
+                else: st.error("❌ 無效的分享碼")
+                
         if st.button("💾 儲存自訂單字庫", type="primary"):
             if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
             edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("您的自訂題庫已更新成功！")
