@@ -40,7 +40,8 @@ import streamlit as st
 ADMIN_FILE = "admin_settings.json"
 PARENTS_FILE = "parents_db.json"
 USERS_FILE = "users_db.json"
-SHARE_FILE = "share_codes.json"  # 新增題庫分享碼資料庫
+SHARE_FILE = "share_codes.json"
+FEEDBACK_FILE = "feedbacks.json" # 新增回饋單資料庫
 VOCAB_FILES = {
     "國小": "vocab_elementary.csv",
     "國中": "vocab_junior.csv",
@@ -133,10 +134,11 @@ def save_json(f, d):
     with open(f, "w", encoding="utf-8") as file: json.dump(d, file, ensure_ascii=False, indent=2)
 
 def init_system():
-    if not os.path.exists(ADMIN_FILE): save_json(ADMIN_FILE, {"password": "1234", "default_hero_limit": 3})
+    if not os.path.exists(ADMIN_FILE): save_json(ADMIN_FILE, {"password": "1234", "default_hero_limit": 3, "default_bank_limit": 3})
     if not os.path.exists(PARENTS_FILE): save_json(PARENTS_FILE, {})
     if not os.path.exists(USERS_FILE): save_json(USERS_FILE, {})
     if not os.path.exists(SHARE_FILE): save_json(SHARE_FILE, {})
+    if not os.path.exists(FEEDBACK_FILE): save_json(FEEDBACK_FILE, [])
     if not os.path.exists(VOCAB_FILES["國小"]): pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}).to_csv(VOCAB_FILES["國小"], index=False, encoding="utf-8-sig")
     if not os.path.exists(VOCAB_FILES["國中"]): pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}).to_csv(VOCAB_FILES["國中"], index=False, encoding="utf-8-sig")
     if not os.path.exists(VOCAB_FILES["多益"]): pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}).to_csv(VOCAB_FILES["多益"], index=False, encoding="utf-8-sig")
@@ -167,16 +169,14 @@ def load_user_data(u_key):
         "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
         "last_login_date": "", "login_streak": 0
     })
-    if "vocab_bank" not in d: d["vocab_bank"] = "國小"
+    # 欄位確保機制，並過濾舊版的「家長自訂」
+    if "vocab_bank" not in d or d["vocab_bank"] == "家長自訂": d["vocab_bank"] = "custom_1"
     if "word_stats" not in d: d["word_stats"] = {}
     if "gold" not in d: d["gold"] = 0
     if "shield_active" not in d: d["shield_active"] = False
     if "last_login_date" not in d: d["last_login_date"] = ""
     if "login_streak" not in d: d["login_streak"] = 0
-    
-    # 升級時清理不再使用的 death_count
     if "death_count" in d: del d["death_count"]
-    # 確保庫存資料存在
     if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
     return d
 
@@ -373,9 +373,10 @@ if st.session_state.page == 'login':
                 elif r_acc in p_db: st.error("帳號已存在！")
                 else:
                     p_db[r_acc] = {
-                        "password": r_pwd, "hero_limit": None,
+                        "password": r_pwd, "hero_limit": None, "bank_limit": None,
                         "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮"}],
-                        "store_prices": {"potion": 50, "shield": 100, "magnifier": 30}
+                        "store_prices": {"potion": 50, "shield": 100, "magnifier": 30},
+                        "custom_banks": [{"id": "1", "name": "自建字庫 1"}]
                     }
                     save_parents(p_db)
                     st.success("註冊成功！請由左側登入。")
@@ -410,13 +411,16 @@ elif st.session_state.page == 'game':
     hero_img_id, hero_img_name = char_d["stages"][stage_idx]
     hero_url = f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{hero_img_id}.gif"
 
-    bank_name = u_data['vocab_bank']
-    if bank_name == "家長自訂":
-        v_file = f"vocab_custom_{parent_id}.csv"
+    bank_id = u_data.get('vocab_bank', '國小')
+    bank_name = bank_id
+    if bank_id.startswith("custom_"):
+        cb_id = bank_id.split("_")[1]
+        v_file = f"vocab_custom_{parent_id}_{cb_id}.csv"
         if not os.path.exists(v_file): v_list = [{"en": "apple", "zh": "蘋果 (請家長至控制台新增單字)", "hint": "預設單字"}]
         else: v_list = load_csv(v_file)
+        bank_name = next((b["name"] for b in p_db[parent_id].get("custom_banks", []) if b["id"] == cb_id), "自訂字庫")
     else:
-        v_file = VOCAB_FILES.get(bank_name, VOCAB_FILES["國小"])
+        v_file = VOCAB_FILES.get(bank_id, VOCAB_FILES["國小"])
         v_list = load_csv(v_file) or [{"en": "hero", "zh": "英雄", "hint": ""}]
     
     r_list = p_db.get(parent_id, {}).get("rewards", [])
@@ -493,7 +497,6 @@ elif st.session_state.page == 'game':
             else:
                 u_data['hero_hp'] -= 1
                 if u_data['hero_hp'] <= 0:
-                    # 血量歸零：立刻降 1 級，經驗值退回該等級底線
                     if u_data['level'] > 1:
                         u_data['level'] -= 1
                         st.session_state.level_dropped = True
@@ -513,7 +516,6 @@ elif st.session_state.page == 'game':
         if ans.lower() == c_w['en'].lower(): process_ans(c_w['zh'])
         else: process_ans("WRONG_ANSWER")
 
-    # 隱藏送出攻擊的接收按鈕
     st.button("隱藏送出按鈕", on_click=vk_submit, key="hidden_submit_btn")
 
     # --- 側邊欄 ---
@@ -1048,6 +1050,14 @@ elif st.session_state.page == 'parent':
     p_db = get_parents()
     p_data = p_db[p_id]
     
+    # 初始化自建字庫結構
+    if "custom_banks" not in p_data:
+        p_data["custom_banks"] = [{"id": "1", "name": "預設自建字庫"}]
+        save_parents(p_db)
+        # 無縫升級舊版檔案
+        old_file = f"vocab_custom_{p_id}.csv"
+        if os.path.exists(old_file): os.rename(old_file, f"vocab_custom_{p_id}_1.csv")
+
     st.markdown("<h1 style='text-align: center; color:#e67e22;'>👨‍👩‍👧 家長專區</h1><hr>", unsafe_allow_html=True)
     c_top1, c_top2 = st.columns([1, 1])
     with c_top1:
@@ -1062,7 +1072,7 @@ elif st.session_state.page == 'parent':
                 else: st.error("錯誤")
     st.markdown("---")
     
-    t1, t2, t3, t4 = st.tabs(["🎒 我的訓練家管理", "🏪 商店與獎勵設定", "📚 自訂專屬單字庫", "🖼️ 遊戲圖鑑展示 (目標)"])
+    t1, t2, t3, t4, t5 = st.tabs(["🎒 訓練家管理", "🏪 商店獎勵", "📚 自建字庫", "🖼️ 目標圖鑑", "📝 官方糾錯回饋"])
     
     with t1:
         admin_cfg = get_admin()
@@ -1072,6 +1082,16 @@ elif st.session_state.page == 'parent':
         users = get_users()
         my_heroes = {k: v for k, v in users.items() if v.get("parent") == p_id}
         
+        # 準備字庫選單
+        global_banks = ["國小", "國中", "多益"]
+        custom_bank_options = [f"custom_{b['id']}" for b in p_data["custom_banks"]]
+        all_banks = global_banks + custom_bank_options
+        def format_bank(b):
+            if b in global_banks: return b
+            cb_id = b.split("_")[1]
+            cb_name = next((cb["name"] for cb in p_data["custom_banks"] if cb["id"] == cb_id), "未知字庫")
+            return f"📂 {cb_name}"
+
         st.info(f"🎒 目前已建立帳號：{len(my_heroes)} / {limit}")
         
         if len(my_heroes) < limit:
@@ -1079,7 +1099,7 @@ elif st.session_state.page == 'parent':
                 n_name = st.text_input("訓練家名稱 (小孩的名字或暱稱)")
                 n_pin = st.text_input("設定登入密碼 (建議設定 4 位數字)", value="0000")
                 n_char = st.selectbox("選擇夥伴寶可夢", ["火系 (小火龍)", "水系 (傑尼龜)", "草系 (妙蛙種子)", "電系 (皮丘)", "隨機"])
-                n_bank = st.selectbox("選擇預設學習題庫", ["國小", "國中", "多益", "家長自訂"])
+                n_bank = st.selectbox("選擇預設學習題庫", all_banks, format_func=format_bank)
                 if st.button("確認建立"):
                     if not n_name.strip() or not n_pin.strip(): st.error("名稱與密碼不可為空")
                     else:
@@ -1109,7 +1129,11 @@ elif st.session_state.page == 'parent':
                 new_diff = cE.selectbox("難度", ["簡單", "中等", "困難"], index=["簡單", "中等", "困難"].index(d.get("difficulty", "簡單")), key=f"diff_{u_key}")
                 
                 col_r2 = st.columns([1, 1, 1, 2])
-                new_bank = col_r2[0].selectbox("學習題庫", ["國小", "國中", "多益", "家長自訂"], index=["國小", "國中", "多益", "家長自訂"].index(d.get("vocab_bank", "國小")), key=f"bank_{u_key}")
+                curr_bank = d.get("vocab_bank", "國小")
+                if curr_bank == "家長自訂": curr_bank = "custom_1" # 相容舊設定
+                if curr_bank not in all_banks: curr_bank = "國小"
+                
+                new_bank = col_r2[0].selectbox("學習題庫", all_banks, index=all_banks.index(curr_bank), format_func=format_bank, key=f"bank_{u_key}")
                 new_pin = col_r2[1].text_input("修改密碼 (PIN)", value=u_info.get("pin", "0000"), key=f"pin_{u_key}")
                 n_gld = col_r2[2].number_input("金幣", min_value=0, value=d.get('gold', 0), key=f"gld_{u_key}")
                 
@@ -1118,7 +1142,7 @@ elif st.session_state.page == 'parent':
                     save_users(users)
                     st.success("密碼已更新！")
                 
-                if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != d.get("vocab_bank", "國小") or n_gld != d.get('gold', 0):
+                if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != curr_bank or n_gld != d.get('gold', 0):
                     d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank; d['gold'] = n_gld
                     save_user_data(u_key, d); st.rerun()
 
@@ -1176,55 +1200,75 @@ elif st.session_state.page == 'parent':
                     save_parents(p_db); st.rerun()
                     
     with t3:
-        st.subheader("編輯家長自訂單字庫")
-        st.caption("將學校本週進度、測驗單字輸入於此，並在訓練家管理將題庫切換為「家長自訂」即可！")
-        c_file = f"vocab_custom_{p_id}.csv"
-        v_df = pd.read_csv(c_file) if os.path.exists(c_file) else pd.DataFrame(columns=["en", "zh", "hint"])
-        edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
+        admin_cfg = get_admin()
+        bank_limit = p_data.get("bank_limit")
+        if bank_limit is None: bank_limit = admin_cfg.get("default_bank_limit", 3)
         
-        st.markdown("---")
-        st.subheader("🤝 題庫分享與匯入 (Share & Import)")
-        colA, colB = st.columns(2)
-        with colA:
-            st.markdown("**📤 分享我的題庫**")
-            shares = get_shares()
-            my_code = None
-            for k, v in shares.items():
-                if v == p_id: my_code = k
+        st.info(f"📂 目前已建立字庫：{len(p_data['custom_banks'])} / {bank_limit}")
+        
+        if len(p_data['custom_banks']) < bank_limit:
+            with st.expander("➕ 新增自建字庫", expanded=False):
+                n_bank_name = st.text_input("字庫名稱 (例如：康軒第三課)")
+                if st.button("確認新增字庫"):
+                    if n_bank_name.strip():
+                        new_id = str(int(time.time()))
+                        p_data['custom_banks'].append({"id": new_id, "name": n_bank_name.strip()})
+                        save_parents(p_db)
+                        st.success("✅ 字庫建立成功！"); st.rerun()
+                    else: st.error("名稱不可為空")
+
+        if p_data['custom_banks']:
+            sel_bank_id = st.selectbox("選擇要管理/編輯的字庫", [b["id"] for b in p_data["custom_banks"]], format_func=lambda x: next(b["name"] for b in p_data["custom_banks"] if b["id"]==x))
+            c_file = f"vocab_custom_{p_id}_{sel_bank_id}.csv"
             
-            if my_code:
-                st.success(f"您的專屬分享碼：**{my_code}**")
-                st.caption("將此代碼傳給其他家長，他們就能匯入您的單字庫！")
-            else:
-                if st.button("產生專屬分享碼"):
-                    new_code = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=5))
-                    shares[new_code] = p_id
-                    save_shares(shares)
-                    st.rerun()
-        with colB:
-            st.markdown("**📥 匯入他人題庫**")
-            import_code = st.text_input("輸入分享碼 (會附加到您目前的題庫中)")
-            if st.button("確認匯入"):
-                import_code = import_code.strip().upper()
+            st.markdown("---")
+            st.subheader("🤝 題庫分享與匯入 (Share & Import)")
+            colA, colB = st.columns(2)
+            with colA:
+                st.markdown("**📤 分享目前選取的題庫**")
                 shares = get_shares()
-                if import_code in shares:
-                    source_p_id = shares[import_code]
-                    source_file = f"vocab_custom_{source_p_id}.csv"
-                    if os.path.exists(source_file):
-                        src_df = pd.read_csv(source_file)
-                        if os.path.exists(c_file):
-                            curr_df = pd.read_csv(c_file)
-                            merged_df = pd.concat([curr_df, src_df]).drop_duplicates(subset=['en'], keep='last')
-                        else:
-                            merged_df = src_df
-                        merged_df.to_csv(c_file, index=False, encoding="utf-8-sig")
-                        st.success("✅ 匯入成功！已將對方的單字加入您的題庫中。")
-                    else: st.error("對方的題庫目前是空的喔！")
-                else: st.error("❌ 無效的分享碼")
+                my_code = None
+                for k, v in shares.items():
+                    if isinstance(v, dict) and v.get("p_id") == p_id and v.get("bank_id") == sel_bank_id: my_code = k
+                    elif isinstance(v, str) and v == p_id and sel_bank_id == "1": my_code = k # 相容舊碼
                 
-        if st.button("💾 儲存自訂單字庫", type="primary"):
-            if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
-            edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("您的自訂題庫已更新成功！")
+                if my_code:
+                    st.success(f"專屬分享碼：**{my_code}**")
+                    st.caption("將此代碼傳給其他家長，即可匯入您的單字庫！")
+                else:
+                    if st.button("產生專屬分享碼"):
+                        new_code = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=5))
+                        shares[new_code] = {"p_id": p_id, "bank_id": sel_bank_id}
+                        save_shares(shares); st.rerun()
+            with colB:
+                st.markdown("**📥 匯入他人題庫**")
+                import_code = st.text_input("輸入分享碼 (將附加至目前選取的字庫)")
+                if st.button("確認匯入"):
+                    import_code = import_code.strip().upper()
+                    shares = get_shares()
+                    if import_code in shares:
+                        share_data = shares[import_code]
+                        if isinstance(share_data, str): source_p_id, source_bank_id = share_data, "1"
+                        else: source_p_id, source_bank_id = share_data["p_id"], share_data["bank_id"]
+
+                        source_file = f"vocab_custom_{source_p_id}_{source_bank_id}.csv"
+                        if os.path.exists(source_file):
+                            src_df = pd.read_csv(source_file)
+                            if os.path.exists(c_file):
+                                curr_df = pd.read_csv(c_file)
+                                merged_df = pd.concat([curr_df, src_df]).drop_duplicates(subset=['en'], keep='last')
+                            else: merged_df = src_df
+                            merged_df.to_csv(c_file, index=False, encoding="utf-8-sig")
+                            st.success("✅ 匯入成功！已將對方的單字加入您的題庫中。"); st.rerun()
+                        else: st.error("對方的題庫目前是空的喔！")
+                    else: st.error("❌ 無效的分享碼")
+
+            st.markdown("---")
+            v_df = pd.read_csv(c_file) if os.path.exists(c_file) else pd.DataFrame(columns=["en", "zh", "hint"])
+            edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
+            if st.button("💾 儲存自訂單字庫", type="primary"):
+                if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
+                edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("字庫已更新成功！")
             
     with t4:
         st.subheader("🌟 夥伴寶可夢進化路線")
@@ -1239,18 +1283,34 @@ elif st.session_state.page == 'parent':
         st.markdown("---")
         st.subheader(f"🏆 傳說 BOSS 挑戰圖鑑 (共 {len(BOSSES)} 隻)")
         html_boss = '<div class="dex-grid">'
-        for b in BOSSES:
-            html_boss += f'<div class="dex-item"><img src="{b["url"]}"><div class="dex-name">{b["name"]}</div></div>'
-        html_boss += '</div>'
-        st.markdown(html_boss, unsafe_allow_html=True)
+        for b in BOSSES: html_boss += f'<div class="dex-item"><img src="{b["url"]}"><div class="dex-name">{b["name"]}</div></div>'
+        html_boss += '</div>'; st.markdown(html_boss, unsafe_allow_html=True)
             
         st.markdown("---")
         st.subheader(f"👾 一般野生寶可夢圖鑑 (共 {len(MONSTERS)} 隻)")
         html_monster = '<div class="dex-grid">'
-        for m in MONSTERS:
-            html_monster += f'<div class="dex-item"><img src="{m["url"]}"><div class="dex-name">{m["name"]}</div></div>'
-        html_monster += '</div>'
-        st.markdown(html_monster, unsafe_allow_html=True)
+        for m in MONSTERS: html_monster += f'<div class="dex-item"><img src="{m["url"]}"><div class="dex-name">{m["name"]}</div></div>'
+        html_monster += '</div>'; st.markdown(html_monster, unsafe_allow_html=True)
+
+    with t5:
+        st.subheader("📝 官方字庫糾錯回饋")
+        st.info("若您發現官方字庫 (國小/國中/多益) 中有翻譯不精準或錯誤的地方，請填寫此表單。審核通過後，該單字將會全球同步更新！")
+        with st.form("feedback_form"):
+            fb_bank = st.selectbox("回報目標字庫", ["國小", "國中", "多益"])
+            fb_en = st.text_input("英文單字 (En)")
+            fb_zh = st.text_input("正確中文 (Zh)")
+            fb_hint = st.text_input("正確提示 (Hint)")
+            if st.form_submit_button("送出審核"):
+                if fb_en.strip() and fb_zh.strip():
+                    fbs = load_json(FEEDBACK_FILE, [])
+                    fbs.append({
+                        "id": str(int(time.time()*1000)), "p_id": p_id, "bank": fb_bank,
+                        "en": fb_en.strip(), "zh": fb_zh.strip(), "hint": fb_hint.strip(),
+                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                    save_json(FEEDBACK_FILE, fbs)
+                    st.success("✅ 回報已送出！非常感謝您的協助！")
+                else: st.error("英文與中文欄位不可為空！")
 
 # ==================== GM 控制台 ====================
 elif st.session_state.page == 'admin':
@@ -1258,7 +1318,7 @@ elif st.session_state.page == 'admin':
     if st.button("⬅️ 登出並返回大廳"): st.session_state.page = 'login'; st.rerun()
     st.markdown("---")
     
-    t1, t2, t3 = st.tabs(["👨‍👩‍👧 租戶 (家長) 與訓練家管理", "📚 題庫增訂", "⚙️ 系統設定"])
+    t1, t2, t3, t4 = st.tabs(["👨‍👩‍👧 租戶 (家長) 與訓練家管理", "📋 回饋審核", "📚 題庫增訂", "⚙️ 系統設定"])
     
     with t1:
         p_db = get_parents()
@@ -1266,21 +1326,23 @@ elif st.session_state.page == 'admin':
         if not p_db: st.info("目前沒有任何家長註冊。")
         for p_id, p_info in p_db.items():
             with st.expander(f"🏠 家族帳號：{p_id}"):
-                c1, c2 = st.columns(2)
+                c1, c2, c3 = st.columns(3)
                 new_pwd = c1.text_input("修改密碼", value=p_info['password'], key=f"apwd_{p_id}")
                 
                 admin_cfg = get_admin()
-                limit_val = p_info.get('hero_limit')
-                if limit_val is None:
-                    limit_val = admin_cfg.get("default_hero_limit", 3)
-                    placeholder = f"未設定 (預設 {limit_val})"
-                else: placeholder = str(limit_val)
-                    
-                new_limit = c2.number_input(f"設定帳號上限 ({placeholder})", min_value=1, value=limit_val, key=f"hlim_{p_id}")
+                h_limit_val = p_info.get('hero_limit')
+                if h_limit_val is None: h_limit_val = admin_cfg.get("default_hero_limit", 3)
                 
-                if new_pwd != p_info['password'] or new_limit != p_info.get('hero_limit'):
+                b_limit_val = p_info.get('bank_limit')
+                if b_limit_val is None: b_limit_val = admin_cfg.get("default_bank_limit", 3)
+                    
+                new_h_limit = c2.number_input("設定帳號上限", min_value=1, value=h_limit_val, key=f"hlim_{p_id}")
+                new_b_limit = c3.number_input("設定字庫上限", min_value=1, value=b_limit_val, key=f"blim_{p_id}")
+                
+                if new_pwd != p_info['password'] or new_h_limit != p_info.get('hero_limit') or new_b_limit != p_info.get('bank_limit'):
                     p_db[p_id]['password'] = new_pwd
-                    p_db[p_id]['hero_limit'] = new_limit
+                    p_db[p_id]['hero_limit'] = new_h_limit
+                    p_db[p_id]['bank_limit'] = new_b_limit
                     save_parents(p_db); st.rerun()
                 
                 heroes = {k: v for k, v in u_db.items() if v.get("parent") == p_id}
@@ -1302,6 +1364,40 @@ elif st.session_state.page == 'admin':
                     save_parents(p_db); st.rerun()
 
     with t2:
+        st.subheader("📋 官方字庫回饋審核")
+        fbs = load_json(FEEDBACK_FILE, [])
+        if not fbs: st.info("目前沒有待審核的回饋單。")
+        for fb in fbs:
+            with st.container():
+                cols = st.columns([1, 1, 1, 1, 1, 2])
+                cols[0].write(f"**[{fb['bank']}]**")
+                cols[1].write(fb['en'])
+                cols[2].write(fb['zh'])
+                cols[3].write(fb['hint'])
+                cols[4].caption(f"By {fb['p_id']}")
+                c_btn1, c_btn2 = cols[5].columns(2)
+                if c_btn1.button("✅ 核准", key=f"fb_app_{fb['id']}"):
+                    v_file = VOCAB_FILES[fb['bank']]
+                    df = pd.read_csv(v_file)
+                    if fb['en'] in df['en'].values:
+                        idx = df.index[df['en'] == fb['en']].tolist()[0]
+                        df.at[idx, 'zh'] = fb['zh']
+                        df.at[idx, 'hint'] = fb['hint']
+                    else:
+                        new_row = pd.DataFrame([{"en": fb['en'], "zh": fb['zh'], "hint": fb['hint']}])
+                        df = pd.concat([df, new_row], ignore_index=True)
+                    df.to_csv(v_file, index=False, encoding="utf-8-sig")
+                    
+                    fbs = [f for f in fbs if f['id'] != fb['id']]
+                    save_json(FEEDBACK_FILE, fbs)
+                    st.success("✅ 審核通過，官方字庫已更新！")
+                    st.rerun()
+                if c_btn2.button("❌ 拒絕", key=f"fb_rej_{fb['id']}"):
+                    fbs = [f for f in fbs if f['id'] != fb['id']]
+                    save_json(FEEDBACK_FILE, fbs)
+                    st.rerun()
+
+    with t3:
         st.subheader("編輯全域單字庫")
         edit_bank = st.radio("選擇要編輯的題庫", ["國小", "國中", "多益"], horizontal=True)
         edit_file = VOCAB_FILES[edit_bank]
@@ -1311,13 +1407,15 @@ elif st.session_state.page == 'admin':
             if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
             edited_df.to_csv(edit_file, index=False, encoding="utf-8-sig"); st.success(f"【{edit_bank}】題庫更新成功！")
             
-    with t3:
+    with t4:
         st.subheader("系統安全設定")
         admin_cfg = get_admin()
         with st.form("admin_settings"):
             new_a_pwd = st.text_input("GM 密碼", value=admin_cfg.get("password", "1234"), type="password")
-            new_d_limit = st.number_input("全域預設帳號上限", min_value=1, value=admin_cfg.get("default_hero_limit", 3))
+            new_h_limit = st.number_input("全域預設帳號上限", min_value=1, value=admin_cfg.get("default_hero_limit", 3))
+            new_b_limit = st.number_input("全域預設字庫上限", min_value=1, value=admin_cfg.get("default_bank_limit", 3))
             if st.form_submit_button("儲存系統設定"):
                 admin_cfg["password"] = new_a_pwd
-                admin_cfg["default_hero_limit"] = new_d_limit
+                admin_cfg["default_hero_limit"] = new_h_limit
+                admin_cfg["default_bank_limit"] = new_b_limit
                 save_admin(admin_cfg); st.success("系統設定已儲存！"); st.rerun()
