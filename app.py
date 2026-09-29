@@ -132,10 +132,38 @@ MONSTER_DATA = [
 MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in MONSTER_DATA]
 
 # ==========================================
-# ☁️ 核心 API (Firebase Realtime DB)
+# ☁️ 核心 API (Firebase Realtime DB) 與預設數值
 # ==========================================
-def get_admin(): return db.reference("system/admin").get() or {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3}
+DEFAULT_RATES = {
+    "normal_exp": 5, "normal_gold": 10,
+    "boss_exp": 10, "boss_gold": 50, "boss_medal": 1
+}
+DEFAULT_GACHA = {
+    "cost": 150,
+    "prizes": [
+        {"name": "特獎：榮耀大禮包 (10勳章)", "prob": 1, "type": "medal", "val": 10},
+        {"name": "一獎：5 枚榮耀勳章", "prob": 4, "type": "medal", "val": 5},
+        {"name": "二獎：豪華道具包 (各x5)", "prob": 10, "type": "item", "val": 5},
+        {"name": "三獎：金幣大暴發 (500G)", "prob": 20, "type": "gold", "val": 500},
+        {"name": "四獎：實用道具包 (各x1)", "prob": 30, "type": "item", "val": 1},
+        {"name": "五獎：安慰小紅包 (10G)", "prob": 35, "type": "gold", "val": 10}
+    ]
+}
+DEFAULT_STORE = {"potion": 50, "shield": 100, "magnifier": 30}
+
+def get_admin(): 
+    cfg = db.reference("system/admin").get() or {}
+    return {
+        "admin_id": cfg.get("admin_id", "admin"), 
+        "password": cfg.get("password", "1234"), 
+        "default_hero_limit": cfg.get("default_hero_limit", 3), 
+        "default_bank_limit": cfg.get("default_bank_limit", 3),
+        "game_rates": cfg.get("game_rates", DEFAULT_RATES),
+        "store_prices": cfg.get("store_prices", DEFAULT_STORE),
+        "gacha": cfg.get("gacha", DEFAULT_GACHA)
+    }
 def save_admin(d): db.reference("system/admin").set(d)
+
 def get_parents(): return db.reference("parents").get() or {}
 def save_parents(d): db.reference("parents").set(d)
 def get_users(): return db.reference("users").get() or {}
@@ -151,7 +179,6 @@ def save_vocab_db(bank_key, df):
     records = df.fillna("").to_dict('records')
     db.reference(f"vocab_banks/{bank_key}").set(records)
 
-# 系統初始預設字庫上傳
 if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
 if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
 if not db.reference("vocab_banks/多益").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
@@ -166,7 +193,6 @@ def load_user_data(u_key):
             "last_login_date": "", "login_streak": 0, "inventory": {"potion": 0, "shield": 0, "magnifier": 0}
         }
     else:
-        # 🛡️ 安全機制：確保舊玩家也有所有新版欄位，避免 KeyError 當機
         if "vocab_bank" not in d or d["vocab_bank"] == "家長自訂": d["vocab_bank"] = "custom_1"
         if "word_stats" not in d: d["word_stats"] = {}
         if "gold" not in d: d["gold"] = 0
@@ -176,8 +202,6 @@ def load_user_data(u_key):
         if "death_count" in d: del d["death_count"]
         if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
         if "history" not in d: d["history"] = []
-        if "trophies" not in d: d["trophies"] = []
-        if "monster_dex" not in d: d["monster_dex"] = []
     return d
 
 def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
@@ -296,7 +320,10 @@ div[data-testid="column"] button { height: 55px; padding: 0 !important; font-siz
 @keyframes mBall { 0% { left: 20%; transform: scale(0.5); opacity: 0; } 30% { opacity: 1; transform: scale(1.5); } 70% { left: 70%; transform: scale(2); opacity: 1; } 100% { left: 80%; transform: scale(0.5); opacity: 0; } }
 @keyframes heroDead { 0% { transform: scaleX(-1) rotate(0deg); filter: grayscale(0%); } 100% { transform: scaleX(-1) rotate(90deg) translateY(20px); filter: grayscale(100%); } }
 @keyframes healFx { 0% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } 50% { filter: brightness(1.5) drop-shadow(0 0 20px #2ecc71); } 100% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } }
+@keyframes gachaPop { 0% { transform: scale(0.1) rotate(0deg); opacity: 0; } 50% { transform: scale(1.5) rotate(180deg); opacity: 1; } 100% { transform: scale(1) rotate(360deg); opacity: 0; } }
+
 .m-fx { position: absolute; top: 40%; font-size: 60px; animation: mBall 0.7s ease-in-out forwards; z-index: 10; }
+.gacha-fx { position: absolute; top: 30%; left: 40%; font-size: 80px; animation: gachaPop 1.5s ease-out forwards; z-index: 20; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -358,7 +385,9 @@ if st.session_state.page == 'login':
                                         else: init_data["login_streak"] = 1
                                     except: init_data["login_streak"] = 1
                                     
-                                    bonus_gold = min(50, init_data["login_streak"] * 5)
+                                    admin_cfg = get_admin()
+                                    rates = parents[family_input].get('game_rates', admin_cfg.get('game_rates', DEFAULT_RATES))
+                                    bonus_gold = min(rates.get('normal_gold', 10) * 5, init_data["login_streak"] * rates.get('normal_gold', 10))
                                     init_data["gold"] = init_data.get("gold", 0) + bonus_gold
                                     init_data["last_login_date"] = today_str
                                     init_data["history"].append(f"{datetime.now().strftime('%m-%d %H:%M')} 連續登入 {init_data['login_streak']} 天！獲得 {bonus_gold} G")
@@ -399,7 +428,6 @@ if st.session_state.page == 'login':
                     p_db[r_acc] = {
                         "password": r_pwd, "hero_limit": None, "bank_limit": None,
                         "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮"}],
-                        "store_prices": {"potion": 50, "shield": 100, "magnifier": 30},
                         "custom_banks": [{"id": "1", "name": "預設自建字庫"}]
                     }
                     save_parents(p_db)
@@ -421,6 +449,13 @@ elif st.session_state.page == 'game':
     u_data = st.session_state.game_data
     parent_id = st.session_state.current_parent
     p_db = get_parents()
+    admin_cfg = get_admin()
+    
+    # 讀取全域與家庭專屬設定 (家庭覆寫全域)
+    p_info = p_db.get(parent_id, {})
+    rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
+    store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
+    gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
     if 'show_streak' in st.session_state:
         st.toast(st.session_state.show_streak, icon="🔥")
@@ -443,13 +478,12 @@ elif st.session_state.page == 'game':
         cb_id = bank_id.split("_")[1]
         v_list = load_vocab_db(f"custom_{parent_id}_{cb_id}")
         if not v_list: v_list = [{"en": "apple", "zh": "蘋果", "hint": "預設單字"}]
-        bank_name = next((b["name"] for b in p_db[parent_id].get("custom_banks", []) if b["id"] == cb_id), "自訂字庫")
+        bank_name = next((b["name"] for b in p_info.get("custom_banks", []) if b["id"] == cb_id), "自訂字庫")
     else:
         v_list = load_vocab_db(bank_id)
         if not v_list: v_list = [{"en": "hero", "zh": "英雄", "hint": ""}]
     
-    r_list = p_db.get(parent_id, {}).get("rewards", [])
-    store_prices = p_db.get(parent_id, {}).get("store_prices", {"potion": 50, "shield": 100, "magnifier": 30})
+    r_list = p_info.get("rewards", [])
 
     if 'current_monster' not in st.session_state: st.session_state.current_monster = random.choice(MONSTERS)
     if 'action_anim' not in st.session_state: st.session_state.action_anim = None
@@ -471,6 +505,7 @@ elif st.session_state.page == 'game':
             
         u_data['total_questions'] += 1 
         word = c_w['en']
+        old_level = u_data['level']
         
         if s.strip().lower() == c_w['zh'].strip().lower() or s.strip().lower() == word.strip().lower():
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
@@ -478,7 +513,6 @@ elif st.session_state.page == 'game':
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
             
             u_data['combo'] += 1
-            u_data['gold'] += 10 
             
             if word in st.session_state.error_log:
                 st.session_state.error_log.remove(word)
@@ -487,10 +521,10 @@ elif st.session_state.page == 'game':
                     
             if u_data.get('is_boss_fight', False):
                 u_data['boss_hp'] -= 1
-                u_data['exp'] += (10 * diff_multi) 
+                u_data['exp'] += int(rates['boss_exp'] * diff_multi)
                 if u_data['boss_hp'] <= 0:
-                    u_data['medals'] += (1 * diff_multi) 
-                    u_data['gold'] += 50 
+                    u_data['medals'] += int(rates['boss_medal'] * diff_multi)
+                    u_data['gold'] += int(rates['boss_gold'])
                     u_data['is_boss_fight'] = False
                     u_data['combo'] = 0 
                     
@@ -504,7 +538,8 @@ elif st.session_state.page == 'game':
                     st.session_state.action_anim = 'boss_defeat'
                 else: st.session_state.action_anim = 'attack'
             else:
-                u_data['exp'] += (5 * diff_multi) 
+                u_data['exp'] += int(rates['normal_exp'] * diff_multi) 
+                u_data['gold'] += int(rates['normal_gold'])
                 
                 if 'current_monster' in st.session_state:
                     m_name = st.session_state.current_monster.get('name')
@@ -518,9 +553,12 @@ elif st.session_state.page == 'game':
                     u_data['is_boss_fight'] = True
                     u_data['boss_hp'] = 3
             
+            # 升級判定
             if (u_data['exp'] // 100) + 1 > u_data['level']:
                 u_data['level'] = (u_data['exp'] // 100) + 1
                 u_data['hero_hp'] = get_max_hp(u_data['level']) 
+                st.session_state.level_up_flag = True
+                
         else:
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
             stats["level"] = max(0, stats["level"] - 1)
@@ -548,6 +586,12 @@ elif st.session_state.page == 'game':
                     st.session_state.action_anim = 'dead'
                 else: st.session_state.action_anim = 'hurt'
         save_user_data(u_key, u_data)
+
+    def text_input_submit():
+        ans = st.session_state.spell_input
+        if ans:
+            st.session_state.spell_input = "" 
+            process_ans(ans)
 
     # --- 🎛️ 絕美深色儀表板 ---
     hero_title = get_title(u_data['level'])
@@ -604,8 +648,32 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣不足！")
 
-    # --- 🎁 家庭獎勵兌換系統 (置中於主畫面) ---
-    with st.expander("🎁 家庭獎勵兌換與紀錄 (花費勳章)", expanded=False):
+    # --- 🎰 幸運扭蛋機 ---
+    st.markdown("<div style='font-size:0.8rem; font-weight:bold; color:#e67e22; margin-top:15px; margin-bottom:5px;'>🎰 幸運扭蛋機</div>", unsafe_allow_html=True)
+    if st.button(f"🟡 轉一次扭蛋 (花費 {gacha_cfg['cost']}G)", use_container_width=True):
+        if u_data['gold'] >= gacha_cfg['cost']:
+            u_data['gold'] -= gacha_cfg['cost']
+            prizes = gacha_cfg['prizes']
+            weights = [p['prob'] for p in prizes]
+            prize = random.choices(prizes, weights=weights)[0]
+            
+            # 給予獎勵
+            if prize['type'] == 'medal': u_data['medals'] += prize['val']
+            elif prize['type'] == 'gold': u_data['gold'] += prize['val']
+            elif prize['type'] == 'item':
+                u_data['inventory']['potion'] += prize['val']
+                u_data['inventory']['shield'] += prize['val']
+                u_data['inventory']['magnifier'] += prize['val']
+            
+            u_data['history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 扭蛋獲得：{prize['name']}")
+            st.session_state.action_anim = 'gacha'
+            st.session_state.gacha_result = prize['name']
+            save_user_data(u_key, u_data)
+            st.rerun()
+        else: st.error("金幣不足！快去打怪賺錢吧！")
+
+    # --- 🎁 家族獎勵兌換系統 (置中於主畫面) ---
+    with st.expander("🎁 家族獎勵兌換與紀錄 (花費勳章)", expanded=False):
         r_cols = st.columns(2)
         with r_cols[0]:
             st.markdown("**🏪 可兌換獎勵**")
@@ -659,7 +727,17 @@ elif st.session_state.page == 'game':
     fx_html = ""
     audio_js = ""
 
-    # 動畫設定
+    # --- 🎵 音效設定庫 ---
+    # 升級音效 (Mario 1-up style)
+    snd_lvlup = "let osc2 = ctx.createOscillator(); let gain2 = ctx.createGain(); osc2.type = 'square'; osc2.connect(gain2); gain2.connect(ctx.destination); let now2 = ctx.currentTime; osc2.frequency.setValueAtTime(330, now2); osc2.frequency.setValueAtTime(392, now2 + 0.1); osc2.frequency.setValueAtTime(523, now2 + 0.2); osc2.frequency.setValueAtTime(659, now2 + 0.3); osc2.frequency.setValueAtTime(784, now2 + 0.4); gain2.gain.setValueAtTime(0.2, now2); gain2.gain.linearRampToValueAtTime(0, now2 + 0.6); osc2.start(now2); osc2.stop(now2 + 0.6);"
+    
+    # Boss勝利音效 (Fanfare)
+    snd_boss_win = "let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination); let now = ctx.currentTime; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(440, now + 0.15); osc.frequency.setValueAtTime(440, now + 0.3); osc.frequency.setValueAtTime(587, now + 0.45); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 1.0); osc.start(now); osc.stop(now + 1.0);"
+    
+    # 扭蛋機音效 (Slot rolling + Ding)
+    snd_gacha = "let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination); let now = ctx.currentTime; for(let i=0; i<10; i++){osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.1);} osc.frequency.setValueAtTime(800, now + 1.0); osc.frequency.linearRampToValueAtTime(1200, now + 1.1); gain.gain.setValueAtTime(0.2, now); gain.gain.setValueAtTime(0.2, now + 1.0); gain.gain.linearRampToValueAtTime(0, now + 1.5); osc.start(now); osc.stop(now + 1.5);"
+
+    # 動畫判定
     if anim == 'attack':
         h_s += " animation: heroDash 0.7s ease-in-out;"
         m_s += " animation: shakeHurt 0.7s ease-in-out 0.2s;"
@@ -680,6 +758,16 @@ elif st.session_state.page == 'game':
     elif anim == 'heal':
         h_s += " animation: healFx 1s ease-in-out;"
         audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5); }}</script>"
+    elif anim == 'boss_defeat':
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_boss_win} }}</script>"
+    elif anim == 'gacha':
+        fx_html = '<div class="gacha-fx">🥚</div>'
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_gacha} }}</script>"
+
+    # 升級音效疊加
+    if st.session_state.get('level_up_flag'):
+        audio_js += f"<script>let ctx_lvl = window.parent.gameAudioCtx; if(ctx_lvl) {{ {snd_lvlup} }}</script>"
+        st.session_state.level_up_flag = False
 
     is_boss = u_data.get('is_boss_fight', False)
     if is_boss:
@@ -718,17 +806,20 @@ elif st.session_state.page == 'game':
 
     # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
     if anim:
-        if anim == 'attack': st.success(f"💥 命中！獲得 {5 * diff_multi} EXP 與 10 G！")
+        if anim == 'attack': st.success(f"💥 命中！獲得 {int(rates['normal_exp'] * diff_multi)} EXP 與 {rates['normal_gold']} G！")
         elif anim == 'heal': st.success("🧪 喝下生命藥水，生命值恢復了！")
         elif anim == 'shield_block': st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！")
         elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
-        elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {10 * diff_multi} EXP、50 G 與 {1 * diff_multi} 枚勳章！")
+        elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'] * diff_multi)} EXP、{rates['boss_gold']} G 與 {int(rates['boss_medal'] * diff_multi)} 枚勳章！")
         elif anim == 'dead': 
             if st.session_state.get('level_dropped', False): st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
             else: st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
+        elif anim == 'gacha':
+            st.balloons()
+            st.success(f"🎰 扭蛋開啟... 恭喜獲得：【{st.session_state.gacha_result}】！")
         
-        st.info("⚔️ 戰鬥結算中，請稍候...")
-        time.sleep(1.5)
+        st.info("⚔️ 結算中，請稍候...")
+        time.sleep(1.8)
         
         st.session_state.action_anim = None
         st.session_state.level_dropped = False 
@@ -772,7 +863,7 @@ elif st.session_state.page == 'game':
                     🔊 準備播放... (若無聲請手動點擊)
                 </button>
             </div>
-            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.02); }} 100% {{ transform: scale(1); }} }}</style>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
                 setTimeout(() => {{
                     const btns = window.parent.document.querySelectorAll('button');
@@ -940,7 +1031,7 @@ elif st.session_state.page == 'game':
                     st.session_state.spell_input = "" 
                     process_ans(ans.strip())
 
-            # 答題區 (利用 on_click 或 on_change 達成零延遲送出)
+            # 答題區
             if diff == '簡單':
                 cA, cB = st.columns(2)
                 with cA:
@@ -974,6 +1065,7 @@ elif st.session_state.page == 'parent':
     p_id = st.session_state.current_parent
     p_db = get_parents()
     p_data = p_db[p_id]
+    admin_cfg = get_admin()
     
     if "custom_banks" not in p_data:
         p_data["custom_banks"] = [{"id": "1", "name": "預設自建字庫"}]
@@ -995,10 +1087,9 @@ elif st.session_state.page == 'parent':
                 else: st.error("錯誤")
     st.markdown("---")
     
-    t1, t2, t3, t4, t5 = st.tabs(["🎒 訓練家管理", "🏪 商店獎勵", "📚 自建字庫", "🖼️ 目標圖鑑", "📝 官方糾錯回饋"])
+    t1, t2, t6, t3, t4, t5 = st.tabs(["🎒 訓練家管理", "🏪 商店與獎勵", "⚙️ 遊戲數值設定", "📚 自建字庫", "🖼️ 目標圖鑑", "📝 官方糾錯回饋"])
     
     with t1:
-        admin_cfg = get_admin()
         limit = p_data.get("hero_limit")
         if limit is None: limit = admin_cfg.get("default_hero_limit", 3)
         
@@ -1090,7 +1181,7 @@ elif st.session_state.page == 'parent':
 
     with t2:
         st.subheader("🛒 道具販售價格設定")
-        prices = p_data.get("store_prices", {"potion": 50, "shield": 100, "magnifier": 30})
+        prices = p_data.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
         c1, c2, c3 = st.columns(3)
         new_p = c1.number_input("🧪 藥水價格 (G)", min_value=1, value=prices["potion"])
         new_s = c2.number_input("🛡️ 護盾價格 (G)", min_value=1, value=prices["shield"])
@@ -1122,9 +1213,41 @@ elif st.session_state.page == 'parent':
                 if st.button("🗑️", key=f"d_r_{idx}"):
                     p_db[p_id]["rewards"].pop(idx)
                     save_parents(p_db); st.rerun()
-                    
+
+    with t6:
+        st.subheader("⚙️ 家庭專屬遊戲參數 (覆寫系統預設)")
+        rates = p_data.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
+        gacha = p_data.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
+        
+        with st.expander("⚔️ 戰鬥掉落率設定", expanded=True):
+            r1, r2 = st.columns(2)
+            n_exp = r1.number_input("一般怪 EXP", min_value=1, value=rates.get("normal_exp", 5))
+            n_gld = r2.number_input("一般怪 金幣", min_value=1, value=rates.get("normal_gold", 10))
+            b_exp = r1.number_input("Boss EXP", min_value=1, value=rates.get("boss_exp", 10))
+            b_gld = r2.number_input("Boss 金幣", min_value=1, value=rates.get("boss_gold", 50))
+            b_mdl = r1.number_input("Boss 勳章", min_value=0, value=rates.get("boss_medal", 1))
+            if st.button("💾 儲存戰鬥掉落率"):
+                p_db[p_id]["game_rates"] = {"normal_exp": n_exp, "normal_gold": n_gld, "boss_exp": b_exp, "boss_gold": b_gld, "boss_medal": b_mdl}
+                save_parents(p_db); st.success("儲存成功！"); st.rerun()
+
+        with st.expander("🎰 幸運扭蛋機設定", expanded=True):
+            g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 150))
+            st.caption("設定各獎項內容與機率 (總和必須為 100%)")
+            g_df = pd.DataFrame(gacha.get("prizes", DEFAULT_GACHA["prizes"]))
+            edited_gacha = st.data_editor(g_df, num_rows="fixed", column_config={
+                "name": st.column_config.TextColumn("獎項名稱", required=True),
+                "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True),
+                "type": st.column_config.SelectboxColumn("類型", options=["medal", "gold", "item"], required=True),
+                "val": st.column_config.NumberColumn("數量", min_value=1, required=True)
+            }, hide_index=True)
+            if st.button("💾 儲存扭蛋機設定"):
+                if edited_gacha['prob'].sum() != 100:
+                    st.error(f"❌ 機率總和必須等於 100%！目前為 {edited_gacha['prob'].sum()}%")
+                else:
+                    p_db[p_id]["gacha"] = {"cost": g_cost, "prizes": edited_gacha.to_dict('records')}
+                    save_parents(p_db); st.success("扭蛋機設定已儲存！"); st.rerun()
+
     with t3:
-        admin_cfg = get_admin()
         bank_limit = p_data.get("bank_limit")
         if bank_limit is None: bank_limit = admin_cfg.get("default_bank_limit", 3)
         
@@ -1240,7 +1363,7 @@ elif st.session_state.page == 'parent':
         st.subheader("🌟 夥伴寶可夢進化路線")
         st.info("孩子達到指定等級後，夥伴寶可夢就會自動進化！可以拿這個當作他們的目標。")
         for h_k, h_v in CHARACTERS.items():
-            st.markdown(f"**{h_k} 家庭**")
+            st.markdown(f"**{h_k} 家族**")
             h_cols = st.columns(min(len(h_v["stages"]), 5))
             for idx, (h_id, h_name) in enumerate(h_v["stages"]):
                 lvl_req = 1 if idx==0 else (5 if idx==1 else 10)
@@ -1288,18 +1411,18 @@ elif st.session_state.page == 'admin':
     if st.button("⬅️ 登出並返回大廳"): st.session_state.page = 'login'; st.rerun()
     st.markdown("---")
     
-    t1, t2, t3, t4 = st.tabs(["👨‍👩‍👧 租戶 (家長) 與訓練家管理", "📋 回饋審核", "📚 題庫增訂", "⚙️ 系統設定"])
+    t1, t5, t2, t3, t4 = st.tabs(["👨‍👩‍👧 租戶管理", "⚙️ 全域數值設定", "📋 回饋審核", "📚 題庫增訂", "⚙️ 系統設定"])
+    admin_cfg = get_admin()
     
     with t1:
         p_db = get_parents()
         u_db = get_users()
         if not p_db: st.info("目前沒有任何家長註冊。")
         for p_id, p_info in p_db.items():
-            with st.expander(f"🏠 家庭帳號：{p_id}"):
+            with st.expander(f"🏠 家族帳號：{p_id}"):
                 c1, c2, c3 = st.columns(3)
                 new_pwd = c1.text_input("修改密碼", value=p_info['password'], key=f"apwd_{p_id}")
                 
-                admin_cfg = get_admin()
                 h_limit_val = p_info.get('hero_limit')
                 if h_limit_val is None: h_limit_val = admin_cfg.get("default_hero_limit", 3)
                 
@@ -1328,10 +1451,53 @@ elif st.session_state.page == 'admin':
                         delete_user(u_key); st.rerun()
                         
                 st.markdown("---")
-                if st.button(f"🚨 刪除此家庭 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
+                if st.button(f"🚨 刪除此家族 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
                     for u_key in heroes: delete_user(u_key)
                     del p_db[p_id]
                     save_parents(p_db); st.rerun()
+
+    with t5:
+        st.subheader("⚙️ 系統全域遊戲參數預設值")
+        rates = admin_cfg.get("game_rates", DEFAULT_RATES)
+        store = admin_cfg.get("store_prices", DEFAULT_STORE)
+        gacha = admin_cfg.get("gacha", DEFAULT_GACHA)
+        
+        with st.expander("⚔️ 戰鬥掉落率預設值", expanded=True):
+            r1, r2 = st.columns(2)
+            n_exp = r1.number_input("一般怪 EXP", min_value=1, value=rates.get("normal_exp", 5), key="gm_n_exp")
+            n_gld = r2.number_input("一般怪 金幣", min_value=1, value=rates.get("normal_gold", 10), key="gm_n_gld")
+            b_exp = r1.number_input("Boss EXP", min_value=1, value=rates.get("boss_exp", 10), key="gm_b_exp")
+            b_gld = r2.number_input("Boss 金幣", min_value=1, value=rates.get("boss_gold", 50), key="gm_b_gld")
+            b_mdl = r1.number_input("Boss 勳章", min_value=0, value=rates.get("boss_medal", 1), key="gm_b_mdl")
+            if st.button("💾 儲存全域戰鬥掉落率"):
+                admin_cfg["game_rates"] = {"normal_exp": n_exp, "normal_gold": n_gld, "boss_exp": b_exp, "boss_gold": b_gld, "boss_medal": b_mdl}
+                save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
+                
+        with st.expander("🏪 商店物價預設值", expanded=True):
+            s1, s2, s3 = st.columns(3)
+            p_pot = s1.number_input("藥水價格", min_value=1, value=store.get("potion", 50))
+            p_shi = s2.number_input("護盾價格", min_value=1, value=store.get("shield", 100))
+            p_mag = s3.number_input("放大鏡價格", min_value=1, value=store.get("magnifier", 30))
+            if st.button("💾 儲存全域商店物價"):
+                admin_cfg["store_prices"] = {"potion": p_pot, "shield": p_shi, "magnifier": p_mag}
+                save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
+
+        with st.expander("🎰 扭蛋機預設值", expanded=True):
+            g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 150), key="gm_g_cost")
+            st.caption("設定各獎項內容與機率 (總和必須為 100%)")
+            g_df = pd.DataFrame(gacha.get("prizes", DEFAULT_GACHA["prizes"]))
+            edited_gacha = st.data_editor(g_df, num_rows="fixed", column_config={
+                "name": st.column_config.TextColumn("獎項名稱", required=True),
+                "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True),
+                "type": st.column_config.SelectboxColumn("類型", options=["medal", "gold", "item"], required=True),
+                "val": st.column_config.NumberColumn("數量", min_value=1, required=True)
+            }, hide_index=True, key="gm_gacha_editor")
+            if st.button("💾 儲存全域扭蛋機設定"):
+                if edited_gacha['prob'].sum() != 100:
+                    st.error(f"❌ 機率總和必須等於 100%！目前為 {edited_gacha['prob'].sum()}%")
+                else:
+                    admin_cfg["gacha"] = {"cost": g_cost, "prizes": edited_gacha.to_dict('records')}
+                    save_admin(admin_cfg); st.success("扭蛋機設定已儲存！"); st.rerun()
 
     with t2:
         st.subheader("📋 官方字庫回饋審核")
@@ -1400,7 +1566,6 @@ elif st.session_state.page == 'admin':
             
     with t4:
         st.subheader("系統安全設定")
-        admin_cfg = get_admin()
         with st.form("admin_settings"):
             new_a_id = st.text_input("GM 帳號", value=admin_cfg.get("admin_id", "admin"))
             new_a_pwd = st.text_input("GM 密碼", value=admin_cfg.get("password", "1234"), type="password")
