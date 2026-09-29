@@ -41,7 +41,7 @@ ADMIN_FILE = "admin_settings.json"
 PARENTS_FILE = "parents_db.json"
 USERS_FILE = "users_db.json"
 SHARE_FILE = "share_codes.json"
-FEEDBACK_FILE = "feedbacks.json" # 新增回饋單資料庫
+FEEDBACK_FILE = "feedbacks.json"
 VOCAB_FILES = {
     "國小": "vocab_elementary.csv",
     "國中": "vocab_junior.csv",
@@ -169,7 +169,6 @@ def load_user_data(u_key):
         "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
         "last_login_date": "", "login_streak": 0
     })
-    # 欄位確保機制，並過濾舊版的「家長自訂」
     if "vocab_bank" not in d or d["vocab_bank"] == "家長自訂": d["vocab_bank"] = "custom_1"
     if "word_stats" not in d: d["word_stats"] = {}
     if "gold" not in d: d["gold"] = 0
@@ -244,8 +243,6 @@ st.markdown("""
 .hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; white-space: nowrap; }
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
-.item-card { background: #fdfefe; border: 2px solid #bdc3c7; border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;}
-.item-title { font-weight: bold; color: #2c3e50; margin-bottom: 8px; font-size: 1.1rem;}
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
@@ -278,7 +275,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 破解手機靜音機制
 st.components.v1.html("""<script>
 if (!window.parent.gameAudioCtx) {
     const AudioContext = window.parent.AudioContext || window.parent.webkitAudioContext;
@@ -376,7 +372,7 @@ if st.session_state.page == 'login':
                         "password": r_pwd, "hero_limit": None, "bank_limit": None,
                         "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮"}],
                         "store_prices": {"potion": 50, "shield": 100, "magnifier": 30},
-                        "custom_banks": [{"id": "1", "name": "自建字庫 1"}]
+                        "custom_banks": [{"id": "1", "name": "預設自建字庫"}]
                     }
                     save_parents(p_db)
                     st.success("註冊成功！請由左側登入。")
@@ -948,7 +944,7 @@ elif st.session_state.page == 'game':
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
                 st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", key="text_input_field", autocomplete="off")
                 
-                # --- 📱 電競級原生手機虛擬鍵盤 (純 HTML/JS，零延遲打字 + 自動送出同步) ---
+                # --- 📱 電競級原生手機虛擬鍵盤 ---
                 kb_html = """
                 <style>
                 .kb-container { background-color: #d1d5db; padding: 8px 4px; border-radius: 8px; width: 100%; max-width: 500px; margin: 0 auto; user-select: none; }
@@ -1050,11 +1046,9 @@ elif st.session_state.page == 'parent':
     p_db = get_parents()
     p_data = p_db[p_id]
     
-    # 初始化自建字庫結構
     if "custom_banks" not in p_data:
         p_data["custom_banks"] = [{"id": "1", "name": "預設自建字庫"}]
         save_parents(p_db)
-        # 無縫升級舊版檔案
         old_file = f"vocab_custom_{p_id}.csv"
         if os.path.exists(old_file): os.rename(old_file, f"vocab_custom_{p_id}_1.csv")
 
@@ -1082,7 +1076,6 @@ elif st.session_state.page == 'parent':
         users = get_users()
         my_heroes = {k: v for k, v in users.items() if v.get("parent") == p_id}
         
-        # 準備字庫選單
         global_banks = ["國小", "國中", "多益"]
         custom_bank_options = [f"custom_{b['id']}" for b in p_data["custom_banks"]]
         all_banks = global_banks + custom_bank_options
@@ -1130,7 +1123,7 @@ elif st.session_state.page == 'parent':
                 
                 col_r2 = st.columns([1, 1, 1, 2])
                 curr_bank = d.get("vocab_bank", "國小")
-                if curr_bank == "家長自訂": curr_bank = "custom_1" # 相容舊設定
+                if curr_bank == "家長自訂": curr_bank = "custom_1" 
                 if curr_bank not in all_banks: curr_bank = "國小"
                 
                 new_bank = col_r2[0].selectbox("學習題庫", all_banks, index=all_banks.index(curr_bank), format_func=format_bank, key=f"bank_{u_key}")
@@ -1221,6 +1214,30 @@ elif st.session_state.page == 'parent':
             sel_bank_id = st.selectbox("選擇要管理/編輯的字庫", [b["id"] for b in p_data["custom_banks"]], format_func=lambda x: next(b["name"] for b in p_data["custom_banks"] if b["id"]==x))
             c_file = f"vocab_custom_{p_id}_{sel_bank_id}.csv"
             
+            # --- 字庫更名與一鍵清空功能 ---
+            st.markdown("---")
+            st.subheader("⚙️ 字庫設定")
+            col_set1, col_set2 = st.columns(2)
+            with col_set1:
+                current_name = next(b["name"] for b in p_data["custom_banks"] if b["id"]==sel_bank_id)
+                new_name = st.text_input("修改字庫名稱", value=current_name)
+                if st.button("💾 儲存新名稱"):
+                    if new_name.strip():
+                        for b in p_data["custom_banks"]:
+                            if b["id"] == sel_bank_id:
+                                b["name"] = new_name.strip()
+                        save_parents(p_db)
+                        st.success("✅ 名稱已更新！")
+                        st.rerun()
+                    else: st.error("名稱不能為空！")
+            with col_set2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("🧹 一鍵清空此字庫內容", type="secondary"):
+                    empty_df = pd.DataFrame(columns=["en", "zh", "hint"])
+                    empty_df.to_csv(c_file, index=False, encoding="utf-8-sig")
+                    st.success("✅ 字庫內容已清空！")
+                    st.rerun()
+            
             st.markdown("---")
             st.subheader("🤝 題庫分享與匯入 (Share & Import)")
             colA, colB = st.columns(2)
@@ -1230,7 +1247,7 @@ elif st.session_state.page == 'parent':
                 my_code = None
                 for k, v in shares.items():
                     if isinstance(v, dict) and v.get("p_id") == p_id and v.get("bank_id") == sel_bank_id: my_code = k
-                    elif isinstance(v, str) and v == p_id and sel_bank_id == "1": my_code = k # 相容舊碼
+                    elif isinstance(v, str) and v == p_id and sel_bank_id == "1": my_code = k 
                 
                 if my_code:
                     st.success(f"專屬分享碼：**{my_code}**")
@@ -1268,7 +1285,7 @@ elif st.session_state.page == 'parent':
             edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
             if st.button("💾 儲存自訂單字庫", type="primary"):
                 if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
-                edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("字庫已更新成功！")
+                edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("您的自訂題庫已更新成功！")
             
     with t4:
         st.subheader("🌟 夥伴寶可夢進化路線")
@@ -1283,14 +1300,18 @@ elif st.session_state.page == 'parent':
         st.markdown("---")
         st.subheader(f"🏆 傳說 BOSS 挑戰圖鑑 (共 {len(BOSSES)} 隻)")
         html_boss = '<div class="dex-grid">'
-        for b in BOSSES: html_boss += f'<div class="dex-item"><img src="{b["url"]}"><div class="dex-name">{b["name"]}</div></div>'
-        html_boss += '</div>'; st.markdown(html_boss, unsafe_allow_html=True)
+        for b in BOSSES:
+            html_boss += f'<div class="dex-item"><img src="{b["url"]}"><div class="dex-name">{b["name"]}</div></div>'
+        html_boss += '</div>'
+        st.markdown(html_boss, unsafe_allow_html=True)
             
         st.markdown("---")
         st.subheader(f"👾 一般野生寶可夢圖鑑 (共 {len(MONSTERS)} 隻)")
         html_monster = '<div class="dex-grid">'
-        for m in MONSTERS: html_monster += f'<div class="dex-item"><img src="{m["url"]}"><div class="dex-name">{m["name"]}</div></div>'
-        html_monster += '</div>'; st.markdown(html_monster, unsafe_allow_html=True)
+        for m in MONSTERS:
+            html_monster += f'<div class="dex-item"><img src="{m["url"]}"><div class="dex-name">{m["name"]}</div></div>'
+        html_monster += '</div>'
+        st.markdown(html_monster, unsafe_allow_html=True)
 
     with t5:
         st.subheader("📝 官方字庫糾錯回饋")
