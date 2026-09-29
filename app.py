@@ -1,8 +1,6 @@
 import os
 import sys
 import subprocess
-import json
-import csv
 import random
 import time
 from datetime import datetime
@@ -191,10 +189,17 @@ def delete_user(u_key):
     users = get_users()
     if u_key in users: del users[u_key]; save_users(users)
 
-def load_csv(f):
-    try: return pd.read_csv(f, encoding="utf-8-sig").fillna("").to_dict('records')
-    except: return []
+# --- 成長屬性設定 ---
+def get_max_hp(level): return min(10, 3 + (level // 5)) 
 
+def get_title(level):
+    if level < 3: return "🌱 新手訓練家"
+    if level < 7: return "⚔️ 道館挑戰者"
+    if level < 12: return "🌟 菁英訓練家"
+    if level < 20: return "🔥 四天王候補"
+    return "👑 寶可夢大師"
+
+# --- 艾賓浩斯智慧配題演算法 ---
 EBBINGHAUS_INTERVALS = [0, 60, 600, 86400, 86400*3, 86400*7, 86400*15]
 
 def pick_next_question(v_list, err_log, total_q, word_stats):
@@ -255,6 +260,10 @@ st.markdown("""
 .dex-item img { width: 100%; max-width: 60px; height: auto; transition: transform 0.2s; }
 .dex-item img:hover { transform: scale(1.2); }
 .dex-name { font-size: 0.75rem; color: #555; margin-top: 5px; font-weight: bold; }
+
+/* 🛡️ 完美隱藏原生輸入框，防止 disabled 阻斷同步 */
+.hide-native-input div[data-testid="stTextInput"] { display: none !important; }
+
 @media screen and (max-width: 600px) {
     .poke-title { font-size: 2rem; }
     .poke-subtitle { font-size: 0.9rem; }
@@ -553,7 +562,7 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 🏪 道具商店 ---
+    # --- 🏪 道具商店「一鍵買＆用」 ---
     st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊立刻扣除金幣並發動)</div>", unsafe_allow_html=True)
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
@@ -845,7 +854,7 @@ elif st.session_state.page == 'game':
                 w_len = len(word_en)
                 
                 if st.session_state.magnifier_active:
-                    reveal_count = 1
+                    reveal_count = min(1, w_len)
                     r = random.Random(word_en)
                     indices = sorted(r.sample(range(w_len), reveal_count))
                 else:
@@ -949,11 +958,9 @@ elif st.session_state.page == 'game':
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
                 
-                st.markdown(f"""
-                <div style="background-color: #f8f9fa; border: 2px solid #bdc3c7; border-radius: 8px; padding: 10px; font-size: 1.5rem; text-align: center; letter-spacing: 3px; font-family: monospace; min-height: 50px; margin-bottom: 15px;" id="display_input">
-                    {st.session_state.text_input_field}
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown('<div class="hide-native-input">', unsafe_allow_html=True)
+                st.text_input("hidden_input", key="text_input_field", label_visibility="collapsed")
+                st.markdown('</div>', unsafe_allow_html=True)
                 
                 # --- 📱 電競級原生手機虛擬鍵盤 ---
                 kb_html = f"""
@@ -967,7 +974,9 @@ elif st.session_state.page == 'game':
                 .kb-key-space {{ flex: 3; font-size: 1rem; }}
                 .kb-submit {{ background-color: #e74c3c; color: #fff; flex: 3; font-size: 1.1rem; }}
                 .kb-submit:active {{ background-color: #c0392b; }}
+                .display-box {{ background-color: #f8f9fa; border: 2px solid #bdc3c7; border-radius: 8px; padding: 10px; font-size: 1.5rem; text-align: center; letter-spacing: 3px; font-family: monospace; min-height: 50px; margin-bottom: 15px; }}
                 </style>
+                <div class="display-box" id="display_input">{st.session_state.text_input_field}</div>
                 <div class="kb-container">
                     <div class="kb-row">
                         <button class="kb-key" onclick="tk('Q')">Q</button><button class="kb-key" onclick="tk('W')">W</button><button class="kb-key" onclick="tk('E')">E</button><button class="kb-key" onclick="tk('R')">R</button><button class="kb-key" onclick="tk('T')">T</button><button class="kb-key" onclick="tk('Y')">Y</button><button class="kb-key" onclick="tk('U')">U</button><button class="kb-key" onclick="tk('I')">I</button><button class="kb-key" onclick="tk('O')">O</button><button class="kb-key" onclick="tk('P')">P</button>
@@ -987,8 +996,19 @@ elif st.session_state.page == 'game':
                     let p = window.parent.document;
                     let currentVal = "{st.session_state.text_input_field}";
                     
+                    function hideBtn() {{
+                        p.querySelectorAll('button').forEach(b => {{
+                            if(b.innerText.includes('隱藏送出按鈕')) {{
+                                b.style.display = 'none';
+                                if(b.parentElement) b.parentElement.style.display = 'none';
+                            }}
+                        }});
+                    }}
+                    hideBtn();
+                    setInterval(hideBtn, 500);
+
                     function updateDisplay() {{
-                        let disp = p.getElementById('display_input');
+                        let disp = document.getElementById('display_input');
                         if(disp) disp.innerText = currentVal;
                     }}
                     
@@ -1005,7 +1025,7 @@ elif st.session_state.page == 'game':
                     }}
                     
                     function sm() {{
-                        let hiddenInput = p.querySelector('input[aria-label="hidden_input"]');
+                        let hiddenInput = p.querySelector('.hide-native-input input[type="text"]');
                         if(hiddenInput) {{
                             let nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
                             nativeSetter.call(hiddenInput, currentVal);
@@ -1015,12 +1035,15 @@ elif st.session_state.page == 'game':
                                 p.querySelectorAll('button').forEach(b => {{
                                     if(b.innerText.includes('隱藏送出按鈕')) b.click();
                                 }});
-                            }}, 100);
+                            }}, 150);
                         }}
                     }}
 
                     if(!window.parent.enterListenerAdded) {{
                         p.addEventListener('keydown', function(e) {{
+                            // 🛡️ 環境探測鎖：確保只在有虛擬鍵盤的畫面攔截按鍵，保護家長/GM介面正常打字！
+                            if(!p.querySelector('.hide-native-input')) return;
+                            
                             if(e.key === 'Enter') sm();
                             else if(e.key === 'Backspace') bk();
                             else if(e.key.length === 1 && e.key.match(/[a-zA-Z\- ]/)) tk(e.key.toUpperCase());
@@ -1029,9 +1052,7 @@ elif st.session_state.page == 'game':
                     }}
                 </script>
                 """
-                st.components.v1.html(kb_html, height=250)
-                
-                st.text_input("hidden_input", key="text_input_field", label_visibility="collapsed", disabled=True)
+                st.components.v1.html(kb_html, height=320)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1279,9 +1300,12 @@ elif st.session_state.page == 'parent':
             v_data = load_vocab_db(f"custom_{p_id}_{sel_bank_id}")
             v_df = pd.DataFrame(v_data) if v_data else pd.DataFrame(columns=["en", "zh", "hint"])
             
+            # --- 🛡️ 安全的 Pandas 欄位互換機制 ---
             if st.button("🔄 修復：互換【中文】與【提示】欄位", key=f"swap_parent_{sel_bank_id}"):
                 if not v_df.empty and 'zh' in v_df.columns and 'hint' in v_df.columns:
-                    v_df['zh'], v_df['hint'] = v_df['hint'], v_df['zh']
+                    temp_zh = v_df['zh'].copy()
+                    v_df['zh'] = v_df['hint']
+                    v_df['hint'] = temp_zh
                     save_vocab_db(f"custom_{p_id}_{sel_bank_id}", v_df)
                     st.success("✅ 欄位互換成功！")
                     st.rerun()
@@ -1408,9 +1432,14 @@ elif st.session_state.page == 'admin':
                 cols[3].write(fb['hint'])
                 cols[4].caption(f"By {fb['p_id']}")
                 c_btn1, c_btn2 = cols[5].columns(2)
+                
+                # --- 🛡️ 安全的空庫審核寫入機制 ---
                 if c_btn1.button("✅ 核准", key=f"fb_app_{fb['id']}"):
                     bank_key = fb['bank']
-                    df = pd.DataFrame(load_vocab_db(bank_key))
+                    v_data = load_vocab_db(bank_key)
+                    if v_data: df = pd.DataFrame(v_data)
+                    else: df = pd.DataFrame(columns=["en", "zh", "hint"])
+                    
                     if fb['en'] in df['en'].values:
                         idx = df.index[df['en'] == fb['en']].tolist()[0]
                         df.at[idx, 'zh'] = fb['zh']
@@ -1435,9 +1464,12 @@ elif st.session_state.page == 'admin':
         v_data = load_vocab_db(edit_bank)
         v_df = pd.DataFrame(v_data) if v_data else pd.DataFrame(columns=["en", "zh", "hint"])
         
+        # --- 🛡️ 安全的 Pandas 欄位互換機制 ---
         if st.button(f"🔄 修復：互換【{edit_bank}】的中文與提示欄位", key=f"swap_gm_{edit_bank}"):
             if not v_df.empty and 'zh' in v_df.columns and 'hint' in v_df.columns:
-                v_df['zh'], v_df['hint'] = v_df['hint'], v_df['zh']
+                temp_zh = v_df['zh'].copy()
+                v_df['zh'] = v_df['hint']
+                v_df['hint'] = temp_zh
                 save_vocab_db(edit_bank, v_df)
                 st.success("✅ 欄位互換成功！")
                 st.rerun()
