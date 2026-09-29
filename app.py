@@ -214,7 +214,7 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 網頁設定與 CSS ---
+# --- 網頁設定與寶可夢主題 CSS ---
 st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
 st.markdown("""
@@ -235,7 +235,8 @@ st.markdown("""
 .hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; white-space: nowrap; }
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
-.shield-fx { filter: drop-shadow(0 0 15px #3498db) brightness(1.2); }
+.item-card { background: #fdfefe; border: 2px solid #bdc3c7; border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;}
+.item-title { font-weight: bold; color: #2c3e50; margin-bottom: 8px; font-size: 1.1rem;}
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
@@ -268,6 +269,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 破解手機靜音機制
 st.components.v1.html("""<script>
 if (!window.parent.gameAudioCtx) {
     const AudioContext = window.parent.AudioContext || window.parent.webkitAudioContext;
@@ -279,7 +281,7 @@ if(window.parent && window.parent.document) { window.parent.document.addEventLis
 </script>""", height=0)
 
 if 'page' not in st.session_state: st.session_state.page = 'login'
-if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
+if 'text_input_field' not in st.session_state: st.session_state.text_input_field = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 if 'magnifier_active' not in st.session_state: st.session_state.magnifier_active = False
 
@@ -334,7 +336,7 @@ if st.session_state.page == 'login':
                                 st.session_state.current_parent = family_input
                                 st.session_state.game_data = init_data
                                 st.session_state.error_log = load_error_log(sel_hero_key)
-                                st.session_state.vk_input = ""
+                                st.session_state.text_input_field = ""
                                 st.session_state.play_auto_audio = True
                                 st.session_state.page = 'game'; st.rerun()
                             else: st.error("❌ 密碼錯誤！請確認密碼是否正確。")
@@ -424,7 +426,7 @@ elif st.session_state.page == 'game':
 
     def process_ans(s):
         st.session_state.play_auto_audio = True 
-        st.session_state.vk_input = ""
+        st.session_state.text_input_field = ""
         st.session_state.magnifier_active = False 
         u_data['total_questions'] += 1 
         word = c_w['en']
@@ -495,10 +497,8 @@ elif st.session_state.page == 'game':
                 else: st.session_state.action_anim = 'hurt'
         save_user_data(u_key, u_data)
 
-    def vk_add(char): st.session_state.vk_input += char
-    def vk_del(): st.session_state.vk_input = st.session_state.vk_input[:-1]
     def vk_submit():
-        ans = st.session_state.get("vk_input", "").strip()
+        ans = st.session_state.get("text_input_field", "").strip()
         if not ans: return
         if ans.lower() == c_w['en'].lower(): process_ans(c_w['zh'])
         else: process_ans("WRONG_ANSWER")
@@ -536,8 +536,8 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 🏪 道具商店 (點擊扣除金幣並立即使用) ---
-    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:5px;'>🏪 道具商店 (點擊扣除金幣並立即使用)</div>", unsafe_allow_html=True)
+    # --- 🏪 道具商店「一鍵買＆用」極簡化 ---
+    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊扣除金幣立即使用)</div>", unsafe_allow_html=True)
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
     if c_btn1.button(f"🧪 藥水 ({store_prices['potion']}G)", use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
@@ -560,7 +560,7 @@ elif st.session_state.page == 'game':
             u_data['gold'] -= store_prices['magnifier']
             st.session_state.magnifier_active = True
             if diff == '簡單':
-                # 在簡單模式下，刪去兩個錯誤選項
+                # 簡單模式：使用放大鏡立刻刪去兩個錯誤選項
                 correct_ans = c_w['zh']
                 wrong_indices = [i for i, opt in enumerate(st.session_state.current_options) if opt != correct_ans and opt != "❌"]
                 if len(wrong_indices) >= 2:
@@ -723,7 +723,7 @@ elif st.session_state.page == 'game':
             st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
             st.session_state.play_auto_audio = True
-            st.session_state.vk_input = ""
+            st.session_state.text_input_field = ""
             st.session_state.magnifier_active = False 
         st.rerun()
 
@@ -811,7 +811,7 @@ elif st.session_state.page == 'game':
             if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
                 st.session_state.force_learning = False
                 st.session_state.play_auto_audio = True
-                st.session_state.vk_input = ""
+                st.session_state.text_input_field = ""
                 st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
                 st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
                 st.rerun()
@@ -829,8 +829,8 @@ elif st.session_state.page == 'game':
                 w_len = len(word_en)
                 
                 if st.session_state.magnifier_active:
-                    reveal_count = max(1, int(w_len * 0.8))
-                    r = random.Random(word_en)
+                    reveal_count = 1 # 放大鏡：嚴格只給 1 個隨機字母提示
+                    r = random.Random(word_en) # 使用單字做為隨機種子，確保重整時字母不會亂跳
                     indices = sorted(r.sample(range(w_len), reveal_count))
                 else:
                     if diff == '中等':
@@ -932,23 +932,55 @@ elif st.session_state.page == 'game':
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_d_del")
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
-                user_input = st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", value=st.session_state.vk_input, key="text_input_field", autocomplete="off")
-                if user_input != st.session_state.vk_input: st.session_state.vk_input = user_input
-                    
-                st.markdown("<div style='text-align:center; color:#95a5a6; font-size:12px; margin-bottom:10px;'>👇 平板專用虛擬鍵盤 👇</div>", unsafe_allow_html=True)
-                k_row1, k_row2, k_row3 = ["q","w","e","r","t","y","u","i","o","p"], ["a","s","d","f","g","h","j","k","l"], ["z","x","c","v","b","n","m"]
-
-                c1 = st.columns(10)
-                for i, k in enumerate(k_row1): c1[i].button(k.upper(), on_click=vk_add, args=(k,), key=f"vk_{k}", use_container_width=True)
-                c2 = st.columns([0.5] + [1]*9 + [0.5])
-                for i, k in enumerate(k_row2): c2[i+1].button(k.upper(), on_click=vk_add, args=(k,), key=f"vk_{k}", use_container_width=True)
-                c3 = st.columns([1.5] + [1]*7 + [1.5])
-                for i, k in enumerate(k_row3): c3[i+1].button(k.upper(), on_click=vk_add, args=(k,), key=f"vk_{k}", use_container_width=True)
-                c4 = st.columns([2, 1, 1, 2])
-                c4[0].button("␣ 空格", on_click=vk_add, args=(" ",), use_container_width=True)
-                c4[1].button("- 連字", on_click=vk_add, args=("-",), use_container_width=True)
-                c4[2].button("🔙 刪除", on_click=vk_del, use_container_width=True)
-                c4[3].button("⚔️ 送出攻擊", type="primary", on_click=vk_submit, use_container_width=True)
+                st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", key="text_input_field", autocomplete="off")
+                
+                # --- 📱 電競級原生手機虛擬鍵盤 (純 HTML/JS 實作，零延遲) ---
+                kb_html = """
+                <style>
+                .kb-container { background-color: #e5e7eb; padding: 10px 5px; border-radius: 10px; max-width: 600px; margin: 0 auto; user-select: none; }
+                .kb-row { display: flex; justify-content: center; margin-bottom: 6px; gap: 4px; }
+                .kb-key { flex: 1; max-width: 45px; height: 48px; background: #ffffff; border-radius: 6px; border: none; font-size: 1.1rem; font-weight: bold; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+                .kb-key:active { background: #d1d5db; transform: translateY(1px); }
+                .kb-key-wide { flex: 1.5; max-width: 65px; font-size: 0.9rem;}
+                .kb-key-space { flex: 4; max-width: 200px; }
+                </style>
+                <div class="kb-container">
+                    <div class="kb-row">
+                        <button class="kb-key" onclick="tk('Q')">Q</button><button class="kb-key" onclick="tk('W')">W</button><button class="kb-key" onclick="tk('E')">E</button><button class="kb-key" onclick="tk('R')">R</button><button class="kb-key" onclick="tk('T')">T</button><button class="kb-key" onclick="tk('Y')">Y</button><button class="kb-key" onclick="tk('U')">U</button><button class="kb-key" onclick="tk('I')">I</button><button class="kb-key" onclick="tk('O')">O</button><button class="kb-key" onclick="tk('P')">P</button>
+                    </div>
+                    <div class="kb-row" style="padding: 0 5%;">
+                        <button class="kb-key" onclick="tk('A')">A</button><button class="kb-key" onclick="tk('S')">S</button><button class="kb-key" onclick="tk('D')">D</button><button class="kb-key" onclick="tk('F')">F</button><button class="kb-key" onclick="tk('G')">G</button><button class="kb-key" onclick="tk('H')">H</button><button class="kb-key" onclick="tk('J')">J</button><button class="kb-key" onclick="tk('K')">K</button><button class="kb-key" onclick="tk('L')">L</button>
+                    </div>
+                    <div class="kb-row">
+                        <button class="kb-key kb-key-wide" onclick="tk('-')">-</button><button class="kb-key" onclick="tk('Z')">Z</button><button class="kb-key" onclick="tk('X')">X</button><button class="kb-key" onclick="tk('C')">C</button><button class="kb-key" onclick="tk('V')">V</button><button class="kb-key" onclick="tk('B')">B</button><button class="kb-key" onclick="tk('N')">N</button><button class="kb-key" onclick="tk('M')">M</button><button class="kb-key kb-key-wide" onclick="bk()">⌫</button>
+                    </div>
+                    <div class="kb-row">
+                        <button class="kb-key kb-key-space" onclick="tk(' ')">空白 (Space)</button>
+                    </div>
+                </div>
+                <script>
+                    function tk(char) {
+                        let p = window.parent.document;
+                        let input = p.querySelector('input[type="text"]');
+                        if(input) {
+                            let nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                            nativeInputValueSetter.call(input, input.value + char);
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    }
+                    function bk() {
+                        let p = window.parent.document;
+                        let input = p.querySelector('input[type="text"]');
+                        if(input) {
+                            let nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                            nativeInputValueSetter.call(input, input.value.slice(0, -1));
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    }
+                </script>
+                """
+                st.components.v1.html(kb_html, height=230)
+                st.button("⚔️ 送出攻擊", type="primary", on_click=vk_submit, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
