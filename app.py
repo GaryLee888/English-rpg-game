@@ -134,22 +134,23 @@ MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprit
 # ==========================================
 # ☁️ 核心 API (Firebase Realtime DB) 與預設數值
 # ==========================================
+# 依照設定圖的數值全面更新
 DEFAULT_RATES = {
     "normal_exp": 5, "normal_gold": 10,
     "boss_exp": 10, "boss_gold": 50, "boss_medal": 1
 }
 DEFAULT_GACHA = {
-    "cost": 150,
+    "cost": 300,
     "prizes": [
-        {"name": "特獎：榮耀大禮包 (10勳章)", "prob": 1, "type": "medal", "val": 10},
-        {"name": "一獎：5 枚榮耀勳章", "prob": 4, "type": "medal", "val": 5},
-        {"name": "二獎：豪華道具包 (各x5)", "prob": 10, "type": "item", "val": 5},
+        {"name": "特獎：榮耀大禮包 (3勳章)", "prob": 1, "type": "medal", "val": 3},
+        {"name": "一獎：1枚榮耀勳章", "prob": 4, "type": "medal", "val": 1},
+        {"name": "二獎：豪華道具包 (各x2)", "prob": 10, "type": "item", "val": 2},
         {"name": "三獎：金幣大暴發 (500G)", "prob": 20, "type": "gold", "val": 500},
         {"name": "四獎：實用道具包 (各x1)", "prob": 30, "type": "item", "val": 1},
-        {"name": "五獎：安慰小紅包 (10G)", "prob": 35, "type": "gold", "val": 10}
+        {"name": "五獎：安慰小紅包 (100G)", "prob": 35, "type": "gold", "val": 100}
     ]
 }
-DEFAULT_STORE = {"potion": 50, "shield": 100, "magnifier": 30}
+DEFAULT_STORE = {"potion": 200, "shield": 250, "magnifier": 100}
 
 def get_admin(): 
     cfg = db.reference("system/admin").get() or {}
@@ -202,6 +203,8 @@ def load_user_data(u_key):
         if "death_count" in d: del d["death_count"]
         if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
         if "history" not in d: d["history"] = []
+        if "trophies" not in d: d["trophies"] = []
+        if "monster_dex" not in d: d["monster_dex"] = []
     return d
 
 def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
@@ -255,6 +258,7 @@ def generate_options(c_v, f_list):
 # --- 網頁設定與寶可夢主題 CSS ---
 st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
+# 🎨 深度排版與佈局 CSS 優化
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
@@ -286,7 +290,10 @@ st.markdown("""
 div[data-testid="column"]:nth-child(1),
 div[data-testid="column"]:nth-child(2),
 div[data-testid="column"]:nth-child(3) { width: 33.33% !important; flex: 1 1 33.33% !important; min-width: 30% !important; }
-div[data-testid="column"] button { height: 55px; padding: 0 !important; font-size: 0.95rem !important; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+div[data-testid="column"] button { height: 55px; padding: 0 !important; font-size: 0.95rem !important; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: pre-line; }
+
+/* 隱藏原生輸入框防干擾 */
+.hide-native-input div[data-testid="stTextInput"] { display: none !important; }
 
 /* 單字卡與圖鑑 */
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
@@ -321,9 +328,10 @@ div[data-testid="column"] button { height: 55px; padding: 0 !important; font-siz
 @keyframes heroDead { 0% { transform: scaleX(-1) rotate(0deg); filter: grayscale(0%); } 100% { transform: scaleX(-1) rotate(90deg) translateY(20px); filter: grayscale(100%); } }
 @keyframes healFx { 0% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } 50% { filter: brightness(1.5) drop-shadow(0 0 20px #2ecc71); } 100% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } }
 @keyframes gachaPop { 0% { transform: scale(0.1) rotate(0deg); opacity: 0; } 50% { transform: scale(1.5) rotate(180deg); opacity: 1; } 100% { transform: scale(1) rotate(360deg); opacity: 0; } }
+@keyframes gachaShake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) rotate(-2deg); } 20%, 40%, 60%, 80% { transform: translateX(5px) rotate(2deg); } }
 
 .m-fx { position: absolute; top: 40%; font-size: 60px; animation: mBall 0.7s ease-in-out forwards; z-index: 10; }
-.gacha-fx { position: absolute; top: 30%; left: 40%; font-size: 80px; animation: gachaPop 1.5s ease-out forwards; z-index: 20; }
+.gacha-fx { position: absolute; top: -100px; left: 50%; transform: translateX(-50%); font-size: 80px; animation: gachaPop 1.5s ease-out forwards; z-index: 20; text-shadow: 0 0 20px #f1c40f;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -340,10 +348,8 @@ if(window.parent && window.parent.document) { window.parent.document.addEventLis
 if 'page' not in st.session_state: st.session_state.page = 'login'
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 if 'magnifier_active' not in st.session_state: st.session_state.magnifier_active = False
-
-# --- 🎯 初始化拼寫輸入框狀態 ---
-if 'spell_input' not in st.session_state: 
-    st.session_state.spell_input = ""
+if 'spell_input' not in st.session_state: st.session_state.spell_input = ""
+if 'level_up_flag' not in st.session_state: st.session_state.level_up_flag = False
 
 # ==================== 登入大廳 ====================
 if st.session_state.page == 'login':
@@ -451,7 +457,7 @@ elif st.session_state.page == 'game':
     p_db = get_parents()
     admin_cfg = get_admin()
     
-    # 讀取全域與家庭專屬設定 (家庭覆寫全域)
+    # 讀取全域與家庭專屬設定
     p_info = p_db.get(parent_id, {})
     rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
@@ -495,7 +501,7 @@ elif st.session_state.page == 'game':
     c_w = st.session_state.current_vocab
     max_hp = get_max_hp(u_data['level'])
 
-    # --- ⚡ 零延遲回呼函數 (On-click Callbacks) ---
+    # --- ⚡ 零延遲回呼函數 ---
     def process_ans(s):
         st.session_state.play_auto_audio = True 
         st.session_state.magnifier_active = False 
@@ -505,7 +511,6 @@ elif st.session_state.page == 'game':
             
         u_data['total_questions'] += 1 
         word = c_w['en']
-        old_level = u_data['level']
         
         if s.strip().lower() == c_w['zh'].strip().lower() or s.strip().lower() == word.strip().lower():
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
@@ -553,7 +558,6 @@ elif st.session_state.page == 'game':
                     u_data['is_boss_fight'] = True
                     u_data['boss_hp'] = 3
             
-            # 升級判定
             if (u_data['exp'] // 100) + 1 > u_data['level']:
                 u_data['level'] = (u_data['exp'] // 100) + 1
                 u_data['hero_hp'] = get_max_hp(u_data['level']) 
@@ -616,28 +620,45 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 🏪 道具商店三小格 ---
+    # --- 🏪 道具商店三小格 (庫存整合) ---
     st.markdown("<div style='font-size:0.8rem; font-weight:bold; color:#7f8c8d; margin-bottom:5px;'>🏪 道具店 (點擊花費金幣立即發動)</div>", unsafe_allow_html=True)
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
-    if c_btn1.button(f"🧪 藥水\n{store_prices['potion']}G", use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
-        if u_data['gold'] >= store_prices['potion']:
+    inv_p = u_data['inventory'].get('potion', 0)
+    btn1_lbl = f"🧪 藥水 ({inv_p})\n免費點擊使用" if inv_p > 0 else f"🧪 購買藥水\n{store_prices['potion']}G"
+    if c_btn1.button(btn1_lbl, use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
+        if inv_p > 0:
+            u_data['inventory']['potion'] -= 1
+            u_data['hero_hp'] = min(max_hp, u_data['hero_hp'] + 1)
+            st.session_state.action_anim = 'heal'
+            save_user_data(u_key, u_data); st.rerun()
+        elif u_data['gold'] >= store_prices['potion']:
             u_data['gold'] -= store_prices['potion']
             u_data['hero_hp'] = min(max_hp, u_data['hero_hp'] + 1)
             st.session_state.action_anim = 'heal'
             save_user_data(u_key, u_data); st.rerun()
-        else: st.error("金幣不足！")
+        else: st.error("金幣與庫存皆不足！")
             
-    if c_btn2.button(f"🛡️ 護盾\n{store_prices['shield']}G", use_container_width=True, disabled=u_data.get('shield_active', False)):
-        if u_data['gold'] >= store_prices['shield']:
+    inv_s = u_data['inventory'].get('shield', 0)
+    btn2_lbl = f"🛡️ 護盾 ({inv_s})\n免費點擊使用" if inv_s > 0 else f"🛡️ 購買護盾\n{store_prices['shield']}G"
+    if c_btn2.button(btn2_lbl, use_container_width=True, disabled=u_data.get('shield_active', False)):
+        if inv_s > 0:
+            u_data['inventory']['shield'] -= 1
+            u_data['shield_active'] = True
+            save_user_data(u_key, u_data); st.rerun()
+        elif u_data['gold'] >= store_prices['shield']:
             u_data['gold'] -= store_prices['shield']
             u_data['shield_active'] = True
             save_user_data(u_key, u_data); st.rerun()
-        else: st.error("金幣不足！")
+        else: st.error("金幣與庫存皆不足！")
             
-    if c_btn3.button(f"🔍 放大鏡\n{store_prices['magnifier']}G", use_container_width=True, disabled=st.session_state.magnifier_active):
-        if u_data['gold'] >= store_prices['magnifier']:
-            u_data['gold'] -= store_prices['magnifier']
+    inv_m = u_data['inventory'].get('magnifier', 0)
+    btn3_lbl = f"🔍 放大鏡 ({inv_m})\n免費點擊使用" if inv_m > 0 else f"🔍 購買放大鏡\n{store_prices['magnifier']}G"
+    if c_btn3.button(btn3_lbl, use_container_width=True, disabled=st.session_state.magnifier_active):
+        if inv_m > 0 or u_data['gold'] >= store_prices['magnifier']:
+            if inv_m > 0: u_data['inventory']['magnifier'] -= 1
+            else: u_data['gold'] -= store_prices['magnifier']
+            
             st.session_state.magnifier_active = True
             if diff == '簡單':
                 correct_ans = c_w['zh']
@@ -646,33 +667,57 @@ elif st.session_state.page == 'game':
                     to_remove = random.sample(wrong_indices, 2)
                     for i in to_remove: st.session_state.current_options[i] = "❌"
             save_user_data(u_key, u_data); st.rerun()
-        else: st.error("金幣不足！")
+        else: st.error("金幣與庫存皆不足！")
 
-    # --- 🎰 幸運扭蛋機 ---
-    st.markdown("<div style='font-size:0.8rem; font-weight:bold; color:#e67e22; margin-top:15px; margin-bottom:5px;'>🎰 幸運扭蛋機</div>", unsafe_allow_html=True)
-    if st.button(f"🟡 轉一次扭蛋 (花費 {gacha_cfg['cost']}G)", use_container_width=True):
-        if u_data['gold'] >= gacha_cfg['cost']:
-            u_data['gold'] -= gacha_cfg['cost']
-            prizes = gacha_cfg['prizes']
-            weights = [p['prob'] for p in prizes]
-            prize = random.choices(prizes, weights=weights)[0]
-            
-            # 給予獎勵
-            if prize['type'] == 'medal': u_data['medals'] += prize['val']
-            elif prize['type'] == 'gold': u_data['gold'] += prize['val']
-            elif prize['type'] == 'item':
-                u_data['inventory']['potion'] += prize['val']
-                u_data['inventory']['shield'] += prize['val']
-                u_data['inventory']['magnifier'] += prize['val']
-            
-            u_data['history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 扭蛋獲得：{prize['name']}")
-            st.session_state.action_anim = 'gacha'
-            st.session_state.gacha_result = prize['name']
-            save_user_data(u_key, u_data)
-            st.rerun()
-        else: st.error("金幣不足！快去打怪賺錢吧！")
+    # --- 🎰 經典擬真幸運扭蛋機 ---
+    with st.expander("🎰 幸運扭蛋機 (花費金幣抽大獎)", expanded=False):
+        gacha_html = """
+        <div style="background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; max-width: 260px; margin: 0 auto 10px auto; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative;">
+            <div style="background: #feca57; width: 100px; height: 30px; border: 4px solid #2f3542; border-radius: 20px 20px 0 0; position: absolute; top: -34px; left: 50%; transform: translateX(-50%);">
+                <div style="background: #ff6b6b; width: 14px; height: 14px; border-radius: 50%; margin: 4px auto; border: 2px solid #2f3542;"></div>
+            </div>
+            <div style="background-color: #f1f2f6; border: 4px solid #2f3542; border-radius: 15px; height: 160px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.1);">
+                <div style="font-size:40px; position:absolute; top: 10px; left:10px; transform: rotate(20deg);">🔴</div>
+                <div style="font-size:40px; position:absolute; top: 40px; left:50px; transform: rotate(-15deg);">🟡</div>
+                <div style="font-size:40px; position:absolute; top: 15px; left:110px; transform: rotate(45deg);">🔵</div>
+                <div style="font-size:40px; position:absolute; top: 70px; left:10px; transform: rotate(-30deg);">🟢</div>
+                <div style="font-size:40px; position:absolute; top: 90px; left:80px; transform: rotate(10deg);">🟣</div>
+                <div style="font-size:40px; position:absolute; top: 60px; left:140px; transform: rotate(60deg);">🔴</div>
+                <div style="font-size:40px; position:absolute; bottom: -5px; left:30px; transform: rotate(80deg);">🟠</div>
+                <div style="font-size:40px; position:absolute; bottom: -10px; left:110px; transform: rotate(-40deg);">🟡</div>
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 50%); pointer-events: none;"></div>
+            </div>
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: -15px; z-index: 10; position: relative;">
+                <div style="width: 50px; height: 50px; background: #1e90ff; border: 4px solid #2f3542; border-radius: 10px 10px 0 0;"></div>
+                <div style="width: 60px; height: 60px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <div style="width: 40px; height: 10px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg);"></div>
+                </div>
+            </div>
+        </div>
+        """
+        st.markdown(gacha_html, unsafe_allow_html=True)
+        if st.button(f"👇 開始扭蛋 (花費 {gacha_cfg['cost']}G)", use_container_width=True):
+            if u_data['gold'] >= gacha_cfg['cost']:
+                u_data['gold'] -= gacha_cfg['cost']
+                prizes = gacha_cfg['prizes']
+                weights = [p['prob'] for p in prizes]
+                prize = random.choices(prizes, weights=weights)[0]
+                
+                if prize['type'] == 'medal': u_data['medals'] += prize['val']
+                elif prize['type'] == 'gold': u_data['gold'] += prize['val']
+                elif prize['type'] == 'item':
+                    u_data['inventory']['potion'] += prize['val']
+                    u_data['inventory']['shield'] += prize['val']
+                    u_data['inventory']['magnifier'] += prize['val']
+                
+                u_data['history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 扭蛋獲得：{prize['name']}")
+                st.session_state.action_anim = 'gacha'
+                st.session_state.gacha_result = prize['name']
+                save_user_data(u_key, u_data)
+                st.rerun()
+            else: st.error("金幣不足！快去打怪賺錢吧！")
 
-    # --- 🎁 家族獎勵兌換系統 (置中於主畫面) ---
+    # --- 🎁 家族獎勵兌換系統 ---
     with st.expander("🎁 家族獎勵兌換與紀錄 (花費勳章)", expanded=False):
         r_cols = st.columns(2)
         with r_cols[0]:
@@ -728,13 +773,8 @@ elif st.session_state.page == 'game':
     audio_js = ""
 
     # --- 🎵 音效設定庫 ---
-    # 升級音效 (Mario 1-up style)
-    snd_lvlup = "let osc2 = ctx.createOscillator(); let gain2 = ctx.createGain(); osc2.type = 'square'; osc2.connect(gain2); gain2.connect(ctx.destination); let now2 = ctx.currentTime; osc2.frequency.setValueAtTime(330, now2); osc2.frequency.setValueAtTime(392, now2 + 0.1); osc2.frequency.setValueAtTime(523, now2 + 0.2); osc2.frequency.setValueAtTime(659, now2 + 0.3); osc2.frequency.setValueAtTime(784, now2 + 0.4); gain2.gain.setValueAtTime(0.2, now2); gain2.gain.linearRampToValueAtTime(0, now2 + 0.6); osc2.start(now2); osc2.stop(now2 + 0.6);"
-    
-    # Boss勝利音效 (Fanfare)
+    snd_lvlup = "let osc2 = ctx_lvl.createOscillator(); let gain2 = ctx_lvl.createGain(); osc2.type = 'square'; osc2.connect(gain2); gain2.connect(ctx_lvl.destination); let now2 = ctx_lvl.currentTime; osc2.frequency.setValueAtTime(330, now2); osc2.frequency.setValueAtTime(392, now2 + 0.1); osc2.frequency.setValueAtTime(523, now2 + 0.2); osc2.frequency.setValueAtTime(659, now2 + 0.3); osc2.frequency.setValueAtTime(784, now2 + 0.4); gain2.gain.setValueAtTime(0.2, now2); gain2.gain.linearRampToValueAtTime(0, now2 + 0.6); osc2.start(now2); osc2.stop(now2 + 0.6);"
     snd_boss_win = "let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination); let now = ctx.currentTime; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(440, now + 0.15); osc.frequency.setValueAtTime(440, now + 0.3); osc.frequency.setValueAtTime(587, now + 0.45); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 1.0); osc.start(now); osc.stop(now + 1.0);"
-    
-    # 扭蛋機音效 (Slot rolling + Ding)
     snd_gacha = "let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination); let now = ctx.currentTime; for(let i=0; i<10; i++){osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.1);} osc.frequency.setValueAtTime(800, now + 1.0); osc.frequency.linearRampToValueAtTime(1200, now + 1.1); gain.gain.setValueAtTime(0.2, now); gain.gain.setValueAtTime(0.2, now + 1.0); gain.gain.linearRampToValueAtTime(0, now + 1.5); osc.start(now); osc.stop(now + 1.5);"
 
     # 動畫判定
@@ -761,12 +801,11 @@ elif st.session_state.page == 'game':
     elif anim == 'boss_defeat':
         audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_boss_win} }}</script>"
     elif anim == 'gacha':
-        fx_html = '<div class="gacha-fx">🥚</div>'
+        fx_html = '<div class="gacha-fx">🎊</div>'
         audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_gacha} }}</script>"
 
-    # 升級音效疊加
     if st.session_state.get('level_up_flag'):
-        audio_js += f"<script>let ctx_lvl = window.parent.gameAudioCtx; if(ctx_lvl) {{ {snd_lvlup} }}</script>"
+        audio_js += f"<script>let ctx_lvl = window.parent.gameAudioCtx; if(ctx_lvl) {{ if(ctx_lvl.state === 'suspended') ctx_lvl.resume(); {snd_lvlup} }}</script>"
         st.session_state.level_up_flag = False
 
     is_boss = u_data.get('is_boss_fight', False)
@@ -863,7 +902,7 @@ elif st.session_state.page == 'game':
                     🔊 準備播放... (若無聲請手動點擊)
                 </button>
             </div>
-            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.02); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
                 setTimeout(() => {{
                     const btns = window.parent.document.querySelectorAll('button');
@@ -1031,7 +1070,7 @@ elif st.session_state.page == 'game':
                     st.session_state.spell_input = "" 
                     process_ans(ans.strip())
 
-            # 答題區
+            # 答題區 
             if diff == '簡單':
                 cA, cB = st.columns(2)
                 with cA:
@@ -1231,7 +1270,7 @@ elif st.session_state.page == 'parent':
                 save_parents(p_db); st.success("儲存成功！"); st.rerun()
 
         with st.expander("🎰 幸運扭蛋機設定", expanded=True):
-            g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 150))
+            g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 300))
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
             g_df = pd.DataFrame(gacha.get("prizes", DEFAULT_GACHA["prizes"]))
             edited_gacha = st.data_editor(g_df, num_rows="fixed", column_config={
@@ -1475,15 +1514,15 @@ elif st.session_state.page == 'admin':
                 
         with st.expander("🏪 商店物價預設值", expanded=True):
             s1, s2, s3 = st.columns(3)
-            p_pot = s1.number_input("藥水價格", min_value=1, value=store.get("potion", 50))
-            p_shi = s2.number_input("護盾價格", min_value=1, value=store.get("shield", 100))
-            p_mag = s3.number_input("放大鏡價格", min_value=1, value=store.get("magnifier", 30))
+            p_pot = s1.number_input("藥水價格", min_value=1, value=store.get("potion", 200))
+            p_shi = s2.number_input("護盾價格", min_value=1, value=store.get("shield", 250))
+            p_mag = s3.number_input("放大鏡價格", min_value=1, value=store.get("magnifier", 100))
             if st.button("💾 儲存全域商店物價"):
                 admin_cfg["store_prices"] = {"potion": p_pot, "shield": p_shi, "magnifier": p_mag}
                 save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
 
         with st.expander("🎰 扭蛋機預設值", expanded=True):
-            g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 150), key="gm_g_cost")
+            g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 300), key="gm_g_cost")
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
             g_df = pd.DataFrame(gacha.get("prizes", DEFAULT_GACHA["prizes"]))
             edited_gacha = st.data_editor(g_df, num_rows="fixed", column_config={
