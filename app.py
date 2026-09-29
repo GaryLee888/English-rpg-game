@@ -482,18 +482,19 @@ elif st.session_state.page == 'game':
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
         
-        # 維持官方圖源
-        BALL_IMAGES = {
-            "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png",      
-            "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png",    
-            "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",    
-            "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",     
-            "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",     
-            "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"       
+        # 🌟 核心修復：全面替換為 PGL (Pokemon Global Link) 高清官方圖庫！
+        # 捨棄原本 30x30 的低畫質圖片，改用高畫質大圖，保證放大後絕對滑順、無鋸齒、不模糊！
+        HD_BALL_IMAGES = {
+            "特獎": "https://www.serebii.net/itemdex/sprites/pgl/beastball.png",
+            "一獎": "https://www.serebii.net/itemdex/sprites/pgl/luxuryball.png",
+            "二獎": "https://www.serebii.net/itemdex/sprites/pgl/masterball.png",
+            "三獎": "https://www.serebii.net/itemdex/sprites/pgl/ultraball.png",
+            "四獎": "https://www.serebii.net/itemdex/sprites/pgl/greatball.png",
+            "五獎": "https://www.serebii.net/itemdex/sprites/pgl/pokeball.png"
         }
         
-        b_img = BALL_IMAGES["五獎"]
-        for k, v in BALL_IMAGES.items():
+        b_img = HD_BALL_IMAGES["五獎"]
+        for k, v in HD_BALL_IMAGES.items():
             if k in prize['name']: 
                 b_img = v
                 if k == "特獎": b_color = "#f1c40f"
@@ -503,7 +504,7 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 完美復刻「三獎」截圖的黃金尺寸、光暈與高質感平滑渲染
+        # 🌟 完美復刻黃金尺寸、光暈與高質感平滑渲染
         st.markdown(f"""
         <style>
             /* 隱藏預設標題與邊界，設定深色背景 */
@@ -542,14 +543,14 @@ elif st.session_state.page == 'game':
                 animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 畫質保證：回歸「黃金比例尺寸(140px)」，這是原圖能承受放大且保持最清晰完美質感的極限尺寸 */
+            /* 🎯 畫質保證：配合高清圖源，使用 140px 黃金比例，展現最高級的圓滑質感 */
             .result-ball {{ 
                 width: 140px !important; 
                 height: 140px !important; 
                 min-width: 140px !important;
                 min-height: 140px !important;
                 object-fit: contain !important; 
-                image-rendering: auto !important; /* 啟動瀏覽器平滑抗鋸齒，達到最高質感 */
+                image-rendering: auto !important; /* 啟動瀏覽器平滑抗鋸齒 */
                 filter: drop-shadow(0 0 20px {b_color}) brightness(1.1) !important; 
                 margin-bottom: -70px !important; /* 精準卡在卡片正上方一半處 (140的一半) */
                 z-index: 50 !important; 
@@ -557,7 +558,7 @@ elif st.session_state.page == 'game':
                 animation: dropAndBounce 1s cubic-bezier(0.28, 0.84, 0.42, 1) forwards !important; 
             }}
             
-            /* 🎯 中獎卡片：完美還原發光粗邊框、強烈光暈與完美比例 */
+            /* 🎯 中獎卡片：完美還原發光粗邊框與完美比例 */
             .result-card {{ 
                 background: white !important; 
                 padding: 95px 20px 30px 20px !important; 
