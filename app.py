@@ -104,9 +104,19 @@ def get_users(): return load_json(USERS_FILE, {})
 def save_users(d): save_json(USERS_FILE, d)
 
 def load_user_data(u_key): 
-    d = load_json(f"data_{u_key}.json", {"exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], "death_count": 0, "vocab_bank": "國小", "word_counts": {}})
+    # 加入 gold (金幣), inventory (道具), shield_active (護盾狀態), word_stats (艾賓浩斯數據)
+    d = load_json(f"data_{u_key}.json", {
+        "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
+        "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], 
+        "death_count": 0, "vocab_bank": "國小", "word_stats": {}, "gold": 0, 
+        "inventory": {"potion": 0, "shield": 0, "magnifier": 0}, "shield_active": False
+    })
+    # 確保舊資料升級包含新欄位
     if "vocab_bank" not in d: d["vocab_bank"] = "國小"
-    if "word_counts" not in d: d["word_counts"] = {}
+    if "word_stats" not in d: d["word_stats"] = {}
+    if "gold" not in d: d["gold"] = 0
+    if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
+    if "shield_active" not in d: d["shield_active"] = False
     return d
 
 def save_user_data(u_key, d): save_json(f"data_{u_key}.json", d)
@@ -123,20 +133,35 @@ def load_csv(f):
     try: return pd.read_csv(f, encoding="utf-8-sig").fillna("").to_dict('records')
     except: return []
 
-# --- 智慧配題 ---
-def pick_next_question(v_list, err_log, total_q, word_counts):
+# --- 艾賓浩斯遺忘曲線：智慧配題演算法 ---
+# 複習間隔 (秒)：0秒(剛錯), 60秒(剛學), 10分鐘, 1天, 3天, 7天, 15天
+EBBINGHAUS_INTERVALS = [0, 60, 600, 86400, 86400*3, 86400*7, 86400*15]
+
+def pick_next_question(v_list, err_log, total_q, word_stats):
+    now = time.time()
+    
+    # 1. 優先處理錯題 (復仇機制保留)
     valid_err = [w for w in err_log if any(v['en'] == w for v in v_list)]
-    if valid_err and (total_q >= 20 or random.random() < 0.4):
+    if valid_err and (total_q >= 15 or random.random() < 0.3):
         w = random.choice(valid_err)
         for v in v_list:
             if v['en'] == w: return v
+
+    # 2. 艾賓浩斯過濾器
+    due_words = []
+    new_words = []
     
-    weights = []
     for v in v_list:
-        c = word_counts.get(v['en'], 0)
-        weights.append(100.0 / ((c + 1) ** 2)) # 答對越多次，機率指數級下降
-        
-    return random.choices(v_list, weights=weights, k=1)[0]
+        w = v['en']
+        if w not in word_stats:
+            new_words.append(v)
+        elif word_stats[w].get("next_review", 0) <= now:
+            due_words.append(v)
+            
+    # 3. 抽取邏輯：該複習的字 > 全新的字 > 隨機抽題(避免卡死)
+    if due_words: return random.choice(due_words)
+    if new_words: return random.choice(new_words)
+    return random.choice(v_list)
 
 def generate_options(c_v, f_list):
     o = [c_v['zh']]
@@ -146,7 +171,7 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- UI 渲染區 ---
+# --- 網頁設定與自適應 CSS ---
 st.set_page_config(page_title="英文英雄 RPG", page_icon="⚔️", layout="wide")
 
 st.markdown("""
@@ -154,7 +179,7 @@ st.markdown("""
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 .block-container { max-width: 900px; padding-top: 1rem; padding-bottom: 2rem; }
 .status-bar-container { display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; background-color: #f8f9fa; border-radius: 12px; padding: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.status-item { text-align: center; flex: 1 1 20%; min-width: 70px; padding: 5px; }
+.status-item { text-align: center; flex: 1 1 15%; min-width: 60px; padding: 5px; }
 .status-label { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 2px; }
 .status-value { font-size: 1.2rem; font-weight: bold; color: #2c3e50; }
 .arena-bg { position: relative; display: flex; justify-content: space-between; align-items: flex-end; padding: 5%; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 15px 0; min-height: 250px; overflow: hidden; }
@@ -164,9 +189,7 @@ st.markdown("""
 .hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; }
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
-.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; text-align: center; }
-.dex-item img { width: 100%; max-width: 60px; height: auto; }
-.dex-name { font-size: 0.7rem; color: #555; margin-top: 3px; word-break: keep-all;}
+.shield-fx { filter: drop-shadow(0 0 15px #3498db) brightness(1.2); }
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
@@ -204,6 +227,7 @@ if(window.parent && window.parent.document) { window.parent.document.addEventLis
 if 'page' not in st.session_state: st.session_state.page = 'login'
 if 'vk_input' not in st.session_state: st.session_state.vk_input = ""
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
+if 'magnifier_active' not in st.session_state: st.session_state.magnifier_active = False
 
 # ==================== 登入大廳 ====================
 if st.session_state.page == 'login':
@@ -216,9 +240,7 @@ if st.session_state.page == 'login':
         if not parents:
             st.info("目前還沒有家庭建立帳號喔！請先請家長到「家長控制台」註冊。")
         else:
-            # SaaS 隱私升級：改為手動輸入家庭帳號，防範其他小孩窺探或亂點
             family_input = st.text_input("1️⃣ 請輸入您的家長 (家庭) 帳號", placeholder="輸入後按下 Enter 鍵確認...")
-            
             if family_input:
                 if family_input in parents:
                     users = get_users()
@@ -229,12 +251,9 @@ if st.session_state.page == 'login':
                     else:
                         hero_display = {k: v["name"] for k, v in family_heroes.items()}
                         sel_hero_key = st.selectbox("2️⃣ 選擇你的英雄", list(hero_display.keys()), format_func=lambda x: hero_display[x])
-                        
-                        # 英雄 PIN 碼防護
                         hero_pin = st.text_input("3️⃣ 輸入英雄專屬密碼 (PIN)", type="password", placeholder="預設為 0000")
                         
                         if st.button("🚀 進入遊戲", type="primary", use_container_width=True):
-                            # 驗證英雄密碼
                             if hero_pin == users[sel_hero_key].get("pin", "0000"):
                                 st.session_state.current_user_key = sel_hero_key
                                 st.session_state.current_parent = family_input
@@ -293,18 +312,9 @@ elif st.session_state.page == 'game':
     parent_id = st.session_state.current_parent
     p_db = get_parents()
     
-    if 'difficulty' not in u_data: u_data['difficulty'] = "簡單"
-    diff = u_data['difficulty']
+    diff = u_data.get('difficulty', "簡單")
     diff_multi = {"簡單": 1, "中等": 2, "困難": 3}.get(diff, 1)
 
-    if 'total_questions' not in u_data: u_data['total_questions'] = 0
-    if 'trophies' not in u_data: u_data['trophies'] = []
-    if 'monster_dex' not in u_data: u_data['monster_dex'] = []
-    if 'death_count' not in u_data: u_data['death_count'] = 0
-    if 'history' not in u_data: u_data['history'] = []
-    if 'word_counts' not in u_data: u_data['word_counts'] = {}
-    if 'vocab_bank' not in u_data: u_data['vocab_bank'] = "國小"
-    
     users = get_users()
     hero_name = users[u_key]["name"]
     char_d = CHARACTERS[users[u_key]['character']]
@@ -314,8 +324,13 @@ elif st.session_state.page == 'game':
     hero_url = f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{hero_img_id}.gif"
 
     bank_name = u_data['vocab_bank']
-    v_file = VOCAB_FILES.get(bank_name, VOCAB_FILES["國小"])
-    v_list = load_csv(v_file) or [{"en": "hero", "zh": "英雄", "hint": ""}]
+    if bank_name == "家長自訂":
+        v_file = f"vocab_custom_{parent_id}.csv"
+        if not os.path.exists(v_file): v_list = [{"en": "apple", "zh": "蘋果 (請家長至控制台新增單字)", "hint": "預設單字"}]
+        else: v_list = load_csv(v_file)
+    else:
+        v_file = VOCAB_FILES.get(bank_name, VOCAB_FILES["國小"])
+        v_list = load_csv(v_file) or [{"en": "hero", "zh": "英雄", "hint": ""}]
     
     r_list = p_db.get(parent_id, {}).get("rewards", [])
     vol = 0.8
@@ -323,7 +338,7 @@ elif st.session_state.page == 'game':
     if 'current_monster' not in st.session_state: st.session_state.current_monster = random.choice(MONSTERS)
     if 'action_anim' not in st.session_state: st.session_state.action_anim = None
     if 'current_vocab' not in st.session_state: 
-        st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_counts'])
+        st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
         st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
     if 'force_learning' not in st.session_state: st.session_state.force_learning = False
     
@@ -331,14 +346,22 @@ elif st.session_state.page == 'game':
 
     def process_ans(s):
         st.session_state.play_auto_audio = True 
-        st.session_state.vk_input = ""          
+        st.session_state.vk_input = ""
+        st.session_state.magnifier_active = False # 換題重置放大鏡
         u_data['total_questions'] += 1 
+        word = c_w['en']
+        
         if s == c_w['zh']:
-            u_data['combo'] += 1
-            u_data['word_counts'][c_w['en']] = u_data['word_counts'].get(c_w['en'], 0) + 1
+            # --- 艾賓浩斯：答對升級熟悉度 ---
+            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
+            stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
+            stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
             
-            if c_w['en'] in st.session_state.error_log:
-                st.session_state.error_log.remove(c_w['en'])
+            u_data['combo'] += 1
+            u_data['gold'] += 10 # 答對獲得 10 金幣
+            
+            if word in st.session_state.error_log:
+                st.session_state.error_log.remove(word)
                 save_error_log(u_key, st.session_state.error_log)
                 if not st.session_state.error_log: u_data['total_questions'] = 0
                     
@@ -347,6 +370,7 @@ elif st.session_state.page == 'game':
                 u_data['exp'] += (10 * diff_multi) 
                 if u_data['boss_hp'] <= 0:
                     u_data['medals'] += (1 * diff_multi) 
+                    u_data['gold'] += 50 # 打贏神獸獲得 50 金幣
                     u_data['is_boss_fight'] = False
                     u_data['combo'] = 0 
                     if st.session_state.current_boss['name'] not in u_data.get('trophies', []): u_data['trophies'].append(st.session_state.current_boss['name'])
@@ -365,24 +389,35 @@ elif st.session_state.page == 'game':
                 u_data['level'] = (u_data['exp'] // 100) + 1
                 u_data['hero_hp'] = 3
         else:
+            # --- 艾賓浩斯：答錯熟悉度歸零 ---
+            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
+            stats["level"] = max(0, stats["level"] - 1)
+            stats["next_review"] = time.time()
+            
             u_data['combo'] = 0 
-            if c_w['en'] not in st.session_state.error_log:
-                st.session_state.error_log.append(c_w['en'])
+            if word not in st.session_state.error_log:
+                st.session_state.error_log.append(word)
                 save_error_log(u_key, st.session_state.error_log)
-            u_data['hero_hp'] -= 1
-            if u_data['hero_hp'] <= 0:
-                u_data['exp'] = int(u_data['exp'] * 0.8)
-                u_data['death_count'] = u_data.get('death_count', 0) + 1
-                if u_data['death_count'] >= 5:
-                    u_data['level'] = max(1, u_data['level'] - 1)
-                    u_data['death_count'] = 0
-                    st.session_state.level_dropped = True
-                else:
-                    st.session_state.level_dropped = False
-                u_data['hero_hp'] = 3
-                if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
-                st.session_state.action_anim = 'dead'
-            else: st.session_state.action_anim = 'hurt'
+                
+            # --- 護盾道具判定 ---
+            if u_data.get('shield_active', False):
+                u_data['shield_active'] = False
+                st.session_state.action_anim = 'shield_block'
+            else:
+                u_data['hero_hp'] -= 1
+                if u_data['hero_hp'] <= 0:
+                    u_data['exp'] = int(u_data['exp'] * 0.8)
+                    u_data['death_count'] = u_data.get('death_count', 0) + 1
+                    if u_data['death_count'] >= 5:
+                        u_data['level'] = max(1, u_data['level'] - 1)
+                        u_data['death_count'] = 0
+                        st.session_state.level_dropped = True
+                    else:
+                        st.session_state.level_dropped = False
+                    u_data['hero_hp'] = 3
+                    if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
+                    st.session_state.action_anim = 'dead'
+                else: st.session_state.action_anim = 'hurt'
         save_user_data(u_key, u_data)
 
     def vk_add(char): st.session_state.vk_input += char
@@ -395,6 +430,30 @@ elif st.session_state.page == 'game':
 
     # --- 側邊欄 ---
     with st.sidebar:
+        st.subheader("🏪 道具商店")
+        st.info(f"💰 我的金幣: **{u_data['gold']} G**")
+        
+        cI1, cI2, cI3 = st.columns(3)
+        with cI1:
+            if st.button("🧪藥水\n50G", use_container_width=True, help="回復 1 點生命值"):
+                if u_data['gold'] >= 50:
+                    u_data['gold'] -= 50; u_data['inventory']['potion'] += 1; save_user_data(u_key, u_data); st.rerun()
+                else: st.error("金幣不足")
+            st.caption(f"持有: {u_data['inventory']['potion']}")
+        with cI2:
+            if st.button("🛡️護盾\n100G", use_container_width=True, help="抵擋一次答錯傷害"):
+                if u_data['gold'] >= 100:
+                    u_data['gold'] -= 100; u_data['inventory']['shield'] += 1; save_user_data(u_key, u_data); st.rerun()
+                else: st.error("金幣不足")
+            st.caption(f"持有: {u_data['inventory']['shield']}")
+        with cI3:
+            if st.button("🔍放大鏡\n30G", use_container_width=True, help="拼寫模式顯示大量提示"):
+                if u_data['gold'] >= 30:
+                    u_data['gold'] -= 30; u_data['inventory']['magnifier'] += 1; save_user_data(u_key, u_data); st.rerun()
+                else: st.error("金幣不足")
+            st.caption(f"持有: {u_data['inventory']['magnifier']}")
+            
+        st.markdown("---")
         st.subheader("🏪 家族獎勵兌換")
         for r in r_list:
             if st.button(f"{r['icon']} {r['reward']} (需 {r['cost_medals']} 勳章)", use_container_width=True):
@@ -421,10 +480,26 @@ elif st.session_state.page == 'game':
         <div class="status-item"><div class="status-label">🛡️ 等級</div><div class="status-value">Lv. {u_data['level']}</div></div>
         <div class="status-item"><div class="status-label">🔥 連擊</div><div class="status-value">{u_data['combo']} / 10</div></div>
         <div class="status-item"><div class="status-label">🎖️ 勳章</div><div class="status-value">{u_data['medals']}</div></div>
+        <div class="status-item"><div class="status-label">💰 金幣</div><div class="status-value">{u_data['gold']}</div></div>
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander(f"📖 冒險圖鑑 (目前題庫: {bank_name} | 一般: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
+    # --- 道具快捷列 ---
+    c_btn1, c_btn2, c_btn3 = st.columns(3)
+    if c_btn1.button(f"🧪 喝下藥水 ({u_data['inventory']['potion']})", use_container_width=True, disabled=u_data['inventory']['potion']<=0):
+        u_data['inventory']['potion'] -= 1
+        u_data['hero_hp'] = min(3, u_data['hero_hp'] + 1)
+        save_user_data(u_key, u_data); st.rerun()
+    if c_btn2.button(f"🛡️ 開啟護盾 ({u_data['inventory']['shield']})", use_container_width=True, disabled=u_data['inventory']['shield']<=0 or u_data.get('shield_active', False)):
+        u_data['inventory']['shield'] -= 1
+        u_data['shield_active'] = True
+        save_user_data(u_key, u_data); st.rerun()
+    if c_btn3.button(f"🔍 使用放大鏡 ({u_data['inventory']['magnifier']})", use_container_width=True, disabled=u_data['inventory']['magnifier']<=0 or diff=='簡單' or st.session_state.magnifier_active):
+        u_data['inventory']['magnifier'] -= 1
+        st.session_state.magnifier_active = True
+        save_user_data(u_key, u_data); st.rerun()
+
+    with st.expander(f"📖 冒險圖鑑 (目前題庫: {bank_name} | 怪物: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
         d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 一般怪物"])
         with d_tab1:
             if u_data.get('trophies'):
@@ -448,6 +523,10 @@ elif st.session_state.page == 'game':
 
     anim = st.session_state.action_anim
     h_s = f"width: {h_width}%; max-width: 250px; transform: scaleX(-1); image-rendering: pixelated; transition: width 0.5s;"
+    
+    # 若有護盾，增加發光特效
+    if u_data.get('shield_active', False): h_s += " filter: drop-shadow(0 0 15px #3498db) brightness(1.2);"
+    
     m_s = "width: 100%; max-width: 180px; image-rendering: pixelated;"
     fx_html = ""
     audio_js = ""
@@ -478,6 +557,19 @@ elif st.session_state.page == 'game':
             osc.type = '{h_snd["type"]}'; osc.frequency.setValueAtTime({h_snd["f1"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd["f2"]}, ctx.currentTime + {h_snd["len"]});
             gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd["len"]});
             osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd["len"]});
+        }}
+        </script>"""
+    elif anim == 'shield_block':
+        m_s += " animation: monsterDash 0.7s ease-in-out;"
+        h_s += " animation: heroDash 0.5s ease-in-out 0.2s;" # 護盾反彈
+        audio_js = f"""<script>
+        let ctx = window.parent.gameAudioCtx;
+        if(ctx) {{
+            if(ctx.state === 'suspended') ctx.resume();
+            let osc = ctx.createOscillator(); let gain = ctx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3);
         }}
         </script>"""
     elif anim == 'dead':
@@ -531,9 +623,10 @@ elif st.session_state.page == 'game':
     if audio_js: st.components.v1.html(audio_js, height=0)
 
     if anim:
-        if anim == 'attack': st.success(f"💥 命中！獲得 {5 * diff_multi} EXP！")
+        if anim == 'attack': st.success(f"💥 命中！獲得 {5 * diff_multi} EXP 與 10 G！")
+        elif anim == 'shield_block': st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！")
         elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
-        elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {10 * diff_multi} EXP 與 {1 * diff_multi} 枚勳章！")
+        elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {10 * diff_multi} EXP、50 G 與 {1 * diff_multi} 枚勳章！")
         elif anim == 'dead': 
             if st.session_state.get('level_dropped', False): st.error("😭 英雄不支倒地... (扣除 20% EXP，累積倒地 5 次，等級下降 1 級！)")
             else: st.error(f"😭 英雄不支倒地... (扣除 20% EXP！累積倒地 {u_data.get('death_count', 0)}/5)")
@@ -543,7 +636,7 @@ elif st.session_state.page == 'game':
         st.session_state.level_dropped = False 
         if anim == 'hurt' or anim == 'dead': st.session_state.force_learning = True
         else:
-            st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_counts'])
+            st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
             st.session_state.play_auto_audio = True
             st.session_state.vk_input = ""
@@ -634,7 +727,7 @@ elif st.session_state.page == 'game':
                 st.session_state.force_learning = False
                 st.session_state.play_auto_audio = True
                 st.session_state.vk_input = ""
-                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_counts'])
+                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
                 st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
                 st.rerun()
 
@@ -646,23 +739,29 @@ elif st.session_state.page == 'game':
             if diff == '簡單':
                 v_html += f'<div class="vocab-word">{c_w["en"]}</div><h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 if c_w.get('hint'): v_html += f'<p style="color: #16a085; font-size: 1rem; margin: 0; background: #e8f8f5; padding: 8px; border-radius: 5px; font-weight: bold;">💡 提示：{c_w["hint"]}</p>'
-            elif diff == '中等':
+            elif diff == '中等' or diff == '困難':
                 word_en = c_w['en']
                 w_len = len(word_en)
-                if w_len <= 3: indices = [w_len // 2]
+                
+                # 放大鏡功能判斷
+                if st.session_state.magnifier_active:
+                    # 強制顯示 80% 的字母
+                    reveal_count = max(1, int(w_len * 0.8))
+                    indices = sorted(random.sample(range(w_len), reveal_count))
                 else:
-                    N = (w_len - 1) // 3 + 1
-                    indices = [int(i * (w_len - 1) / (N - 1) + 0.5) for i in range(N)]
+                    if diff == '中等':
+                        if w_len <= 3: indices = [w_len // 2]
+                        else:
+                            N = (w_len - 1) // 3 + 1
+                            indices = [int(i * (w_len - 1) / (N - 1) + 0.5) for i in range(N)]
+                    else:
+                        indices = [] # 困難模式預設不顯示
+                        
                 hint_chars = [char if (i in indices or char in [' ', '-']) else '_' for i, char in enumerate(word_en)]
                 hint_str = " ".join(hint_chars)
                 v_html += f'<h1 style="color:#2980b9; font-size: 1.8rem; margin: 10px 0; font-weight: 800;">{c_w["zh"]}</h1>'
                 v_html += f'<div class="vocab-hint-str">{hint_str}</div><h3 style="color:#e67e22; margin:0 0 10px 0; font-family: monospace; font-size: 1rem;">請拼出對應的英文單字</h3>'
-            elif diff == '困難':
-                word_en = c_w['en']
-                hint_chars = [char if char in [' ', '-'] else '_' for char in word_en]
-                hint_str = " ".join(hint_chars)
-                v_html += f'<h1 style="color:#2980b9; font-size: 1.8rem; margin: 10px 0; font-weight: 800;">{c_w["zh"]}</h1>'
-                v_html += f'<div class="vocab-hint-str">{hint_str}</div><h3 style="color:#e67e22; margin:0 0 10px 0; font-family: monospace; font-size: 1rem;">請完全拼出對應的英文單字</h3>'
+            
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
@@ -779,7 +878,7 @@ elif st.session_state.page == 'parent':
                 else: st.error("錯誤")
     st.markdown("---")
     
-    t1, t2 = st.tabs(["🦸 我的英雄管理", "🎁 專屬獎勵設定"])
+    t1, t2, t3 = st.tabs(["🦸 我的英雄管理", "🎁 專屬獎勵設定", "📚 自訂專屬單字庫"])
     
     with t1:
         admin_cfg = get_admin()
@@ -796,7 +895,7 @@ elif st.session_state.page == 'parent':
                 n_name = st.text_input("英雄名稱 (小孩的名字或暱稱)")
                 n_pin = st.text_input("設定英雄登入密碼 (建議設定 4 位數字)", value="0000")
                 n_char = st.selectbox("選擇守護神", ["火系 (小火龍)", "水系 (傑尼龜)", "草系 (妙蛙種子)", "電系 (皮丘)", "隨機"])
-                n_bank = st.selectbox("選擇預設學習題庫", ["國小", "國中", "多益"])
+                n_bank = st.selectbox("選擇預設學習題庫", ["國小", "國中", "多益", "家長自訂"])
                 if st.button("確認建立"):
                     if not n_name.strip() or not n_pin.strip(): st.error("名稱與密碼不可為空")
                     else:
@@ -825,17 +924,18 @@ elif st.session_state.page == 'parent':
                 n_dc = cD.number_input("倒地次數", min_value=0, max_value=4, value=d.get('death_count', 0), key=f"dc_{u_key}")
                 new_diff = cE.selectbox("難度", ["簡單", "中等", "困難"], index=["簡單", "中等", "困難"].index(d.get("difficulty", "簡單")), key=f"diff_{u_key}")
                 
-                col_r2 = st.columns([1, 1, 3])
-                new_bank = col_r2[0].selectbox("學習題庫", ["國小", "國中", "多益"], index=["國小", "國中", "多益"].index(d.get("vocab_bank", "國小")), key=f"bank_{u_key}")
+                col_r2 = st.columns([1, 1, 1, 2])
+                new_bank = col_r2[0].selectbox("學習題庫", ["國小", "國中", "多益", "家長自訂"], index=["國小", "國中", "多益", "家長自訂"].index(d.get("vocab_bank", "國小")), key=f"bank_{u_key}")
                 new_pin = col_r2[1].text_input("修改密碼 (PIN)", value=u_info.get("pin", "0000"), key=f"pin_{u_key}")
+                n_gld = col_r2[2].number_input("金幣", min_value=0, value=d.get('gold', 0), key=f"gld_{u_key}")
                 
                 if new_pin != u_info.get("pin", "0000"):
                     users[u_key]["pin"] = new_pin
                     save_users(users)
                     st.success("密碼已更新！")
                 
-                if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != d.get("vocab_bank", "國小"):
-                    d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank
+                if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != d.get("vocab_bank", "國小") or n_gld != d.get('gold', 0):
+                    d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank; d['gold'] = n_gld
                     save_user_data(u_key, d); st.rerun()
 
                 st.write("**🔴 錯題本：**", ", ".join(e_log) if e_log else "無錯題！")
@@ -878,6 +978,16 @@ elif st.session_state.page == 'parent':
                 if st.button("🗑️", key=f"d_r_{idx}"):
                     p_db[p_id]["rewards"].pop(idx)
                     save_parents(p_db); st.rerun()
+                    
+    with t3:
+        st.subheader("編輯家長自訂單字庫")
+        st.caption("將學校本週進度、測驗單字輸入於此，並在英雄管理將題庫切換為「家長自訂」即可！")
+        c_file = f"vocab_custom_{p_id}.csv"
+        v_df = pd.read_csv(c_file) if os.path.exists(c_file) else pd.DataFrame(columns=["en", "zh", "hint"])
+        edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
+        if st.button("💾 儲存自訂單字庫", type="primary"):
+            if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
+            edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("您的自訂題庫已更新成功！")
 
 # ==================== GM 控制台 ====================
 elif st.session_state.page == 'admin':
