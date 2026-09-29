@@ -151,7 +151,6 @@ def save_vocab_db(bank_key, df):
     records = df.fillna("").to_dict('records')
     db.reference(f"vocab_banks/{bank_key}").set(records)
 
-# 系統初始預設字庫上傳
 if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
 if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
 if not db.reference("vocab_banks/多益").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
@@ -536,6 +535,12 @@ elif st.session_state.page == 'game':
                 else: st.session_state.action_anim = 'hurt'
         save_user_data(u_key, u_data)
 
+    def text_input_submit():
+        ans = st.session_state.spell_input
+        if ans:
+            st.session_state.spell_input = "" 
+            process_ans(ans)
+
     # --- 🎛️ 絕美深色儀表板 ---
     hero_title = get_title(u_data['level'])
     st.markdown(f"""
@@ -734,7 +739,7 @@ elif st.session_state.page == 'game':
     else:
         opts = st.session_state.current_options
         
-        # --- 🛡️ 智能淨化發音與音標 (去除括號與標點符號) ---
+        # --- 🛡️ 智能淨化發音與音標 ---
         clean_en = re.sub(r'[\(\[].*?[\)\]]', '', c_w['en']).strip()
         tts_word = clean_en.replace('"', '\\"').replace("'", "\\'")
         
@@ -864,22 +869,32 @@ elif st.session_state.page == 'game':
             auto_script = "setTimeout(() => window.playNormal(false), 500);" if st.session_state.play_auto_audio else ""
             st.session_state.play_auto_audio = False 
             
-            # --- 🔊 修正：正常出題只自動發音 1 次，並且完全解除作答區鎖定，實現零延遲作答 ---
+            # --- 🔊 終極零延遲與兩秒強制解鎖機制 ---
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="normal-tts-btn" onclick="window.playNormal(true)" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
-                    🔊 準備出題... (若無聲請點擊解鎖)
+                <button id="normal-tts-btn" onclick="window.playNormal(true)" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">
+                    🔊 播放單字語音
                 </button>
             </div>
-            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
+                const btn = document.getElementById('normal-tts-btn');
                 let isSpeaking = false;
-                let ttsTimeout = null;
+
+                // 1. 題目出現時，先稍微變暗並鎖定作答區
+                setTimeout(() => {{
+                    const answerDiv = window.parent.document.getElementById('answer-zone');
+                    if (answerDiv) {{ answerDiv.style.opacity = '0.3'; answerDiv.style.pointerEvents = 'none'; }}
+                }}, 50);
+
+                // 2. 🌟 終極防護：無論手機是否阻擋語音，絕對在 2 秒後準時解鎖作答區！
+                setTimeout(() => {{
+                    const answerDiv = window.parent.document.getElementById('answer-zone');
+                    if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
+                    if (!isSpeaking) btn.innerText = "🔊 點擊聆聽單字";
+                }}, 2000);
 
                 window.playNormal = function(isManual = false) {{ 
                     if (isSpeaking && !isManual) return;
-                    
-                    let btn = document.getElementById('normal-tts-btn');
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
                     
                     let msg = new SpeechSynthesisUtterance("{tts_word}"); 
@@ -888,31 +903,22 @@ elif st.session_state.page == 'game':
                     msg.onstart = function() {{
                         isSpeaking = true;
                         btn.innerText = "🔊 播放中...";
-                        btn.style.animation = "none";
                     }};
 
                     msg.onend = function() {{
                         isSpeaking = false;
-                        btn.innerText = "🔊 點擊重聽單字 (若無聲請調高音量)";
-                        clearTimeout(ttsTimeout);
+                        btn.innerText = "🔊 點擊重聽單字";
+                        // 語音結束也立刻解鎖
+                        const answerDiv = window.parent.document.getElementById('answer-zone');
+                        if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
                     }};
                     
                     msg.onerror = function() {{
                         isSpeaking = false;
                         btn.innerText = "🔊 點擊重聽單字";
-                        clearTimeout(ttsTimeout);
                     }};
 
                     window.speechSynthesis.speak(msg); 
-                    
-                    // 終極保險：2.5秒後強制恢復按鈕狀態，絕不卡死
-                    ttsTimeout = setTimeout(() => {{
-                        isSpeaking = false;
-                        if (btn.innerText.includes("播放中") || btn.innerText.includes("準備出題")) {{
-                            btn.innerText = "🔊 點擊重聽單字 (若無聲請調高音量)";
-                            btn.style.animation = "none";
-                        }}
-                    }}, 2500);
                 }};
                 
                 {auto_script}
@@ -920,6 +926,8 @@ elif st.session_state.page == 'game':
             """
             st.components.v1.html(btn_html, height=70)
 
+            st.markdown('<div id="answer-zone" style="transition: opacity 0.5s;">', unsafe_allow_html=True)
+            
             # 答題區 (利用 on_click 達成零延遲送出)
             if diff == '簡單':
                 cA, cB = st.columns(2)
@@ -941,6 +949,8 @@ elif st.session_state.page == 'game':
                     if st.form_submit_button("⚔️ 送出攻擊", type="primary", use_container_width=True):
                         if user_ans.strip():
                             process_ans(user_ans)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
             
     # 放置返回大廳按鈕於最底部
     st.markdown("---")
