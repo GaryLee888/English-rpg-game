@@ -136,13 +136,10 @@ MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprit
 # ==========================================
 def get_admin(): return db.reference("system/admin").get() or {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3}
 def save_admin(d): db.reference("system/admin").set(d)
-
 def get_parents(): return db.reference("parents").get() or {}
 def save_parents(d): db.reference("parents").set(d)
-
 def get_users(): return db.reference("users").get() or {}
 def save_users(d): db.reference("users").set(d)
-
 def get_shares(): return db.reference("shares").get() or {}
 def save_shares(d): db.reference("shares").set(d)
 
@@ -155,12 +152,9 @@ def save_vocab_db(bank_key, df):
     db.reference(f"vocab_banks/{bank_key}").set(records)
 
 # 系統初始預設字庫上傳
-if not db.reference("vocab_banks/國小").get():
-    save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
-if not db.reference("vocab_banks/國中").get():
-    save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
-if not db.reference("vocab_banks/多益").get():
-    save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
+if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
+if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+if not db.reference("vocab_banks/多益").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
 
 def load_user_data(u_key): 
     d = db.reference(f"user_data/{u_key}").get()
@@ -186,14 +180,12 @@ def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
 def load_error_log(u_key): return db.reference(f"error_log/{u_key}").get() or []
 def save_error_log(u_key, l): db.reference(f"error_log/{u_key}").set(l)
 def delete_user(u_key):
-    db.reference(f"user_data/{u_key}").delete()
-    db.reference(f"error_log/{u_key}").delete()
+    db.reference(f"user_data/{u_key}").delete(); db.reference(f"error_log/{u_key}").delete()
     users = get_users()
     if u_key in users: del users[u_key]; save_users(users)
 
 # --- 成長屬性設定 ---
 def get_max_hp(level): return min(10, 3 + (level // 5)) 
-
 def get_title(level):
     if level < 3: return "🌱 新手訓練家"
     if level < 7: return "⚔️ 道館挑戰者"
@@ -489,7 +481,6 @@ elif st.session_state.page == 'game':
                     u_data['is_boss_fight'] = False
                     u_data['combo'] = 0 
                     
-                    # 🐛 安全儲存打敗的 Boss，避免 KeyError 當機
                     if 'current_boss' in st.session_state:
                         b_name = st.session_state.current_boss.get('name')
                         if b_name:
@@ -502,7 +493,6 @@ elif st.session_state.page == 'game':
             else:
                 u_data['exp'] += (5 * diff_multi) 
                 
-                # 🐛 安全儲存打敗的小怪，避免 KeyError 當機
                 if 'current_monster' in st.session_state:
                     m_name = st.session_state.current_monster.get('name')
                     if m_name:
@@ -545,12 +535,6 @@ elif st.session_state.page == 'game':
                     st.session_state.action_anim = 'dead'
                 else: st.session_state.action_anim = 'hurt'
         save_user_data(u_key, u_data)
-
-    def text_input_submit():
-        ans = st.session_state.spell_input
-        if ans:
-            st.session_state.spell_input = "" 
-            process_ans(ans)
 
     # --- 🎛️ 絕美深色儀表板 ---
     hero_title = get_title(u_data['level'])
@@ -775,7 +759,7 @@ elif st.session_state.page == 'game':
                     🔊 準備播放... (若無聲請手動點擊)
                 </button>
             </div>
-            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.02); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
                 setTimeout(() => {{
                     const btns = window.parent.document.querySelectorAll('button');
@@ -815,8 +799,8 @@ elif st.session_state.page == 'game':
                         if (ended) return; 
                         ended = true; isSpeaking = false; playCount++;
                         if (playCount < 3) {{
-                            btn.innerText = "⏳ 停頓 2 秒... (" + playCount + "/3)";
-                            timeoutId = setTimeout(speakWord, 2000); 
+                            btn.innerText = "⏳ 停頓 1.5 秒... (" + playCount + "/3)";
+                            timeoutId = setTimeout(speakWord, 1500); 
                         }} else speakWord(); 
                     }};
 
@@ -877,72 +861,65 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            auto_script = "setTimeout(() => window.playNormal(), 500);" if st.session_state.play_auto_audio else ""
+            auto_script = "setTimeout(() => window.playNormal(false), 500);" if st.session_state.play_auto_audio else ""
             st.session_state.play_auto_audio = False 
             
-            # --- 🔊 修正：正常出題只自動發音一次，唸完即解鎖作答區 ---
+            # --- 🔊 修正：正常出題只自動發音 1 次，並且完全解除作答區鎖定，實現零延遲作答 ---
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="normal-tts-btn" onclick="window.playNormal()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
+                <button id="normal-tts-btn" onclick="window.playNormal(true)" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
                     🔊 準備出題... (若無聲請點擊解鎖)
                 </button>
             </div>
             <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
-                setTimeout(() => {{
-                    const answerDiv = window.parent.document.getElementById('answer-zone');
-                    if (answerDiv) {{ answerDiv.style.opacity = '0.3'; answerDiv.style.pointerEvents = 'none'; }}
-                }}, 100);
-
                 let isSpeaking = false;
+                let ttsTimeout = null;
 
-                window.playNormal = function() {{ 
-                    if (isSpeaking) return;
+                window.playNormal = function(isManual = false) {{ 
+                    if (isSpeaking && !isManual) return;
+                    
+                    let btn = document.getElementById('normal-tts-btn');
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
                     
                     let msg = new SpeechSynthesisUtterance("{tts_word}"); 
                     msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = 0.8; 
                     
-                    let started = false; let ended = false;
-
                     msg.onstart = function() {{
-                        started = true; isSpeaking = true;
-                        document.getElementById('normal-tts-btn').innerText = "🔊 播放中...";
-                        document.getElementById('normal-tts-btn').style.animation = "none";
+                        isSpeaking = true;
+                        btn.innerText = "🔊 播放中...";
+                        btn.style.animation = "none";
                     }};
 
                     msg.onend = function() {{
-                        if(ended) return;
-                        ended = true; isSpeaking = false;
-                        
-                        // 語音結束，立刻解鎖作答區
-                        const answerDiv = window.parent.document.getElementById('answer-zone');
-                        if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
-                        
-                        document.getElementById('normal-tts-btn').innerText = "🔊 點擊重聽單字";
+                        isSpeaking = false;
+                        btn.innerText = "🔊 點擊重聽單字 (若無聲請調高音量)";
+                        clearTimeout(ttsTimeout);
+                    }};
+                    
+                    msg.onerror = function() {{
+                        isSpeaking = false;
+                        btn.innerText = "🔊 點擊重聽單字";
+                        clearTimeout(ttsTimeout);
                     }};
 
-                    setTimeout(() => {{
-                        if (!started) {{
-                            isSpeaking = false;
-                            document.getElementById('normal-tts-btn').innerText = "👉 手機限制：請點我聽發音解鎖";
-                            document.getElementById('normal-tts-btn').style.animation = "pulse 1.5s infinite";
-                            
-                            // 保險機制：如果瀏覽器徹底阻擋語音，3.5秒後還是強制解鎖作答，避免死當
-                            const answerDiv = window.parent.document.getElementById('answer-zone');
-                            if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
-                        }} else if (started && !ended) msg.onend();
-                    }}, 3500);
-
                     window.speechSynthesis.speak(msg); 
+                    
+                    // 終極保險：2.5秒後強制恢復按鈕狀態，絕不卡死
+                    ttsTimeout = setTimeout(() => {{
+                        isSpeaking = false;
+                        if (btn.innerText.includes("播放中") || btn.innerText.includes("準備出題")) {{
+                            btn.innerText = "🔊 點擊重聽單字 (若無聲請調高音量)";
+                            btn.style.animation = "none";
+                        }}
+                    }}, 2500);
                 }};
+                
                 {auto_script}
             </script>
             """
             st.components.v1.html(btn_html, height=70)
 
-            st.markdown('<div id="answer-zone" style="transition: opacity 0.5s;">', unsafe_allow_html=True)
-            
             # 答題區 (利用 on_click 達成零延遲送出)
             if diff == '簡單':
                 cA, cB = st.columns(2)
@@ -958,17 +935,12 @@ elif st.session_state.page == 'game':
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_d_del")
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
-                # 使用最穩定的原生 text_input 與 button，並綁定 on_click
+                # 使用最穩定的原生 text_input 與 form_submit_button
                 with st.form("spell_form", clear_on_submit=True):
                     user_ans = st.text_input("✍️ 施展拼寫魔法 (點擊輸入後按鍵盤完成或點擊下方按鈕)：", autocomplete="off")
                     if st.form_submit_button("⚔️ 送出攻擊", type="primary", use_container_width=True):
                         if user_ans.strip():
-                            if user_ans.strip().lower() == c_w['en'].lower():
-                                process_ans(c_w['zh'])
-                            else:
-                                process_ans("WRONG_ANSWER")
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                            process_ans(user_ans)
             
     # 放置返回大廳按鈕於最底部
     st.markdown("---")
