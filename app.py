@@ -39,9 +39,15 @@ import pandas as pd
 
 # --- 檔案設定 ---
 USERS_FILE = "users_db.json"
-VOCAB_FILE = "vocab_list.csv"
 REWARD_FILE = "reward_list.csv"
 SETTINGS_FILE = "settings.json"
+
+# 三大題庫檔案
+VOCAB_FILES = {
+    "國小": "vocab_elementary.csv",
+    "國中": "vocab_junior.csv",
+    "多益": "vocab_toeic.csv"
+}
 
 # --- Emoji 圖庫 ---
 EMOJI_LIST = ["🎮", "🧸", "🎲", "🧩", "🎯", "🪀", "🪁", "🚂", "🍔", "🍟", "🍕", "🍦", "🍩", "🍫", "🍬", "🍿", "🥤", "🧋", "👑", "🏆", "🥇", "⭐", "💰", "💎", "🐬", "🎬", "🚲", "⚽", "🏀", "🏊", "⛺", "🚀", "📖", "🖍️", "🎨", "🎒"]
@@ -85,12 +91,12 @@ MONSTER_DATA = [
 MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in MONSTER_DATA]
 
 # --- 題庫初始化 ---
-if not os.path.exists(VOCAB_FILE): 
-    pd.DataFrame({
-        "en": ["burger", "whale", "run"], 
-        "zh": ["漢堡", "鯨魚", "跑步"], 
-        "hint": ["速食", "海洋生物", "運動"]
-    }).to_csv(VOCAB_FILE, index=False, encoding="utf-8-sig")
+if not os.path.exists(VOCAB_FILES["國小"]): 
+    pd.DataFrame({"en": ["apple", "cat", "dog", "run"], "zh": ["蘋果", "貓", "狗", "跑步"], "hint": ["水果", "動物", "動物", "動作"]}).to_csv(VOCAB_FILES["國小"], index=False, encoding="utf-8-sig")
+if not os.path.exists(VOCAB_FILES["國中"]): 
+    pd.DataFrame({"en": ["environment", "develop", "experience", "necessary"], "zh": ["環境", "發展", "經驗", "必須的"], "hint": ["大自然", "進步", "經歷", "需要"]}).to_csv(VOCAB_FILES["國中"], index=False, encoding="utf-8-sig")
+if not os.path.exists(VOCAB_FILES["多益"]): 
+    pd.DataFrame({"en": ["implement", "revenue", "strategy", "compliance"], "zh": ["實施", "收入", "策略", "合規"], "hint": ["執行", "金錢", "計畫", "遵守"]}).to_csv(VOCAB_FILES["多益"], index=False, encoding="utf-8-sig")
 
 if not os.path.exists(REWARD_FILE): pd.DataFrame({"reward": ["週末多玩 30 分鐘 Switch"], "cost_medals": [1], "icon": ["🎮"]}).to_csv(REWARD_FILE, index=False, encoding="utf-8-sig")
 
@@ -104,7 +110,11 @@ def load_json(f, d):
 def save_json(f, d):
     with open(f, "w", encoding="utf-8") as file: json.dump(d, file)
 def load_user_data(u): 
-    return load_json(f"data_{u}.json", {"exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], "death_count": 0})
+    # 預設題庫為國小，並新增 word_counts 來記錄每個單字答對次數
+    d = load_json(f"data_{u}.json", {"exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], "death_count": 0, "vocab_bank": "國小", "word_counts": {}})
+    if "vocab_bank" not in d: d["vocab_bank"] = "國小"
+    if "word_counts" not in d: d["word_counts"] = {}
+    return d
 def save_user_data(u, d): save_json(f"data_{u}.json", d)
 def load_csv(f):
     try: 
@@ -120,12 +130,22 @@ def delete_user(u):
     users = load_json(USERS_FILE, {})
     if u in users: del users[u]; save_json(USERS_FILE, users)
 
-def pick_next_question(v_list, err_log, total_q):
-    if err_log and (total_q >= 20 or random.random() < 0.4):
-        w = random.choice(err_log)
+# --- 智慧配題演算法 ---
+def pick_next_question(v_list, err_log, total_q, word_counts):
+    # 如果有錯題且滿足條件，從錯題中抽 (且確保錯題還存在於目前的題庫中)
+    valid_err = [w for w in err_log if any(v['en'] == w for v in v_list)]
+    if valid_err and (total_q >= 20 or random.random() < 0.4):
+        w = random.choice(valid_err)
         for v in v_list:
             if v['en'] == w: return v
-    return random.choice(v_list)
+    
+    # 根據答對次數給予權重：沒碰過=100，答對1次=25，答對2次=11.1，次數越多機率越低
+    weights = []
+    for v in v_list:
+        c = word_counts.get(v['en'], 0)
+        weights.append(100.0 / ((c + 1) ** 2))
+        
+    return random.choices(v_list, weights=weights, k=1)[0]
 
 def generate_options(c_v, f_list):
     o = [c_v['zh']]
@@ -241,6 +261,7 @@ if st.session_state.page == 'login':
         st.subheader("🆕 創建英雄")
         n_name = st.text_input("名稱")
         n_char = st.selectbox("選擇守護神 (會隨等級進化喔！)", ["火系 (小火龍)", "水系 (傑尼龜)", "草系 (妙蛙種子)", "電系 (皮丘)", "隨機"])
+        n_bank = st.selectbox("選擇學習題庫", ["國小", "國中", "多益"])
         if st.button("建立", use_container_width=True):
             if not n_name.strip() or n_name in st.session_state.users: st.error("無效名稱")
             else:
@@ -248,7 +269,13 @@ if st.session_state.page == 'login':
                 st.session_state.users[n_name] = {"character": c, "created_at": str(datetime.now().date())}
                 save_json(USERS_FILE, st.session_state.users)
                 st.session_state.current_user = n_name
-                st.session_state.game_data = load_user_data(n_name)
+                
+                # 初始化並指派題庫
+                new_u_data = load_user_data(n_name)
+                new_u_data["vocab_bank"] = n_bank
+                save_user_data(n_name, new_u_data)
+                
+                st.session_state.game_data = new_u_data
                 st.session_state.error_log = load_error_log(n_name)
                 st.session_state.vk_input = ""
                 st.session_state.play_auto_audio = True
@@ -263,26 +290,27 @@ elif st.session_state.page == 'game':
     diff = u_data['difficulty']
     diff_multi = {"簡單": 1, "中等": 2, "困難": 3}.get(diff, 1)
 
-    if 'total_questions' not in u_data: u_data['total_questions'] = 0
-    if 'trophies' not in u_data: u_data['trophies'] = []
-    if 'monster_dex' not in u_data: u_data['monster_dex'] = []
-    if 'death_count' not in u_data: u_data['death_count'] = 0
-    if 'history' not in u_data: u_data['history'] = []
-    
+    if 'word_counts' not in u_data: u_data['word_counts'] = {}
+    if 'vocab_bank' not in u_data: u_data['vocab_bank'] = "國小"
+
     char_d = CHARACTERS[st.session_state.users[user]['character']]
     
     stage_idx = 0 if u_data['level'] < 5 else (1 if u_data['level'] < 10 else 2)
     hero_id, hero_name = char_d["stages"][stage_idx]
     hero_url = f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{hero_id}.gif"
 
-    v_list = load_csv(VOCAB_FILE) or [{"en": "hero", "zh": "英雄", "hint": ""}]
+    # 讀取對應的題庫
+    bank_name = u_data.get('vocab_bank', '國小')
+    v_file = VOCAB_FILES.get(bank_name, VOCAB_FILES["國小"])
+    v_list = load_csv(v_file) or [{"en": "hero", "zh": "英雄", "hint": ""}]
+    
     r_list = load_csv(REWARD_FILE)
     vol = st.session_state.settings.get("volume", 0.8)
 
     if 'current_monster' not in st.session_state: st.session_state.current_monster = random.choice(MONSTERS)
     if 'action_anim' not in st.session_state: st.session_state.action_anim = None
     if 'current_vocab' not in st.session_state: 
-        st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
+        st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_counts'])
         st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
     if 'force_learning' not in st.session_state: st.session_state.force_learning = False
     
@@ -294,6 +322,9 @@ elif st.session_state.page == 'game':
         u_data['total_questions'] += 1 
         if s == c_w['zh']:
             u_data['combo'] += 1
+            # 答對時增加該單字的熟悉度權重計算
+            u_data['word_counts'][c_w['en']] = u_data['word_counts'].get(c_w['en'], 0) + 1
+            
             if c_w['en'] in st.session_state.error_log:
                 st.session_state.error_log.remove(c_w['en'])
                 save_error_log(user, st.session_state.error_log)
@@ -386,7 +417,7 @@ elif st.session_state.page == 'game':
     """, unsafe_allow_html=True)
 
     # --- 自適應圖鑑區 ---
-    with st.expander(f"📖 冒險圖鑑 (一般: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
+    with st.expander(f"📖 冒險圖鑑 (目前題庫: {bank_name} | 一般: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
         d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 一般怪物"])
         with d_tab1:
             if u_data.get('trophies'):
@@ -518,7 +549,7 @@ elif st.session_state.page == 'game':
         if anim == 'hurt' or anim == 'dead':
             st.session_state.force_learning = True
         else:
-            st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
+            st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_counts'])
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
             st.session_state.play_auto_audio = True
             st.session_state.vk_input = ""
@@ -612,7 +643,7 @@ elif st.session_state.page == 'game':
                         playCount++;
                         if (playCount < 3) {{
                             btn.innerText = "⏳ 停頓 2 秒... (" + playCount + "/3)";
-                            timeoutId = setTimeout(speakWord, 2000); // 精準等待 2 秒再唸下一次
+                            timeoutId = setTimeout(speakWord, 2000); // 錯題：精準等待 2 秒再唸下一次
                         }} else {{
                             speakWord(); 
                         }}
@@ -642,12 +673,12 @@ elif st.session_state.page == 'game':
                 st.session_state.force_learning = False
                 st.session_state.play_auto_audio = True
                 st.session_state.vk_input = ""
-                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'])
+                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_counts'])
                 st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
                 st.rerun()
 
         # ==========================================
-        # 正常答題模式 (出題自動循環，聽 1 次解鎖)
+        # 正常答題模式 (出題自動循環 2 秒，聽完 1 次解鎖)
         # ==========================================
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log:
@@ -680,7 +711,6 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # 判斷是否為新進題目，如果是就啟動自動播放
             auto_script = "setTimeout(window.playNormal, 500);" if st.session_state.play_auto_audio else ""
             st.session_state.play_auto_audio = False 
             
@@ -688,16 +718,18 @@ elif st.session_state.page == 'game':
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
                 <button id="normal-tts-btn" onclick="window.playNormal()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
-                    🔊 準備出題... (若無聲請點擊)
+                    🔊 準備出題... (若無聲請點擊解鎖)
                 </button>
             </div>
             <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
-                // 隱藏作答區 (A/B/C/D 與 鍵盤)
+                // 隱藏作答區 (A/B/C/D 與 鍵盤)，強制最少聽 1 次
                 setTimeout(() => {{
                     const answerDiv = window.parent.document.getElementById('answer-zone');
-                    if (answerDiv) answerDiv.style.opacity = '0.3';
-                    if (answerDiv) answerDiv.style.pointerEvents = 'none';
+                    if (answerDiv) {{
+                        answerDiv.style.opacity = '0.3';
+                        answerDiv.style.pointerEvents = 'none';
+                    }}
                 }}, 100);
 
                 let isSpeaking = false;
@@ -736,7 +768,7 @@ elif st.session_state.page == 'game':
                             answerDiv.style.pointerEvents = 'auto';
                         }}
                         
-                        // 設定 2 秒後自動重播
+                        // 設定 2 秒後自動重播循環
                         loopTimeout = setTimeout(window.playNormal, 2000);
                     }};
 
@@ -825,15 +857,20 @@ elif st.session_state.page == 'parent':
             c = st.session_state.users[u]['character']
             with st.expander(f"👤 {u} ({c})"):
                 st.markdown("#### 📊 數據調整")
-                cA, cB, cC, cD, cE = st.columns(5)
-                n_lvl = cA.number_input("等級", min_value=1, value=d['level'], key=f"lvl_{u}")
-                n_tq = cB.number_input("累積題數", min_value=0, value=d.get('total_questions', 0), key=f"tq_{u}")
-                n_mdl = cC.number_input("勳章", min_value=0, value=d['medals'], key=f"mdl_{u}")
-                n_dc = cD.number_input("倒地次數", min_value=0, max_value=4, value=d.get('death_count', 0), key=f"dc_{u}")
-                new_diff = cE.selectbox("目前難度", ["簡單", "中等", "困難"], index=["簡單", "中等", "困難"].index(d.get("difficulty", "簡單")), key=f"diff_{u}")
                 
-                if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單"):
-                    d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff
+                # 為了避免欄位擁擠，分為上下兩排
+                col_r1 = st.columns(3)
+                n_lvl = col_r1[0].number_input("等級", min_value=1, value=d['level'], key=f"lvl_{u}")
+                n_tq = col_r1[1].number_input("累積題數", min_value=0, value=d.get('total_questions', 0), key=f"tq_{u}")
+                n_mdl = col_r1[2].number_input("勳章", min_value=0, value=d['medals'], key=f"mdl_{u}")
+                
+                col_r2 = st.columns(3)
+                n_dc = col_r2[0].number_input("倒地次數", min_value=0, max_value=4, value=d.get('death_count', 0), key=f"dc_{u}")
+                new_diff = col_r2[1].selectbox("目前難度", ["簡單", "中等", "困難"], index=["簡單", "中等", "困難"].index(d.get("difficulty", "簡單")), key=f"diff_{u}")
+                new_bank = col_r2[2].selectbox("選擇題庫", ["國小", "國中", "多益"], index=["國小", "國中", "多益"].index(d.get("vocab_bank", "國小")), key=f"bank_{u}")
+                
+                if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != d.get("vocab_bank", "國小"):
+                    d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank
                     save_user_data(u, d); st.rerun()
 
                 st.markdown("#### 🔴 錯題本")
@@ -879,12 +916,14 @@ elif st.session_state.page == 'parent':
                     df = pd.read_csv(REWARD_FILE); df.drop(idx).to_csv(REWARD_FILE, index=False, encoding="utf-8-sig"); st.rerun()
     with t3:
         st.subheader("編輯單字庫 (可直接修改儲存)")
-        v_df = pd.read_csv(VOCAB_FILE) if os.path.exists(VOCAB_FILE) else pd.DataFrame(columns=["en", "zh", "hint"])
+        edit_bank = st.radio("選擇要編輯的題庫", ["國小", "國中", "多益"], horizontal=True)
+        edit_file = VOCAB_FILES[edit_bank]
+        v_df = pd.read_csv(edit_file) if os.path.exists(edit_file) else pd.DataFrame(columns=["en", "zh", "hint"])
         edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
         if st.button("💾 儲存題庫修改", type="primary"):
             if "sentence" in edited_df.columns:
                 edited_df = edited_df.drop(columns=["sentence"])
-            edited_df.to_csv(VOCAB_FILE, index=False, encoding="utf-8-sig"); st.success("題庫更新成功！")
+            edited_df.to_csv(edit_file, index=False, encoding="utf-8-sig"); st.success(f"【{edit_bank}】題庫更新成功！")
     with t4:
         st.subheader("🌟 英雄進化型態展示")
         for h_k, h_v in CHARACTERS.items():
