@@ -545,8 +545,8 @@ elif st.session_state.page == 'game':
             
             /* 🎯 畫質保證：配合高清圖源，使用 140px 黃金比例，展現最高級的圓滑質感 */
             .result-ball {{ 
-                width: 140px !important; 
-                height: 140px !important; 
+                width: 280px !important; 
+                height: 280px !important; 
                 min-width: 140px !important;
                 min-height: 140px !important;
                 object-fit: contain !important; 
