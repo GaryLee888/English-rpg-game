@@ -552,7 +552,7 @@ elif st.session_state.page == 'game':
                 object-fit: contain !important; 
                 image-rendering: auto !important; /* 啟動瀏覽器平滑抗鋸齒 */
                 filter: drop-shadow(0 0 20px {b_color}) brightness(1.1) !important; 
-                margin-bottom: -70px !important; /* 精準卡在卡片正上方一半處 (140的一半) */
+                margin-bottom: -160px !important; /* 精準卡在卡片正上方一半處 (320的一半) */
                 z-index: 50 !important; 
                 position: relative !important; 
                 animation: dropAndBounce 1s cubic-bezier(0.28, 0.84, 0.42, 1) forwards !important; 
