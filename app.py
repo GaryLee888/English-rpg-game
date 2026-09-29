@@ -477,7 +477,7 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
-  # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+ # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
@@ -492,7 +492,7 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 終極絕對置中魔法：直接設定 Fixed 綁定螢幕正中央
+        # 🌟 終極絕對置中魔法 + 暴力強制放大精靈球
         st.markdown(f"""
         <style>
             /* 隱藏預設標題與邊界，設定深色背景 */
@@ -507,7 +507,7 @@ elif st.session_state.page == 'game':
                 max-width: 100% !important;
             }}
             
-            /* 🚨 關鍵破壞：將包含【球+卡片+按鈕】的最外層容器直接釘死在畫面「正中央」 */
+            /* 將包含【球+卡片+按鈕】的最外層容器釘死在畫面「正中央」 */
             .main .block-container > div {{
                 position: fixed !important;
                 top: 50% !important;
@@ -531,29 +531,32 @@ elif st.session_state.page == 'game':
                 animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 這裡控制球的大小！已修復 object-fit 並加入 pixelated 保持放大清晰 */
+            /* 🎯 暴力破解 Streamlit 限制：強制放大精靈球 (設定 260px 超大尺寸) */
             .result-ball {{ 
-                width: 240px;  /* 球的寬度 */
-                height: 240px; /* 球的高度 */
-                object-fit: contain; 
-                image-rendering: pixelated; /* 確保寶可夢小圖放大後不會糊掉 */
-                filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); 
-                margin-bottom: -120px; /* 必須是 height 的一半的負數，才能剛好卡在一半！ */
-                z-index: 50; 
-                position: relative; 
-                animation: dropAndBounce 1.2s ease-out forwards; 
+                width: 260px !important; 
+                height: 260px !important; 
+                min-width: 260px !important; /* 防禦 Streamlit 預設縮放 */
+                min-height: 260px !important;
+                max-width: 260px !important;
+                object-fit: contain !important; 
+                image-rendering: pixelated !important; /* 確保小圖放大後保持像素銳利不模糊 */
+                filter: drop-shadow(0 0 35px {b_color}) brightness(1.2) !important; 
+                margin-bottom: -130px !important; /* 必須精準設定為 height 的一半負數 (-130px) 才能卡在一半！ */
+                z-index: 50 !important; 
+                position: relative !important; 
+                animation: dropAndBounce 1.2s ease-out forwards !important; 
             }}
             
-            /* 中獎卡片 */
+            /* 中獎卡片：配合超大精靈球，把上方 Padding 加大到 140px，避免文字被大球擋住 */
             .result-card {{ 
                 background: white; 
-                padding: 110px 20px 30px 20px; /* 上方 padding 加大，避免被變大的球擋住文字 */
+                padding: 140px 20px 30px 20px !important; 
                 border-radius: 20px; 
                 text-align: center; 
                 box-shadow: 0 0 40px {b_color}; 
                 border: 5px solid {b_color}; 
                 width: 85%; 
-                max-width: 320px; 
+                max-width: 340px; 
                 z-index: 10; 
                 position: relative; 
             }}
@@ -573,16 +576,16 @@ elif st.session_state.page == 'game':
                 display: flex; 
                 justify-content: center; 
                 width: 100%; 
-                margin-top: 20px !important;
+                margin-top: 25px !important;
             }}
-            div[data-testid="stButton"] {{ width: 100%; max-width: 320px; display: flex; justify-content: center; margin: 0; }}
+            div[data-testid="stButton"] {{ width: 100%; max-width: 340px; display: flex; justify-content: center; margin: 0; }}
             div[data-testid="stButton"] button {{ 
-                font-size: 1.1rem !important; 
+                font-size: 1.2rem !important; 
                 font-weight: bold; 
                 padding: 12px !important; 
                 background-color: #ff4d4d !important; 
                 color: white !important; 
-                border-radius: 10px !important; 
+                border-radius: 12px !important; 
                 border: 2px solid white !important;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
                 width: 100%; 
@@ -592,10 +595,10 @@ elif st.session_state.page == 'game':
         </style>
         
         <div class="result-container">
-            <img class="result-ball" src="{b_img}">
+            <img class="result-ball" src="{b_img}" style="width: 260px !important; height: 260px !important;">
             <div class="result-card">
-                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.6rem;">🎉 恭喜中獎 🎉</h1>
-                <h2 style="color: {b_color}; font-size: 1.3rem; margin: 0; padding: 15px 10px; background: #f2f2f2; border-radius: 12px; font-weight: 800; text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);">{prize['name']}</h2>
+                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.8rem;">🎉 恭喜中獎 🎉</h1>
+                <h2 style="color: {b_color}; font-size: 1.4rem; margin: 0; padding: 15px 10px; background: #f2f2f2; border-radius: 12px; font-weight: 900; text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);">{prize['name']}</h2>
             </div>
         </div>
         <script>
