@@ -460,7 +460,7 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
-   # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+  # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
@@ -475,43 +475,73 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 終極強制垂直/水平置中排版
+        # 🌟 終極絕對置中魔法：直接控制 Streamlit 底層容器
         st.markdown(f"""
         <style>
-            /* 隱藏頂部標隙並套用深色遮罩 */
+            /* 隱藏頂部標題並套用深色遮罩 */
             [data-testid="stHeader"] {{ display: none !important; }}
             [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95) !important; }}
             
-            /* 1. 徹底清除 Streamlit 預設留白，並讓區塊撐滿螢幕高度 */
+            /* 1. 徹底清除 Streamlit 預設留白，強制高度等於螢幕高度 (100vh) */
             .main .block-container {{ 
                 max-width: 100% !important; 
-                padding-top: 0 !important; 
-                padding-bottom: 0 !important; 
-                min-height: 100vh !important; 
+                padding: 0 !important; /* 殺掉把畫面往下推的隱形 padding */
+                margin: 0 !important; 
+                height: 100vh !important; /* 強制與螢幕等高 */
                 display: flex !important; 
                 flex-direction: column !important; 
-                justify-content: center !important; 
-                align-items: center !important; 
+                justify-content: center !important; /* 垂直置中 */
+                align-items: center !important; /* 水平置中 */
             }}
             
-            /* 2. 強制內層的垂直容器 (包含卡片與按鈕) 透過 margin: auto 達成絕對垂直置中 */
+            /* 2. 讓 Streamlit 包覆內容的容器也變成置中模式 */
             div[data-testid="stVerticalBlock"] {{
                 width: 100% !important;
+                height: 100% !important;
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: center !important;
-                margin: auto 0 !important; /* 這是突破 Streamlit 排版，確保上下等距的關鍵 */
-                gap: 15px !important; /* 卡片與按鈕的距離 */
+                justify-content: center !important; /* 把球、卡片、按鈕三者視為一體，完美垂直置中 */
+                gap: 15px !important; /* 控制卡片與按鈕之間的間距 */
             }}
             
-            .result-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; position: relative; z-index: 50; animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }}
+            /* 卡片與球的專屬容器 */
+            .result-container {{ 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                justify-content: center; 
+                width: 100%; 
+                position: relative; 
+                z-index: 50; 
+                animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
+            }}
             
             /* 精靈球：精準卡在白色卡片正上方交疊處 */
-            .result-ball {{ width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); margin-bottom: -75px; z-index: 50; position: relative; animation: dropAndBounce 1.2s ease-out forwards; }}
+            .result-ball {{ 
+                width: 150px; 
+                height: 150px; 
+                object-fit: contain; 
+                filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); 
+                margin-bottom: -75px; 
+                z-index: 50; 
+                position: relative; 
+                animation: dropAndBounce 1.2s ease-out forwards; 
+            }}
             
             /* 中獎卡片 */
-            .result-card {{ background: white; padding: 95px 20px 30px 20px; border-radius: 20px; text-align: center; box-shadow: 0 0 40px {b_color}; border: 5px solid {b_color}; width: 85%; max-width: 320px; z-index: 10; position: relative; }}
+            .result-card {{ 
+                background: white; 
+                padding: 95px 20px 30px 20px; 
+                border-radius: 20px; 
+                text-align: center; 
+                box-shadow: 0 0 40px {b_color}; 
+                border: 5px solid {b_color}; 
+                width: 85%; 
+                max-width: 320px; 
+                z-index: 10; 
+                position: relative; 
+            }}
             
             @keyframes dropAndBounce {{
                 0% {{ transform: translateY(-400px) scale(0.5); opacity: 0; }}
@@ -523,8 +553,13 @@ elif st.session_state.page == 'game':
             }}
             @keyframes popIn {{ 0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 100% {{ transform: scale(1) translateY(0); opacity: 1; }} }}
             
-            /* 按鈕容器的微調 */
-            div[data-testid="stVerticalBlock"] > div:has(button) {{ display: flex; justify-content: center; width: 100%; z-index: 100000; }}
+            /* 按鈕容器微調：移除額外外距，依賴上方 gap 屬性控制 */
+            div[data-testid="stVerticalBlock"] > div:has(button) {{ 
+                display: flex; 
+                justify-content: center; 
+                width: 100%; 
+                z-index: 100000; 
+            }}
             div[data-testid="stButton"] {{ width: 100%; max-width: 320px; display: flex; justify-content: center; margin: 0; }}
             div[data-testid="stButton"] button {{ 
                 font-size: 1.1rem !important; 
