@@ -95,6 +95,17 @@ def init_system():
 
 init_system()
 
+# --- 英雄成長屬性設定 ---
+def get_max_hp(level):
+    return min(10, 3 + (level // 5)) # 每升 5 級增加 1 點最大血量，最高 10 點
+
+def get_title(level):
+    if level < 3: return "🌱 新手"
+    if level < 7: return "⚔️ 見習勇者"
+    if level < 12: return "🌟 菁英騎士"
+    if level < 20: return "🔥 傳說大師"
+    return "👑 神話英雄"
+
 # --- 資料存取 API ---
 def get_admin(): return load_json(ADMIN_FILE, {})
 def save_admin(d): save_json(ADMIN_FILE, d)
@@ -104,19 +115,21 @@ def get_users(): return load_json(USERS_FILE, {})
 def save_users(d): save_json(USERS_FILE, d)
 
 def load_user_data(u_key): 
-    # 加入 gold (金幣), inventory (道具), shield_active (護盾狀態), word_stats (艾賓浩斯數據)
     d = load_json(f"data_{u_key}.json", {
         "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
         "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], 
         "death_count": 0, "vocab_bank": "國小", "word_stats": {}, "gold": 0, 
-        "inventory": {"potion": 0, "shield": 0, "magnifier": 0}, "shield_active": False
+        "inventory": {"potion": 0, "shield": 0, "magnifier": 0}, "shield_active": False,
+        "last_login_date": "", "login_streak": 0
     })
-    # 確保舊資料升級包含新欄位
+    # 欄位確保機制
     if "vocab_bank" not in d: d["vocab_bank"] = "國小"
     if "word_stats" not in d: d["word_stats"] = {}
     if "gold" not in d: d["gold"] = 0
     if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
     if "shield_active" not in d: d["shield_active"] = False
+    if "last_login_date" not in d: d["last_login_date"] = ""
+    if "login_streak" not in d: d["login_streak"] = 0
     return d
 
 def save_user_data(u_key, d): save_json(f"data_{u_key}.json", d)
@@ -133,32 +146,25 @@ def load_csv(f):
     try: return pd.read_csv(f, encoding="utf-8-sig").fillna("").to_dict('records')
     except: return []
 
-# --- 艾賓浩斯遺忘曲線：智慧配題演算法 ---
-# 複習間隔 (秒)：0秒(剛錯), 60秒(剛學), 10分鐘, 1天, 3天, 7天, 15天
+# --- 艾賓浩斯智慧配題演算法 ---
 EBBINGHAUS_INTERVALS = [0, 60, 600, 86400, 86400*3, 86400*7, 86400*15]
 
 def pick_next_question(v_list, err_log, total_q, word_stats):
     now = time.time()
-    
-    # 1. 優先處理錯題 (復仇機制保留)
     valid_err = [w for w in err_log if any(v['en'] == w for v in v_list)]
     if valid_err and (total_q >= 15 or random.random() < 0.3):
         w = random.choice(valid_err)
         for v in v_list:
             if v['en'] == w: return v
 
-    # 2. 艾賓浩斯過濾器
     due_words = []
     new_words = []
     
     for v in v_list:
         w = v['en']
-        if w not in word_stats:
-            new_words.append(v)
-        elif word_stats[w].get("next_review", 0) <= now:
-            due_words.append(v)
+        if w not in word_stats: new_words.append(v)
+        elif word_stats[w].get("next_review", 0) <= now: due_words.append(v)
             
-    # 3. 抽取邏輯：該複習的字 > 全新的字 > 隨機抽題(避免卡死)
     if due_words: return random.choice(due_words)
     if new_words: return random.choice(new_words)
     return random.choice(v_list)
@@ -186,7 +192,7 @@ st.markdown("""
 .hero-box, .monster-box { width: 40%; text-align: center; z-index: 5; }
 .vs-box { width: 20%; text-align: center; z-index: 5; align-self: center; }
 .vs-text { color: #f1c40f; font-size: 3rem; font-style: italic; text-shadow: 2px 2px 0 #000; margin:0; }
-.hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; }
+.hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; white-space: nowrap; }
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
 .shield-fx { filter: drop-shadow(0 0 15px #3498db) brightness(1.2); }
@@ -255,9 +261,28 @@ if st.session_state.page == 'login':
                         
                         if st.button("🚀 進入遊戲", type="primary", use_container_width=True):
                             if hero_pin == users[sel_hero_key].get("pin", "0000"):
+                                init_data = load_user_data(sel_hero_key)
+                                
+                                # --- 登入獎勵與簽到機制 ---
+                                today_str = str(datetime.now().date())
+                                last_date = init_data.get("last_login_date", "")
+                                if last_date != today_str:
+                                    try:
+                                        delta = (datetime.strptime(today_str, "%Y-%m-%d") - datetime.strptime(last_date, "%Y-%m-%d")).days
+                                        if delta == 1: init_data["login_streak"] = init_data.get("login_streak", 0) + 1
+                                        else: init_data["login_streak"] = 1
+                                    except: init_data["login_streak"] = 1
+                                    
+                                    bonus_gold = min(50, init_data["login_streak"] * 5)
+                                    init_data["gold"] = init_data.get("gold", 0) + bonus_gold
+                                    init_data["last_login_date"] = today_str
+                                    init_data["history"].append(f"{datetime.now().strftime('%m-%d %H:%M')} 連續登入 {init_data['login_streak']} 天！獲得 {bonus_gold} G")
+                                    save_user_data(sel_hero_key, init_data)
+                                    st.session_state.show_streak = f"🔥 連續登入 {init_data['login_streak']} 天！獲得 {bonus_gold} 枚金幣！"
+                                
                                 st.session_state.current_user_key = sel_hero_key
                                 st.session_state.current_parent = family_input
-                                st.session_state.game_data = load_user_data(sel_hero_key)
+                                st.session_state.game_data = init_data
                                 st.session_state.error_log = load_error_log(sel_hero_key)
                                 st.session_state.vk_input = ""
                                 st.session_state.play_auto_audio = True
@@ -291,7 +316,8 @@ if st.session_state.page == 'login':
                     p_db[r_acc] = {
                         "password": r_pwd,
                         "hero_limit": None,
-                        "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮"}]
+                        "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮"}],
+                        "store_prices": {"potion": 50, "shield": 100, "magnifier": 30}
                     }
                     save_parents(p_db)
                     st.success("註冊成功！請由左側登入。")
@@ -311,6 +337,11 @@ elif st.session_state.page == 'game':
     u_data = st.session_state.game_data
     parent_id = st.session_state.current_parent
     p_db = get_parents()
+    
+    # 登入提示
+    if 'show_streak' in st.session_state:
+        st.toast(st.session_state.show_streak, icon="🔥")
+        del st.session_state.show_streak
     
     diff = u_data.get('difficulty', "簡單")
     diff_multi = {"簡單": 1, "中等": 2, "困難": 3}.get(diff, 1)
@@ -333,6 +364,7 @@ elif st.session_state.page == 'game':
         v_list = load_csv(v_file) or [{"en": "hero", "zh": "英雄", "hint": ""}]
     
     r_list = p_db.get(parent_id, {}).get("rewards", [])
+    store_prices = p_db.get(parent_id, {}).get("store_prices", {"potion": 50, "shield": 100, "magnifier": 30})
     vol = 0.8
 
     if 'current_monster' not in st.session_state: st.session_state.current_monster = random.choice(MONSTERS)
@@ -343,11 +375,12 @@ elif st.session_state.page == 'game':
     if 'force_learning' not in st.session_state: st.session_state.force_learning = False
     
     c_w = st.session_state.current_vocab
+    max_hp = get_max_hp(u_data['level'])
 
     def process_ans(s):
         st.session_state.play_auto_audio = True 
         st.session_state.vk_input = ""
-        st.session_state.magnifier_active = False # 換題重置放大鏡
+        st.session_state.magnifier_active = False 
         u_data['total_questions'] += 1 
         word = c_w['en']
         
@@ -370,7 +403,7 @@ elif st.session_state.page == 'game':
                 u_data['exp'] += (10 * diff_multi) 
                 if u_data['boss_hp'] <= 0:
                     u_data['medals'] += (1 * diff_multi) 
-                    u_data['gold'] += 50 # 打贏神獸獲得 50 金幣
+                    u_data['gold'] += 50 # 打贏神獸額外獲得 50 金幣
                     u_data['is_boss_fight'] = False
                     u_data['combo'] = 0 
                     if st.session_state.current_boss['name'] not in u_data.get('trophies', []): u_data['trophies'].append(st.session_state.current_boss['name'])
@@ -385,11 +418,13 @@ elif st.session_state.page == 'game':
                 if u_data['combo'] >= 10 and not u_data.get('is_boss_fight', False):
                     u_data['is_boss_fight'] = True
                     u_data['boss_hp'] = 3
+            
+            old_level = u_data['level']
             if (u_data['exp'] // 100) + 1 > u_data['level']:
                 u_data['level'] = (u_data['exp'] // 100) + 1
-                u_data['hero_hp'] = 3
+                u_data['hero_hp'] = get_max_hp(u_data['level']) # 升級血量全滿
         else:
-            # --- 艾賓浩斯：答錯熟悉度歸零 ---
+            # --- 艾賓浩斯：答錯熟悉度下降 ---
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
             stats["level"] = max(0, stats["level"] - 1)
             stats["next_review"] = time.time()
@@ -399,7 +434,7 @@ elif st.session_state.page == 'game':
                 st.session_state.error_log.append(word)
                 save_error_log(u_key, st.session_state.error_log)
                 
-            # --- 護盾道具判定 ---
+            # --- 護盾判定 ---
             if u_data.get('shield_active', False):
                 u_data['shield_active'] = False
                 st.session_state.action_anim = 'shield_block'
@@ -414,7 +449,7 @@ elif st.session_state.page == 'game':
                         st.session_state.level_dropped = True
                     else:
                         st.session_state.level_dropped = False
-                    u_data['hero_hp'] = 3
+                    u_data['hero_hp'] = get_max_hp(u_data['level'])
                     if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
                     st.session_state.action_anim = 'dead'
                 else: st.session_state.action_anim = 'hurt'
@@ -435,21 +470,21 @@ elif st.session_state.page == 'game':
         
         cI1, cI2, cI3 = st.columns(3)
         with cI1:
-            if st.button("🧪藥水\n50G", use_container_width=True, help="回復 1 點生命值"):
-                if u_data['gold'] >= 50:
-                    u_data['gold'] -= 50; u_data['inventory']['potion'] += 1; save_user_data(u_key, u_data); st.rerun()
+            if st.button(f"🧪藥水\n{store_prices['potion']}G", use_container_width=True, help="回復 1 點生命值"):
+                if u_data['gold'] >= store_prices['potion']:
+                    u_data['gold'] -= store_prices['potion']; u_data['inventory']['potion'] += 1; save_user_data(u_key, u_data); st.rerun()
                 else: st.error("金幣不足")
             st.caption(f"持有: {u_data['inventory']['potion']}")
         with cI2:
-            if st.button("🛡️護盾\n100G", use_container_width=True, help="抵擋一次答錯傷害"):
-                if u_data['gold'] >= 100:
-                    u_data['gold'] -= 100; u_data['inventory']['shield'] += 1; save_user_data(u_key, u_data); st.rerun()
+            if st.button(f"🛡️護盾\n{store_prices['shield']}G", use_container_width=True, help="抵擋一次答錯傷害"):
+                if u_data['gold'] >= store_prices['shield']:
+                    u_data['gold'] -= store_prices['shield']; u_data['inventory']['shield'] += 1; save_user_data(u_key, u_data); st.rerun()
                 else: st.error("金幣不足")
             st.caption(f"持有: {u_data['inventory']['shield']}")
         with cI3:
-            if st.button("🔍放大鏡\n30G", use_container_width=True, help="拼寫模式顯示大量提示"):
-                if u_data['gold'] >= 30:
-                    u_data['gold'] -= 30; u_data['inventory']['magnifier'] += 1; save_user_data(u_key, u_data); st.rerun()
+            if st.button(f"🔍提示\n{store_prices['magnifier']}G", use_container_width=True, help="拼寫模式顯示大量提示"):
+                if u_data['gold'] >= store_prices['magnifier']:
+                    u_data['gold'] -= store_prices['magnifier']; u_data['inventory']['magnifier'] += 1; save_user_data(u_key, u_data); st.rerun()
                 else: st.error("金幣不足")
             st.caption(f"持有: {u_data['inventory']['magnifier']}")
             
@@ -474,9 +509,10 @@ elif st.session_state.page == 'game':
         if st.button("🚪 返回大廳", use_container_width=True): st.session_state.page = 'login'; st.rerun()
 
     # --- 頂端狀態列 ---
+    hero_title = get_title(u_data['level'])
     st.markdown(f"""
     <div class="status-bar-container">
-        <div class="status-item"><div class="status-label">👤 {hero_img_name}</div><div class="status-value">{hero_name}</div></div>
+        <div class="status-item"><div class="status-label">{hero_title}</div><div class="status-value">{hero_name}</div></div>
         <div class="status-item"><div class="status-label">🛡️ 等級</div><div class="status-value">Lv. {u_data['level']}</div></div>
         <div class="status-item"><div class="status-label">🔥 連擊</div><div class="status-value">{u_data['combo']} / 10</div></div>
         <div class="status-item"><div class="status-label">🎖️ 勳章</div><div class="status-value">{u_data['medals']}</div></div>
@@ -488,7 +524,7 @@ elif st.session_state.page == 'game':
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     if c_btn1.button(f"🧪 喝下藥水 ({u_data['inventory']['potion']})", use_container_width=True, disabled=u_data['inventory']['potion']<=0):
         u_data['inventory']['potion'] -= 1
-        u_data['hero_hp'] = min(3, u_data['hero_hp'] + 1)
+        u_data['hero_hp'] = min(max_hp, u_data['hero_hp'] + 1)
         save_user_data(u_key, u_data); st.rerun()
     if c_btn2.button(f"🛡️ 開啟護盾 ({u_data['inventory']['shield']})", use_container_width=True, disabled=u_data['inventory']['shield']<=0 or u_data.get('shield_active', False)):
         u_data['inventory']['shield'] -= 1
@@ -524,7 +560,6 @@ elif st.session_state.page == 'game':
     anim = st.session_state.action_anim
     h_s = f"width: {h_width}%; max-width: 250px; transform: scaleX(-1); image-rendering: pixelated; transition: width 0.5s;"
     
-    # 若有護盾，增加發光特效
     if u_data.get('shield_active', False): h_s += " filter: drop-shadow(0 0 15px #3498db) brightness(1.2);"
     
     m_s = "width: 100%; max-width: 180px; image-rendering: pixelated;"
@@ -561,7 +596,7 @@ elif st.session_state.page == 'game':
         </script>"""
     elif anim == 'shield_block':
         m_s += " animation: monsterDash 0.7s ease-in-out;"
-        h_s += " animation: heroDash 0.5s ease-in-out 0.2s;" # 護盾反彈
+        h_s += " animation: heroDash 0.5s ease-in-out 0.2s;"
         audio_js = f"""<script>
         let ctx = window.parent.gameAudioCtx;
         if(ctx) {{
@@ -608,7 +643,7 @@ elif st.session_state.page == 'game':
         f'<div class="arena-bg" style="{bg_s}">'
         f'{fx_html}'
         f'<div class="hero-box">'
-        f'<div class="hp-badge">{"❤️"*h_hp}{"🖤"*(3-h_hp)}</div><br>'
+        f'<div class="hp-badge">{"❤️"*h_hp}{"🖤"*(max_hp-h_hp)}</div><br>'
         f'<img src="{hero_url}" style="{h_s}">'
         f'</div>'
         f'<div class="vs-box"><h1 class="vs-text">VS</h1></div>'
@@ -743,9 +778,8 @@ elif st.session_state.page == 'game':
                 word_en = c_w['en']
                 w_len = len(word_en)
                 
-                # 放大鏡功能判斷
+                # 放大鏡道具邏輯
                 if st.session_state.magnifier_active:
-                    # 強制顯示 80% 的字母
                     reveal_count = max(1, int(w_len * 0.8))
                     indices = sorted(random.sample(range(w_len), reveal_count))
                 else:
@@ -755,7 +789,7 @@ elif st.session_state.page == 'game':
                             N = (w_len - 1) // 3 + 1
                             indices = [int(i * (w_len - 1) / (N - 1) + 0.5) for i in range(N)]
                     else:
-                        indices = [] # 困難模式預設不顯示
+                        indices = []
                         
                 hint_chars = [char if (i in indices or char in [' ', '-']) else '_' for i, char in enumerate(word_en)]
                 hint_str = " ".join(hint_chars)
@@ -878,7 +912,7 @@ elif st.session_state.page == 'parent':
                 else: st.error("錯誤")
     st.markdown("---")
     
-    t1, t2, t3 = st.tabs(["🦸 我的英雄管理", "🎁 專屬獎勵設定", "📚 自訂專屬單字庫"])
+    t1, t2, t3 = st.tabs(["🦸 我的英雄管理", "🏪 商店與獎勵設定", "📚 自訂專屬單字庫"])
     
     with t1:
         admin_cfg = get_admin()
@@ -957,7 +991,19 @@ elif st.session_state.page == 'parent':
                     if st.button(f"🗑️ 永久刪除此英雄", key=f"dl_{u_key}"): delete_user(u_key); st.rerun()
 
     with t2:
-        st.subheader("新增家庭專屬獎勵")
+        st.subheader("🛒 道具販售價格設定")
+        prices = p_data.get("store_prices", {"potion": 50, "shield": 100, "magnifier": 30})
+        c1, c2, c3 = st.columns(3)
+        new_p = c1.number_input("🧪 藥水價格 (G)", min_value=1, value=prices["potion"])
+        new_s = c2.number_input("🛡️ 護盾價格 (G)", min_value=1, value=prices["shield"])
+        new_m = c3.number_input("🔍 放大鏡價格 (G)", min_value=1, value=prices["magnifier"])
+        if st.button("💾 儲存道具價格", type="primary"):
+            p_db[p_id]["store_prices"] = {"potion": new_p, "shield": new_s, "magnifier": new_m}
+            save_parents(p_db)
+            st.success("✅ 道具物價已更新！")
+            
+        st.markdown("---")
+        st.subheader("🎁 新增家庭專屬勳章獎勵")
         with st.form("add_r"):
             n_r = st.text_input("名稱")
             n_c = st.number_input("需要勳章", min_value=1, value=1)
