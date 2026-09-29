@@ -492,7 +492,7 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 絕對置中 + 高清銳利化圖標渲染排版
+        # 🌟 絕對置中 + 高清平滑抗鋸齒渲染排版（呈現如三獎般的高質量滑順感）
         st.markdown(f"""
         <style>
             /* 隱藏預設標題與邊界，設定深色背景 */
@@ -531,7 +531,7 @@ elif st.session_state.page == 'game':
                 animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 高清銳利大球設定：使用 crisp-edges 保持邊緣乾淨清晰、去除模糊感 */
+            /* 🎯 高清平滑大球設定：使用 auto 讓瀏覽器進行平滑抗鋸齒縮放，告別粗糙像素 */
             .result-ball {{ 
                 width: 240px !important; 
                 height: 240px !important; 
@@ -539,9 +539,8 @@ elif st.session_state.page == 'game':
                 min-height: 240px !important;
                 max-width: 240px !important;
                 object-fit: contain !important; 
-                image-rendering: -webkit-optimize-contrast !important;
-                image-rendering: crisp-edges !important; 
-                filter: drop-shadow(0 0 30px {b_color}) brightness(1.2) contrast(1.1) !important; 
+                image-rendering: auto !important; /* 啟用瀏覽器平滑過濾與抗鋸齒，呈現高級質感 */
+                filter: drop-shadow(0 0 30px {b_color}) brightness(1.15) !important; 
                 margin-bottom: -120px !important; /* 精準卡在卡片正上方一半 */
                 z-index: 50 !important; 
                 position: relative !important; 
