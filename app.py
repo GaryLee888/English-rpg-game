@@ -1,7 +1,6 @@
 import os
 import sys
 import subprocess
-import json
 import random
 import time
 from datetime import datetime
@@ -45,7 +44,6 @@ if not firebase_admin._apps:
     try:
         cert_dict = dict(st.secrets["firebase"])
         db_url = cert_dict.pop("databaseURL")
-        # 修復私鑰的換行字元問題
         cert_dict["private_key"] = cert_dict["private_key"].replace('\\n', '\n')
         
         cred = credentials.Certificate(cert_dict)
@@ -133,7 +131,7 @@ MONSTER_DATA = [
 MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in MONSTER_DATA]
 
 # ==========================================
-# ☁️ 核心 API (替換為 Firebase Realtime DB)
+# ☁️ 核心 API (Firebase Realtime DB)
 # ==========================================
 def get_admin(): return db.reference("system/admin").get() or {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3}
 def save_admin(d): db.reference("system/admin").set(d)
@@ -258,6 +256,8 @@ st.markdown("""
 .hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; white-space: nowrap; }
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
+.item-card { background: #fdfefe; border: 2px solid #bdc3c7; border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;}
+.item-title { font-weight: bold; color: #2c3e50; margin-bottom: 8px; font-size: 1.1rem;}
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
@@ -959,7 +959,6 @@ elif st.session_state.page == 'game':
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
                 
-                # 將輸入框改為唯讀的文字顯示區，避免跳出原生鍵盤
                 st.markdown(f"""
                 <div style="background-color: #f8f9fa; border: 2px solid #bdc3c7; border-radius: 8px; padding: 10px; font-size: 1.5rem; text-align: center; letter-spacing: 3px; font-family: monospace; min-height: 50px; margin-bottom: 15px;" id="display_input">
                     {st.session_state.text_input_field}
@@ -1042,7 +1041,6 @@ elif st.session_state.page == 'game':
                 """
                 st.components.v1.html(kb_html, height=250)
                 
-                # 用一個隱藏的 text_input 來接收 JS 傳遞的最終答案
                 st.text_input("hidden_input", key="text_input_field", label_visibility="collapsed", disabled=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -1332,13 +1330,13 @@ elif st.session_state.page == 'parent':
             fb_hint = st.text_input("正確提示 (Hint)")
             if st.form_submit_button("送出審核"):
                 if fb_en.strip() and fb_zh.strip():
-                    fbs = load_json(FEEDBACK_FILE, [])
+                    fbs = db.reference("feedbacks").get() or []
                     fbs.append({
                         "id": str(int(time.time()*1000)), "p_id": p_id, "bank": fb_bank,
                         "en": fb_en.strip(), "zh": fb_zh.strip(), "hint": fb_hint.strip(),
                         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
-                    save_json(FEEDBACK_FILE, fbs)
+                    db.reference("feedbacks").set(fbs)
                     st.success("✅ 回報已送出！非常感謝您的協助！")
                 else: st.error("英文與中文欄位不可為空！")
 
@@ -1395,7 +1393,7 @@ elif st.session_state.page == 'admin':
 
     with t2:
         st.subheader("📋 官方字庫回饋審核")
-        fbs = load_json(FEEDBACK_FILE, [])
+        fbs = db.reference("feedbacks").get() or []
         if not fbs: st.info("目前沒有待審核的回饋單。")
         for fb in fbs:
             with st.container():
@@ -1419,12 +1417,12 @@ elif st.session_state.page == 'admin':
                     save_vocab_db(bank_key, df)
                     
                     fbs = [f for f in fbs if f['id'] != fb['id']]
-                    save_json(FEEDBACK_FILE, fbs)
+                    db.reference("feedbacks").set(fbs)
                     st.success("✅ 審核通過，官方字庫已更新！")
                     st.rerun()
                 if c_btn2.button("❌ 拒絕", key=f"fb_rej_{fb['id']}"):
                     fbs = [f for f in fbs if f['id'] != fb['id']]
-                    save_json(FEEDBACK_FILE, fbs)
+                    db.reference("feedbacks").set(fbs)
                     st.rerun()
 
     with t3:
