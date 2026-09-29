@@ -278,7 +278,7 @@ st.markdown("""
 .dash-val { font-size: 1.2rem; font-weight: 900; }
 .val-hp { color: #ef4444; } .val-gold { color: #facc15; } .val-medal { color: #38bdf8; } .val-lvl { color: #a78bfa; }
 
-/* 🎯 戰鬥舞台 */
+/* 🎯 戰鬥舞台完美置中校正 */
 .arena-bg { position: relative; display: flex; justify-content: center; align-items: flex-end; padding: 30px 10px 20px 10px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 15px 0; min-height: 250px; overflow: hidden; gap: 20px;}
 .hero-box, .monster-box { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 35%; max-width: 160px; z-index: 5; }
 .vs-box { width: 15%; text-align: center; z-index: 5; align-self: center; }
@@ -290,10 +290,6 @@ st.markdown("""
 /* 🛍️ 道具店三小格強制同行 */
 div[data-testid="column"]:nth-child(1), div[data-testid="column"]:nth-child(2), div[data-testid="column"]:nth-child(3) { width: 33.33% !important; flex: 1 1 33.33% !important; min-width: 30% !important; }
 div[data-testid="column"] button { height: 55px; padding: 0 !important; font-size: 0.95rem !important; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: pre-line; }
-
-/* 🌟 徹底隱藏干擾按鈕與輸入框 */
-.hide-native-input { display: none !important; position: absolute; opacity: 0; pointer-events: none; }
-.hide-native-input div[data-testid="stTextInput"], .hide-native-input button, div[data-testid="stVerticalBlock"] > div:has(.hide-native-input) { display: none !important; height: 0; width: 0; margin: 0; padding: 0; }
 
 /* 單字卡與圖鑑 */
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
@@ -458,7 +454,6 @@ elif st.session_state.page == 'game':
     p_db = get_parents()
     admin_cfg = get_admin()
     
-    # 讀取全域與家庭專屬設定
     p_info = p_db.get(parent_id, {})
     rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
@@ -485,13 +480,13 @@ elif st.session_state.page == 'game':
             [data-testid="stAppViewContainer"] {{ background: rgba(0,0,0,0.85); }}
             .block-container {{ max-width: 100%; padding-top: 5vh; text-align: center; overflow: hidden; }}
             
-            /* 巨球彈跳動畫與精準定位 */
+            /* 🌟 巨球彈跳動畫與精準定位 */
             @keyframes dropAndBounce {{
                 0% {{ transform: translateY(-300px) scale(0.5); opacity: 0; }}
                 40% {{ transform: translateY(20px) scale(1.1); opacity: 1; }}
                 60% {{ transform: translateY(-30px) scale(1); }}
                 80% {{ transform: translateY(10px) scale(1); }}
-                100% {{ transform: translateY(10px) scale(1.1); filter: drop-shadow(0 0 40px {b_color}) brightness(1.2); }}
+                100% {{ transform: translateY(25px) scale(1.1); filter: drop-shadow(0 0 40px {b_color}) brightness(1.2); }}
             }}
             /* 恭喜中獎卡片 */
             @keyframes popIn {{ 0% {{ transform: scale(0); opacity: 0; }} 80% {{ transform: scale(1.05); opacity: 1; }} 100% {{ transform: scale(1); opacity: 1; }} }}
@@ -504,7 +499,7 @@ elif st.session_state.page == 'game':
             <img src="{b_img}" style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover;">
         </div>
         
-        <div style="background: white; padding: 35px 20px 25px 20px; border-radius: 20px; text-align: center; margin: 0 auto; box-shadow: 0 0 40px {b_color}; border: 6px solid {b_color}; animation: popIn 0.5s ease-out 1.2s both; width: 90%; max-width: 400px; position: relative; z-index: 10;">
+        <div style="background: white; padding: 45px 20px 25px 20px; border-radius: 20px; text-align: center; margin: 0 auto; box-shadow: 0 0 40px {b_color}; border: 6px solid {b_color}; animation: popIn 0.5s ease-out 1.2s both; width: 90%; max-width: 400px; position: relative; z-index: 10;">
             <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 2rem;">🎉 恭喜中獎 🎉</h1>
             <h2 style="color: {b_color}; font-size: 1.5rem; text-shadow: 1px 1px 0px #000; margin: 0; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 10px;">{prize['name']}</h2>
         </div>
@@ -572,7 +567,6 @@ elif st.session_state.page == 'game':
     c_w = st.session_state.current_vocab
     max_hp = get_max_hp(u_data['level'])
 
-    # --- ⚡ 零延遲回呼函數 ---
     def process_ans(s):
         st.session_state.play_auto_audio = True 
         st.session_state.magnifier_active = False 
@@ -740,7 +734,7 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣與庫存皆不足！")
 
-    # --- 🎰 經典擬真幸運扭蛋機 ---
+    # --- 🎰 經典擬真幸運扭蛋機 (完美居中與無干擾按鈕) ---
     with st.expander("🎰 幸運扭蛋機 (花費金幣抽大獎)", expanded=False):
         gacha_html = f"""
         <div class="gacha-wrapper">
@@ -769,6 +763,17 @@ elif st.session_state.page == 'game':
             </div>
         </div>
         <script>
+            // 🌟 強制隱藏Streamlit產生的扭蛋按鈕 (精準防護)
+            setTimeout(() => {{
+                const btns = window.parent.document.querySelectorAll('button');
+                for (let b of btns) {{
+                    if(b.innerText.includes('hidden_gacha_trigger')) {{
+                        b.style.display = 'none';
+                        if(b.parentElement) b.parentElement.style.display = 'none';
+                    }}
+                }}
+            }}, 50);
+
             document.getElementById('gacha-knob').onclick = function() {{
                 this.style.transform = 'rotate(360deg)';
                 let ctx = window.parent.gameAudioCtx;
@@ -790,6 +795,7 @@ elif st.session_state.page == 'game':
                             break;
                         }}
                     }}
+                    setTimeout(() => {{ document.getElementById('gacha-knob').style.transform = 'rotate(0deg)'; }}, 500);
                 }}, 600);
             }};
         </script>
