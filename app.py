@@ -151,7 +151,7 @@ DEFAULT_GACHA = {
 }
 DEFAULT_STORE = {"potion": 200, "shield": 250, "magnifier": 100}
 
-# 🔮 精靈球圖片 URL 映射
+# 🔮 精靈球圖片 URL 映射 (扭蛋機專用)
 BALL_IMAGES = {
     "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png", # 究極球
     "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png", # 豪華球
@@ -173,7 +173,6 @@ def get_admin():
         "gacha": cfg.get("gacha", DEFAULT_GACHA)
     }
 def save_admin(d): db.reference("system/admin").set(d)
-
 def get_parents(): return db.reference("parents").get() or {}
 def save_parents(d): db.reference("parents").set(d)
 def get_users(): return db.reference("users").get() or {}
@@ -279,7 +278,7 @@ st.markdown("""
 .dash-val { font-size: 1.2rem; font-weight: 900; }
 .val-hp { color: #ef4444; } .val-gold { color: #facc15; } .val-medal { color: #38bdf8; } .val-lvl { color: #a78bfa; }
 
-/* 🎯 戰鬥舞台完美置中校正 */
+/* 🎯 戰鬥舞台 */
 .arena-bg { position: relative; display: flex; justify-content: center; align-items: flex-end; padding: 30px 10px 20px 10px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 15px 0; min-height: 250px; overflow: hidden; gap: 20px;}
 .hero-box, .monster-box { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 35%; max-width: 160px; z-index: 5; }
 .vs-box { width: 15%; text-align: center; z-index: 5; align-self: center; }
@@ -305,7 +304,7 @@ div[data-testid="column"] button { height: 55px; padding: 0 !important; font-siz
 .dex-item img:hover { transform: scale(1.2); }
 .dex-name { font-size: 0.75rem; color: #555; margin-top: 5px; font-weight: bold; }
 
-/* 🎰 扭蛋機完美置中 */
+/* 🎰 扭蛋機完美置中與動畫 */
 .gacha-wrapper { display: flex; justify-content: center; align-items: center; padding: 15px 0; width: 100%; }
 .gacha-machine { background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; width: 280px; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative; margin: 0 auto; }
 .gacha-glass { background-color: #f1f2f6; border: 4px solid #2f3542; border-radius: 15px; height: 160px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }
@@ -459,6 +458,7 @@ elif st.session_state.page == 'game':
     p_db = get_parents()
     admin_cfg = get_admin()
     
+    # 讀取全域與家庭專屬設定
     p_info = p_db.get(parent_id, {})
     rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
@@ -572,6 +572,7 @@ elif st.session_state.page == 'game':
     c_w = st.session_state.current_vocab
     max_hp = get_max_hp(u_data['level'])
 
+    # --- ⚡ 零延遲回呼函數 ---
     def process_ans(s):
         st.session_state.play_auto_audio = True 
         st.session_state.magnifier_active = False 
@@ -695,7 +696,7 @@ elif st.session_state.page == 'game':
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
     inv_p = u_data['inventory'].get('potion', 0)
-    btn1_lbl = f"🧪 藥水 ({inv_p})\n免費發動" if inv_p > 0 else f"🧪 購買藥水\n{store_prices['potion']}G"
+    btn1_lbl = f"🧪 藥水 ({inv_p})\n免費點擊發動" if inv_p > 0 else f"🧪 購買藥水\n{store_prices['potion']}G"
     if c_btn1.button(btn1_lbl, use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
         if inv_p > 0:
             u_data['inventory']['potion'] -= 1
@@ -710,7 +711,7 @@ elif st.session_state.page == 'game':
         else: st.error("金幣與庫存皆不足！")
             
     inv_s = u_data['inventory'].get('shield', 0)
-    btn2_lbl = f"🛡️ 護盾 ({inv_s})\n免費發動" if inv_s > 0 else f"🛡️ 購買護盾\n{store_prices['shield']}G"
+    btn2_lbl = f"🛡️ 護盾 ({inv_s})\n免費點擊發動" if inv_s > 0 else f"🛡️ 購買護盾\n{store_prices['shield']}G"
     if c_btn2.button(btn2_lbl, use_container_width=True, disabled=u_data.get('shield_active', False)):
         if inv_s > 0:
             u_data['inventory']['shield'] -= 1
@@ -723,7 +724,7 @@ elif st.session_state.page == 'game':
         else: st.error("金幣與庫存皆不足！")
             
     inv_m = u_data['inventory'].get('magnifier', 0)
-    btn3_lbl = f"🔍 放大鏡 ({inv_m})\n免費發動" if inv_m > 0 else f"🔍 購買放大鏡\n{store_prices['magnifier']}G"
+    btn3_lbl = f"🔍 放大鏡 ({inv_m})\n免費點擊發動" if inv_m > 0 else f"🔍 購買放大鏡\n{store_prices['magnifier']}G"
     if c_btn3.button(btn3_lbl, use_container_width=True, disabled=st.session_state.magnifier_active):
         if inv_m > 0 or u_data['gold'] >= store_prices['magnifier']:
             if inv_m > 0: u_data['inventory']['magnifier'] -= 1
@@ -739,7 +740,7 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣與庫存皆不足！")
 
-    # --- 🎰 經典擬真幸運扭蛋機 (完美居中與無干擾按鈕) ---
+    # --- 🎰 經典擬真幸運扭蛋機 ---
     with st.expander("🎰 幸運扭蛋機 (花費金幣抽大獎)", expanded=False):
         gacha_html = f"""
         <div class="gacha-wrapper">
