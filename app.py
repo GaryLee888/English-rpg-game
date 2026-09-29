@@ -151,14 +151,14 @@ DEFAULT_GACHA = {
 }
 DEFAULT_STORE = {"potion": 200, "shield": 250, "magnifier": 100}
 
-# 🌟 最穩定之寶可夢官方精靈球圖庫 (不會破圖)
+# 🌟 官方 3D HD 高清精靈球圖片 (Serebii PGL 渲染圖庫，絕對清晰)
 BALL_IMAGES = {
-    "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png", # 究極球
-    "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png", # 豪華球
-    "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png", # 大師球
-    "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",  # 高級球
-    "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",  # 超級球
-    "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"    # 精靈球
+    "特獎": "https://www.serebii.net/itemdex/sprites/pgl/beastball.png",   # 究極球
+    "一獎": "https://www.serebii.net/itemdex/sprites/pgl/luxuryball.png",  # 豪華球
+    "二獎": "https://www.serebii.net/itemdex/sprites/pgl/masterball.png",  # 大師球
+    "三獎": "https://www.serebii.net/itemdex/sprites/pgl/ultraball.png",   # 高級球
+    "四獎": "https://www.serebii.net/itemdex/sprites/pgl/greatball.png",   # 超級球
+    "五獎": "https://www.serebii.net/itemdex/sprites/pgl/pokeball.png"     # 精靈球
 }
 
 def get_admin(): 
@@ -260,15 +260,18 @@ def generate_options(c_v, f_list):
 
 st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
+# 🎨 深度排版與佈局 CSS 優化
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 .block-container { max-width: 900px; padding-top: 1rem; padding-bottom: 2rem; }
 
+/* 大廳標題 */
 .poke-title-box { background-color: #ffcb05; padding: 20px; border-radius: 15px; border: 5px solid #3c5aa6; text-align: center; margin-bottom: 25px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
 .poke-title { color: #3c5aa6; margin: 0; font-size: 3.2rem; font-weight: 900; letter-spacing: 2px; text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff, 2px -2px 0px #fff, -2px 2px 0px #fff; }
 .poke-subtitle { color: #e74c3c; font-weight: bold; font-size: 1.2rem; margin-top: 10px; background: white; display: inline-block; padding: 5px 20px; border-radius: 20px; border: 2px solid #e74c3c;}
 
+/* 🎛️ 絕美深色儀表板 */
 .dash-board { display: flex; justify-content: space-between; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 12px 15px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 6px 12px rgba(0,0,0,0.2); border: 2px solid #334155; align-items: center; }
 .dash-item { text-align: center; flex: 1; border-right: 1px solid #334155; }
 .dash-item:last-child { border-right: none; }
@@ -276,6 +279,7 @@ st.markdown("""
 .dash-val { font-size: 1.2rem; font-weight: 900; }
 .val-hp { color: #ef4444; } .val-gold { color: #facc15; } .val-medal { color: #38bdf8; } .val-lvl { color: #a78bfa; }
 
+/* 🎯 戰鬥舞台 */
 .arena-bg { position: relative; display: flex; justify-content: center; align-items: flex-end; padding: 30px 10px 20px 10px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 15px 0; min-height: 250px; overflow: hidden; gap: 20px;}
 .hero-box, .monster-box { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 35%; max-width: 160px; z-index: 5; }
 .vs-box { width: 15%; text-align: center; z-index: 5; align-self: center; }
@@ -284,6 +288,7 @@ st.markdown("""
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:8px; text-shadow: 1px 1px 3px #000; font-size: 1.1rem; background: rgba(0,0,0,0.4); padding: 2px 10px; border-radius: 10px;}
 
+/* 🛍️ 道具店三小格強制同行 */
 div[data-testid="column"]:nth-child(1), div[data-testid="column"]:nth-child(2), div[data-testid="column"]:nth-child(3) { width: 33.33% !important; flex: 1 1 33.33% !important; min-width: 30% !important; }
 div[data-testid="column"] button { height: 55px; padding: 0 !important; font-size: 0.95rem !important; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: pre-line; }
 
@@ -305,7 +310,7 @@ div:has(> button:contains("抽獎觸發中")), button:contains("抽獎觸發中"
 .gacha-wrapper { display: flex; justify-content: center; align-items: center; padding: 15px 0; width: 100%; }
 .gacha-machine { background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; width: 280px; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative; margin: 0 auto; }
 .gacha-glass { background-color: #f1f2f6; border: 4px solid #2f3542; border-radius: 15px; height: 160px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }
-.gacha-ball { position: absolute; width: 45px; height: 45px; background-size: cover; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); image-rendering: pixelated; }
+.gacha-ball { position: absolute; width: 45px; height: 45px; background-size: contain; background-repeat: no-repeat; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
 
 @media screen and (max-width: 600px) {
     .poke-title { font-size: 2rem; }
@@ -332,7 +337,7 @@ div:has(> button:contains("抽獎觸發中")), button:contains("抽獎觸發中"
 .m-fx { position: absolute; top: 40%; font-size: 60px; animation: mBall 0.7s ease-in-out forwards; z-index: 10; }
 </style>
 
-<!-- 🧹 全域終極隱藏腳本：只要偵測到「抽獎觸發中」按鈕，0.001秒內連同阿公級外框強制抹除 -->
+<!-- 🧹 全域終極隱藏腳本：只要偵測到「抽獎觸發中」按鈕，0.01秒內連同阿公級外框強制抹除 -->
 <script>
     setInterval(() => {
         const btns = window.parent.document.querySelectorAll('button');
@@ -341,13 +346,21 @@ div:has(> button:contains("抽獎觸發中")), button:contains("抽獎觸發中"
                 b.style.display = 'none';
                 let container1 = b.closest('div[data-testid="stElementContainer"]');
                 if(container1) {
-                    container1.style.display = 'none';
+                    container1.style.position = 'absolute';
+                    container1.style.top = '-9999px';
+                    container1.style.opacity = '0';
+                    container1.style.pointerEvents = 'none';
                     let container2 = container1.parentElement;
-                    if(container2 && container2.children.length === 1) container2.style.display = 'none';
+                    if(container2 && container2.children.length === 1) {
+                        container2.style.position = 'absolute';
+                        container2.style.top = '-9999px';
+                        container2.style.opacity = '0';
+                        container2.style.pointerEvents = 'none';
+                    }
                 }
             }
         });
-    }, 50);
+    }, 10);
 </script>
 """, unsafe_allow_html=True)
 
@@ -473,7 +486,6 @@ elif st.session_state.page == 'game':
     p_db = get_parents()
     admin_cfg = get_admin()
     
-    # 讀取全域與家庭專屬設定
     p_info = p_db.get(parent_id, {})
     rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
@@ -499,7 +511,8 @@ elif st.session_state.page == 'game':
         <style>
             [data-testid="stHeader"] {{ display: none; }}
             [data-testid="stAppViewContainer"] {{ background: rgba(0,0,0,0.85); }}
-            .block-container {{ max-width: 100%; padding-top: 5vh; text-align: center; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; }}
+            /* 強制頁面容器佔滿視窗並使用 Flexbox 絕對置中 */
+            .block-container {{ max-width: 100%; padding-top: 0 !important; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }}
             
             /* 🌟 HD巨球彈跳動畫與精準定位 */
             @keyframes dropAndBounce {{
@@ -508,18 +521,19 @@ elif st.session_state.page == 'game':
                 70% {{ transform: translateY(-40px) scale(1); }}
                 85% {{ transform: translateY(0px) scale(1); }}
                 95% {{ transform: translateY(-15px) scale(1); }}
-                100% {{ transform: translateY(0px) scale(1.2); filter: drop-shadow(0 0 40px {b_color}) brightness(1.2); }}
+                100% {{ transform: translateY(10px) scale(1.2); filter: drop-shadow(0 0 40px {b_color}) brightness(1.2); }}
             }}
             /* 恭喜中獎卡片 */
             @keyframes popIn {{ 0% {{ transform: scale(0); opacity: 0; }} 80% {{ transform: scale(1.05); opacity: 1; }} 100% {{ transform: scale(1); opacity: 1; }} }}
             
-            div[data-testid="stButton"] {{ position: relative; z-index: 100000; display: flex; justify-content: center; margin-top: 2vh; width: 100%; max-width: 400px; }}
-            div[data-testid="stButton"] button {{ font-size: 1.2rem !important; font-weight: bold; padding: 15px 30px !important; box-shadow: 0 0 20px rgba(255,255,255,0.3); border: 2px solid white; }}
+            /* 將按鈕強制置於最下方 */
+            div[data-testid="stButton"] {{ position: fixed !important; bottom: 10vh !important; left: 50% !important; transform: translateX(-50%) !important; z-index: 100000 !important; margin: 0 !important; width: 80% !important; max-width: 400px !important; }}
+            div[data-testid="stButton"] button {{ font-size: 1.2rem !important; font-weight: bold; padding: 15px 30px !important; box-shadow: 0 0 20px rgba(255,255,255,0.3); border: 2px solid white; width: 100%; }}
         </style>
         
-        <div style="position: relative; z-index: 50; margin: 0 auto; width: 100%; max-width: 400px; text-align: center;">
-            <img src="{b_img}" style="width: 250px; height: 250px; object-fit: contain; image-rendering: pixelated; margin-bottom: -50px; position: relative; z-index: 50; animation: dropAndBounce 1.2s ease-out forwards;">
-            <div style="background: white; padding: 60px 20px 25px 20px; border-radius: 20px; text-align: center; margin: 0 auto; box-shadow: 0 0 40px {b_color}; border: 6px solid {b_color}; animation: popIn 0.5s ease-out 1.2s both; position: relative; z-index: 10;">
+        <div style="position: relative; z-index: 50; margin: 0 auto; width: 100%; max-width: 400px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <img src="{b_img}" style="width: 200px; height: 200px; object-fit: contain; margin-bottom: -40px; position: relative; z-index: 50; animation: dropAndBounce 1.2s ease-out forwards;">
+            <div style="background: white; padding: 50px 20px 25px 20px; border-radius: 20px; text-align: center; margin: 0 auto; box-shadow: 0 0 40px {b_color}; border: 6px solid {b_color}; animation: popIn 0.5s ease-out 1.2s both; width: 90%; max-width: 400px; position: relative; z-index: 10;">
                 <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 2rem;">🎉 恭喜中獎 🎉</h1>
                 <h2 style="color: {b_color}; font-size: 1.5rem; text-shadow: 1px 1px 0px #000; margin: 0; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 10px;">{prize['name']}</h2>
             </div>
@@ -542,12 +556,9 @@ elif st.session_state.page == 'game':
         </script>
         """, unsafe_allow_html=True)
         
-        # 按鈕容器置中對齊
-        st.markdown('<div style="display:flex; justify-content:center; width:100%;">', unsafe_allow_html=True)
         if st.button("🎁 點擊收下獎勵", type="primary"):
             st.session_state.show_gacha_result = False
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
         st.stop()
     # ===============================================================
 
@@ -589,7 +600,6 @@ elif st.session_state.page == 'game':
     c_w = st.session_state.current_vocab
     max_hp = get_max_hp(u_data['level'])
 
-    # --- ⚡ 零延遲回呼函數 ---
     def process_ans(s):
         st.session_state.play_auto_audio = True 
         st.session_state.magnifier_active = False 
@@ -799,7 +809,7 @@ elif st.session_state.page == 'game':
                     osc.start(now); osc.stop(now + 0.5);
                 }}
                 setTimeout(() => {{
-                    // 尋找隱藏的抽獎按鈕並點擊
+                    // 尋找隱藏的按鈕並點擊
                     const btns = window.parent.document.querySelectorAll('button');
                     for (let b of btns) {{
                         if(b.innerText.includes('抽獎觸發中')) {{
@@ -814,8 +824,7 @@ elif st.session_state.page == 'game':
         """
         st.markdown(gacha_html, unsafe_allow_html=True)
         
-        # 徹底隱藏的觸發按鈕，配合上方 CSS 與 JS 全面滅殺
-        st.markdown('<div class="gacha-hide-container">', unsafe_allow_html=True)
+        # 徹底隱藏的觸發按鈕
         if st.button("抽獎觸發中", key="hidden_gacha_btn"):
             if u_data['gold'] >= gacha_cfg['cost']:
                 u_data['gold'] -= gacha_cfg['cost']
@@ -838,7 +847,6 @@ elif st.session_state.page == 'game':
                 st.rerun()
             else:
                 st.error("金幣不足！快去打怪賺錢吧！")
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # --- 🎁 家族獎勵兌換系統 ---
     with st.expander("🎁 家族獎勵兌換與紀錄 (花費勳章)", expanded=False):
