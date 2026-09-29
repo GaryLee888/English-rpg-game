@@ -134,7 +134,7 @@ MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprit
 # ==========================================
 # ☁️ 核心 API (Firebase Realtime DB) 與預設數值
 # ==========================================
-# 依照設定圖的數值全面更新
+# 依照設定圖的數值全面校正更新
 DEFAULT_RATES = {
     "normal_exp": 5, "normal_gold": 10,
     "boss_exp": 10, "boss_gold": 50, "boss_medal": 1
@@ -258,7 +258,6 @@ def generate_options(c_v, f_list):
 # --- 網頁設定與寶可夢主題 CSS ---
 st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
-# 🎨 深度排版與佈局 CSS 優化
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
@@ -293,7 +292,9 @@ div[data-testid="column"]:nth-child(3) { width: 33.33% !important; flex: 1 1 33.
 div[data-testid="column"] button { height: 55px; padding: 0 !important; font-size: 0.95rem !important; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: pre-line; }
 
 /* 隱藏原生輸入框防干擾 */
-.hide-native-input div[data-testid="stTextInput"] { display: none !important; }
+.hide-native-input div[data-testid="stTextInput"], .hide-native-input button { 
+    position: absolute; opacity: 0; height: 0; width: 0; overflow: hidden; pointer-events: none;
+}
 
 /* 單字卡與圖鑑 */
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
@@ -327,11 +328,7 @@ div[data-testid="column"] button { height: 55px; padding: 0 !important; font-siz
 @keyframes mBall { 0% { left: 20%; transform: scale(0.5); opacity: 0; } 30% { opacity: 1; transform: scale(1.5); } 70% { left: 70%; transform: scale(2); opacity: 1; } 100% { left: 80%; transform: scale(0.5); opacity: 0; } }
 @keyframes heroDead { 0% { transform: scaleX(-1) rotate(0deg); filter: grayscale(0%); } 100% { transform: scaleX(-1) rotate(90deg) translateY(20px); filter: grayscale(100%); } }
 @keyframes healFx { 0% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } 50% { filter: brightness(1.5) drop-shadow(0 0 20px #2ecc71); } 100% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } }
-@keyframes gachaPop { 0% { transform: scale(0.1) rotate(0deg); opacity: 0; } 50% { transform: scale(1.5) rotate(180deg); opacity: 1; } 100% { transform: scale(1) rotate(360deg); opacity: 0; } }
-@keyframes gachaShake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) rotate(-2deg); } 20%, 40%, 60%, 80% { transform: translateX(5px) rotate(2deg); } }
-
 .m-fx { position: absolute; top: 40%; font-size: 60px; animation: mBall 0.7s ease-in-out forwards; z-index: 10; }
-.gacha-fx { position: absolute; top: -100px; left: 50%; transform: translateX(-50%); font-size: 80px; animation: gachaPop 1.5s ease-out forwards; z-index: 20; text-shadow: 0 0 20px #f1c40f;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -463,6 +460,66 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
+    # ==================== 🎁 全螢幕扭蛋結果視窗 ====================
+    if st.session_state.get('show_gacha_result', False):
+        prize = st.session_state.gacha_result_prize
+        color_map = { "特獎": ("#f1c40f", "🟡"), "一獎": ("#e74c3c", "🔴"), "二獎": ("#3498db", "🔵"), "三獎": ("#2ecc71", "🟢"), "四獎": ("#9b59b6", "🟣"), "五獎": ("#bdc3c7", "⚪") }
+        b_color, b_emoji = "#bdc3c7", "⚪"
+        for k, v in color_map.items():
+            if k in prize['name']: b_color, b_emoji = v; break
+                
+        st.markdown(f"""
+        <style>
+            [data-testid="stHeader"] {{ display: none; }}
+            [data-testid="stAppViewContainer"] {{ background: rgba(0,0,0,0.85); }}
+            .block-container {{ max-width: 100%; padding-top: 5vh; text-align: center; }}
+            @keyframes dropAndShake {{
+                0% {{ transform: translateY(-200px) rotate(0deg) scale(0.5); opacity: 0; }}
+                20% {{ transform: translateY(0) rotate(15deg) scale(1.2); opacity: 1; }}
+                30% {{ transform: translateY(-20px) rotate(-10deg) scale(1); }}
+                40% {{ transform: translateY(0) rotate(10deg) scale(1); }}
+                50% {{ transform: translateY(-10px) rotate(-5deg) scale(1); }}
+                60% {{ transform: translateY(0) rotate(0deg) scale(1); }}
+                80% {{ transform: translateY(0) rotate(0deg) scale(1); filter: brightness(1); }}
+                100% {{ transform: translateY(0) rotate(0deg) scale(1.5); filter: brightness(1.2) drop-shadow(0 0 30px {b_color}); }}
+            }}
+            @keyframes popIn {{ 0% {{ transform: scale(0); opacity: 0; }} 80% {{ transform: scale(1.1); opacity: 1; }} 100% {{ transform: scale(1); opacity: 1; }} }}
+            div[data-testid="stButton"] {{ position: relative; z-index: 100000; display: flex; justify-content: center; margin-top: 5vh; }}
+            div[data-testid="stButton"] button {{ font-size: 1.2rem !important; font-weight: bold; padding: 15px 30px !important; box-shadow: 0 0 20px rgba(255,255,255,0.3); border: 2px solid white; }}
+        </style>
+        <div style="font-size: 120px; animation: dropAndShake 1.5s ease-out forwards; text-shadow: 0 0 20px {b_color}; margin-top: 50px;">
+            {b_emoji}
+        </div>
+        <div style="background: white; padding: 30px 20px; border-radius: 20px; text-align: center; margin: 60px auto 20px auto; box-shadow: 0 0 40px {b_color}; border: 6px solid {b_color}; animation: popIn 0.5s ease-out 1.5s both; width: 90%; max-width: 400px;">
+            <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 2rem;">🎉 恭喜中獎 🎉</h1>
+            <h2 style="color: {b_color}; font-size: 1.6rem; text-shadow: 1px 1px 0px #000; margin: 0; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 10px;">{prize['name']}</h2>
+        </div>
+        <script>
+            setTimeout(() => {{
+                let ctx = window.parent.gameAudioCtx;
+                if(ctx) {{
+                    if(ctx.state === 'suspended') ctx.resume();
+                    let osc = ctx.createOscillator(); let gain = ctx.createGain();
+                    osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
+                    let now = ctx.currentTime;
+                    osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554, now + 0.1);
+                    osc.frequency.setValueAtTime(659, now + 0.2); osc.frequency.setValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.5, now+0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+                    osc.start(now); osc.stop(now + 1.5);
+                }}
+            }}, 1500);
+        </script>
+        """, unsafe_allow_html=True)
+        
+        _, btn_col, _ = st.columns([1, 3, 1])
+        with btn_col:
+            if st.button("🎁 點擊收下獎勵", type="primary", use_container_width=True):
+                st.session_state.show_gacha_result = False
+                st.rerun()
+        st.stop()
+    # ===============================================================
+
     if 'show_streak' in st.session_state:
         st.toast(st.session_state.show_streak, icon="🔥")
         del st.session_state.show_streak
@@ -671,7 +728,7 @@ elif st.session_state.page == 'game':
 
     # --- 🎰 經典擬真幸運扭蛋機 ---
     with st.expander("🎰 幸運扭蛋機 (花費金幣抽大獎)", expanded=False):
-        gacha_html = """
+        gacha_html = f"""
         <div style="background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; max-width: 260px; margin: 0 auto 10px auto; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative;">
             <div style="background: #feca57; width: 100px; height: 30px; border: 4px solid #2f3542; border-radius: 20px 20px 0 0; position: absolute; top: -34px; left: 50%; transform: translateX(-50%);">
                 <div style="background: #ff6b6b; width: 14px; height: 14px; border-radius: 50%; margin: 4px auto; border: 2px solid #2f3542;"></div>
@@ -689,14 +746,45 @@ elif st.session_state.page == 'game':
             </div>
             <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: -15px; z-index: 10; position: relative;">
                 <div style="width: 50px; height: 50px; background: #1e90ff; border: 4px solid #2f3542; border-radius: 10px 10px 0 0;"></div>
-                <div style="width: 60px; height: 60px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <div id="gacha-knob" style="width: 60px; height: 60px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.5s;">
                     <div style="width: 40px; height: 10px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg);"></div>
                 </div>
             </div>
+            <!-- Tooltip text over knob -->
+            <div style="position:absolute; bottom: 50px; left:50%; transform: translateX(-50%); background:#222; color:white; padding:2px 8px; border-radius:5px; font-size:12px; pointer-events:none; white-space:nowrap; box-shadow:0 2px 5px rgba(0,0,0,0.5);">點擊旋轉 ({gacha_cfg['cost']}G)</div>
         </div>
+        <script>
+            document.getElementById('gacha-knob').onclick = function() {{
+                this.style.transform = 'rotate(360deg)';
+                
+                // Play rolling sound
+                let ctx = window.parent.gameAudioCtx;
+                if(ctx) {{
+                    if(ctx.state === 'suspended') ctx.resume();
+                    let osc = ctx.createOscillator(); let gain = ctx.createGain();
+                    osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
+                    let now = ctx.currentTime;
+                    for(let i=0; i<10; i++){{osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.05);}}
+                    gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                    osc.start(now); osc.stop(now + 0.5);
+                }}
+
+                setTimeout(() => {{
+                    const btns = window.parent.document.querySelectorAll('button');
+                    btns.forEach(b => {{
+                        if(b.innerText.includes('hidden_gacha_trigger')) {{
+                            b.click();
+                        }}
+                    }});
+                }}, 600);
+            }};
+        </script>
         """
         st.markdown(gacha_html, unsafe_allow_html=True)
-        if st.button(f"👇 開始扭蛋 (花費 {gacha_cfg['cost']}G)", use_container_width=True):
+        
+        # Hidden Button via CSS class
+        st.markdown('<div class="hide-native-input">', unsafe_allow_html=True)
+        if st.button("hidden_gacha_trigger", key="hidden_gacha_btn"):
             if u_data['gold'] >= gacha_cfg['cost']:
                 u_data['gold'] -= gacha_cfg['cost']
                 prizes = gacha_cfg['prizes']
@@ -711,11 +799,14 @@ elif st.session_state.page == 'game':
                     u_data['inventory']['magnifier'] += prize['val']
                 
                 u_data['history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 扭蛋獲得：{prize['name']}")
-                st.session_state.action_anim = 'gacha'
-                st.session_state.gacha_result = prize['name']
                 save_user_data(u_key, u_data)
+                
+                st.session_state.show_gacha_result = True
+                st.session_state.gacha_result_prize = prize
                 st.rerun()
-            else: st.error("金幣不足！快去打怪賺錢吧！")
+            else:
+                st.error("金幣不足！快去打怪賺錢吧！")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # --- 🎁 家族獎勵兌換系統 ---
     with st.expander("🎁 家族獎勵兌換與紀錄 (花費勳章)", expanded=False):
@@ -775,7 +866,6 @@ elif st.session_state.page == 'game':
     # --- 🎵 音效設定庫 ---
     snd_lvlup = "let osc2 = ctx_lvl.createOscillator(); let gain2 = ctx_lvl.createGain(); osc2.type = 'square'; osc2.connect(gain2); gain2.connect(ctx_lvl.destination); let now2 = ctx_lvl.currentTime; osc2.frequency.setValueAtTime(330, now2); osc2.frequency.setValueAtTime(392, now2 + 0.1); osc2.frequency.setValueAtTime(523, now2 + 0.2); osc2.frequency.setValueAtTime(659, now2 + 0.3); osc2.frequency.setValueAtTime(784, now2 + 0.4); gain2.gain.setValueAtTime(0.2, now2); gain2.gain.linearRampToValueAtTime(0, now2 + 0.6); osc2.start(now2); osc2.stop(now2 + 0.6);"
     snd_boss_win = "let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination); let now = ctx.currentTime; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(440, now + 0.15); osc.frequency.setValueAtTime(440, now + 0.3); osc.frequency.setValueAtTime(587, now + 0.45); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 1.0); osc.start(now); osc.stop(now + 1.0);"
-    snd_gacha = "let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination); let now = ctx.currentTime; for(let i=0; i<10; i++){osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.1);} osc.frequency.setValueAtTime(800, now + 1.0); osc.frequency.linearRampToValueAtTime(1200, now + 1.1); gain.gain.setValueAtTime(0.2, now); gain.gain.setValueAtTime(0.2, now + 1.0); gain.gain.linearRampToValueAtTime(0, now + 1.5); osc.start(now); osc.stop(now + 1.5);"
 
     # 動畫判定
     if anim == 'attack':
@@ -800,9 +890,6 @@ elif st.session_state.page == 'game':
         audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5); }}</script>"
     elif anim == 'boss_defeat':
         audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_boss_win} }}</script>"
-    elif anim == 'gacha':
-        fx_html = '<div class="gacha-fx">🎊</div>'
-        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_gacha} }}</script>"
 
     if st.session_state.get('level_up_flag'):
         audio_js += f"<script>let ctx_lvl = window.parent.gameAudioCtx; if(ctx_lvl) {{ if(ctx_lvl.state === 'suspended') ctx_lvl.resume(); {snd_lvlup} }}</script>"
@@ -853,9 +940,6 @@ elif st.session_state.page == 'game':
         elif anim == 'dead': 
             if st.session_state.get('level_dropped', False): st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
             else: st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
-        elif anim == 'gacha':
-            st.balloons()
-            st.success(f"🎰 扭蛋開啟... 恭喜獲得：【{st.session_state.gacha_result}】！")
         
         st.info("⚔️ 結算中，請稍候...")
         time.sleep(1.8)
