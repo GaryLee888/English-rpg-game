@@ -481,19 +481,8 @@ elif st.session_state.page == 'game':
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
-        
-        # 🌟 改用高清高畫質的 3D 渲染精靈球圖片來源（非原始像素小圖，保證放大高清不模糊）
-        HD_BALL_IMAGES = {
-            "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-ball.png",      
-            "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png",    
-            "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",    
-            "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",     
-            "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",     
-            "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"       
-        }
-        
-        b_img = HD_BALL_IMAGES["五獎"]
-        for k, v in HD_BALL_IMAGES.items():
+        b_img = BALL_IMAGES["五獎"]
+        for k, v in BALL_IMAGES.items():
             if k in prize['name']: 
                 b_img = v
                 if k == "特獎": b_color = "#f1c40f"
@@ -503,7 +492,7 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 完美置中 + 高清大球渲染排版
+        # 🌟 絕對置中 + 高清銳利化圖標渲染排版
         st.markdown(f"""
         <style>
             /* 隱藏預設標題與邊界，設定深色背景 */
@@ -542,7 +531,7 @@ elif st.session_state.page == 'game':
                 animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 高清大球設定：改用平滑渲染，維持 240px 大尺寸且邊緣超滑順 */
+            /* 🎯 高清銳利大球設定：使用 crisp-edges 保持邊緣乾淨清晰、去除模糊感 */
             .result-ball {{ 
                 width: 240px !important; 
                 height: 240px !important; 
@@ -550,7 +539,9 @@ elif st.session_state.page == 'game':
                 min-height: 240px !important;
                 max-width: 240px !important;
                 object-fit: contain !important; 
-                filter: drop-shadow(0 0 30px {b_color}) brightness(1.15) !important; 
+                image-rendering: -webkit-optimize-contrast !important;
+                image-rendering: crisp-edges !important; 
+                filter: drop-shadow(0 0 30px {b_color}) brightness(1.2) contrast(1.1) !important; 
                 margin-bottom: -120px !important; /* 精準卡在卡片正上方一半 */
                 z-index: 50 !important; 
                 position: relative !important; 
