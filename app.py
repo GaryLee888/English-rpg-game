@@ -481,6 +481,17 @@ elif st.session_state.page == 'game':
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
+        
+        # 維持官方圖源
+        BALL_IMAGES = {
+            "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png",      
+            "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png",    
+            "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",    
+            "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",     
+            "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",     
+            "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"       
+        }
+        
         b_img = BALL_IMAGES["五獎"]
         for k, v in BALL_IMAGES.items():
             if k in prize['name']: 
@@ -492,12 +503,12 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 絕對置中 + 高清平滑抗鋸齒渲染（還原三獎的高質量滑順質感）
+        # 🌟 完美復刻「三獎」截圖的黃金尺寸、光暈與高質感平滑渲染
         st.markdown(f"""
         <style>
             /* 隱藏預設標題與邊界，設定深色背景 */
             [data-testid="stHeader"] {{ display: none !important; }}
-            [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95) !important; overflow: hidden !important; }}
+            [data-testid="stAppViewContainer"] {{ background: rgba(40, 40, 40, 0.95) !important; overflow: hidden !important; }}
             
             /* 清除所有 Streamlit 預設留白 */
             .main, .main .block-container {{ 
@@ -507,7 +518,7 @@ elif st.session_state.page == 'game':
                 max-width: 100% !important;
             }}
             
-            /* 將包含【球+卡片+按鈕】的最外層容器釘死在畫面「正中央」 */
+            /* 🎯 絕對置中容器：確保不受其他元素擠壓 */
             .main .block-container > div {{
                 position: fixed !important;
                 top: 50% !important;
@@ -528,77 +539,83 @@ elif st.session_state.page == 'game':
                 justify-content: center; 
                 width: 100%; 
                 position: relative; 
-                animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
+                animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 高清平滑大球設定：使用 auto 啟動瀏覽器平滑抗鋸齒，消除所有鋸齒與模糊 */
+            /* 🎯 畫質保證：回歸「黃金比例尺寸(140px)」，這是原圖能承受放大且保持最清晰完美質感的極限尺寸 */
             .result-ball {{ 
-                width: 200px !important; 
-                height: 200px !important; 
-                min-width: 200px !important;
-                min-height: 200px !important;
-                max-width: 200px !important;
+                width: 140px !important; 
+                height: 140px !important; 
+                min-width: 140px !important;
+                min-height: 140px !important;
                 object-fit: contain !important; 
-                image-rendering: auto !important; /* 啟用平滑縮放與抗鋸齒 */
-                filter: drop-shadow(0 0 30px {b_color}) brightness(1.15) !important; 
-                margin-bottom: -100px !important; /* 精準卡在卡片正上方一半處 */
+                image-rendering: auto !important; /* 啟動瀏覽器平滑抗鋸齒，達到最高質感 */
+                filter: drop-shadow(0 0 20px {b_color}) brightness(1.1) !important; 
+                margin-bottom: -70px !important; /* 精準卡在卡片正上方一半處 (140的一半) */
                 z-index: 50 !important; 
                 position: relative !important; 
-                animation: dropAndBounce 1.2s ease-out forwards !important; 
+                animation: dropAndBounce 1s cubic-bezier(0.28, 0.84, 0.42, 1) forwards !important; 
             }}
             
-            /* 中獎卡片 */
+            /* 🎯 中獎卡片：完美還原發光粗邊框、強烈光暈與完美比例 */
             .result-card {{ 
-                background: white; 
-                padding: 115px 20px 30px 20px !important; 
-                border-radius: 20px; 
-                text-align: center; 
-                box-shadow: 0 0 40px {b_color}; 
-                border: 5px solid {b_color}; 
-                width: 85%; 
-                max-width: 340px; 
-                z-index: 10; 
-                position: relative; 
+                background: white !important; 
+                padding: 95px 20px 30px 20px !important; 
+                border-radius: 16px !important; 
+                text-align: center !important; 
+                box-shadow: 0 0 50px {b_color} !important; 
+                border: 4px solid {b_color} !important; 
+                width: 85% !important; 
+                max-width: 320px !important; 
+                z-index: 10 !important; 
+                position: relative !important; 
             }}
             
             @keyframes dropAndBounce {{
-                0% {{ transform: translateY(-400px) scale(0.5); opacity: 0; }}
-                50% {{ transform: translateY(0px) scale(1.2); opacity: 1; }}
-                70% {{ transform: translateY(-30px) scale(1); }}
+                0% {{ transform: translateY(-300px) scale(0.5); opacity: 0; }}
+                50% {{ transform: translateY(0px) scale(1.1); opacity: 1; }}
+                70% {{ transform: translateY(-20px) scale(1); }}
                 85% {{ transform: translateY(0px) scale(1); }}
-                95% {{ transform: translateY(-10px) scale(1); }}
-                100% {{ transform: translateY(0px) scale(1.1); }}
+                95% {{ transform: translateY(-8px) scale(1); }}
+                100% {{ transform: translateY(0px) scale(1.05); }}
             }}
-            @keyframes popIn {{ 0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 100% {{ transform: scale(1) translateY(0); opacity: 1; }} }}
+            @keyframes popIn {{ 
+                0% {{ transform: scale(0.8) translateY(50px); opacity: 0; }} 
+                100% {{ transform: scale(1) translateY(0); opacity: 1; }} 
+            }}
             
-            /* 按鈕間距設定 */
+            /* 按鈕容器與樣式：還原漸層與立體懸浮效果 */
             div[data-testid="stVerticalBlock"] > div:has(button) {{ 
-                display: flex; 
-                justify-content: center; 
-                width: 100%; 
+                display: flex !important; 
+                justify-content: center !important; 
+                width: 100% !important; 
                 margin-top: 25px !important;
             }}
-            div[data-testid="stButton"] {{ width: 100%; max-width: 340px; display: flex; justify-content: center; margin: 0; }}
+            div[data-testid="stButton"] {{ width: 100% !important; max-width: 320px !important; display: flex !important; justify-content: center !important; margin: 0 !important; }}
             div[data-testid="stButton"] button {{ 
-                font-size: 1.2rem !important; 
-                font-weight: bold; 
+                font-size: 1.1rem !important; 
+                font-weight: 900 !important; 
                 padding: 12px !important; 
-                background-color: #ff4d4d !important; 
+                background: linear-gradient(180deg, #ff6b6b 0%, #ff4757 100%) !important; 
                 color: white !important; 
                 border-radius: 12px !important; 
                 border: 2px solid white !important;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
-                width: 100%; 
-                transition: transform 0.2s, filter 0.2s;
+                box-shadow: 0 6px 15px rgba(255, 71, 87, 0.4) !important;
+                width: 100% !important; 
+                transition: transform 0.2s, filter 0.2s !important;
             }}
-            div[data-testid="stButton"] button:hover {{ filter: brightness(1.1); transform: translateY(-2px); }}
+            div[data-testid="stButton"] button:hover {{ filter: brightness(1.15) !important; transform: translateY(-2px) !important; }}
         </style>
         
         <div class="result-container">
-            <img class="result-ball" src="{b_img}" style="width: 200px !important; height: 200px !important;">
+            <img class="result-ball" src="{b_img}">
             <div class="result-card">
-                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.8rem;">🎉 恭喜中獎 🎉</h1>
-                <h2 style="color: {b_color}; font-size: 1.4rem; margin: 0; padding: 15px 10px; background: #f2f2f2; border-radius: 12px; font-weight: 900; text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);">{prize['name']}</h2>
+                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.6rem; font-weight: 800; letter-spacing: 1px;">🎉 恭喜中獎 🎉</h1>
+                <div style="background: #f4f4f4; border-radius: 12px; padding: 15px 10px; margin: 0;">
+                    <h2 style="color: {b_color}; font-size: 1.35rem; margin: 0; font-weight: 900; text-shadow: 1px 1px 0px rgba(0,0,0,0.15), -1px -1px 0px rgba(255,255,255,0.8); line-height: 1.4;">
+                        {prize['name'].replace(' (', '<br>(')}
+                    </h2>
+                </div>
             </div>
         </div>
         <script>
