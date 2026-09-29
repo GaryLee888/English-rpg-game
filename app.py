@@ -2,7 +2,6 @@ import os
 import sys
 import subprocess
 import json
-import csv
 import random
 import time
 from datetime import datetime
@@ -14,7 +13,8 @@ def setup_environment():
     required_packages = {
         "streamlit": "streamlit",
         "pandas": "pandas",
-        "eng-to-ipa": "eng_to_ipa"
+        "eng-to-ipa": "eng_to_ipa",
+        "firebase-admin": "firebase_admin"
     }
     missing = []
     for pip_name, import_name in required_packages.items():
@@ -35,18 +35,28 @@ def setup_environment():
 
 setup_environment()
 import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, db
 
-# --- 檔案設定與常數 ---
-ADMIN_FILE = "admin_settings.json"
-PARENTS_FILE = "parents_db.json"
-USERS_FILE = "users_db.json"
-SHARE_FILE = "share_codes.json"
-FEEDBACK_FILE = "feedbacks.json"
-VOCAB_FILES = {
-    "國小": "vocab_elementary.csv",
-    "國中": "vocab_junior.csv",
-    "多益": "vocab_toeic.csv"
-}
+# ==========================================
+# 🚀 雲端資料庫 Firebase 連線初始化
+# ==========================================
+if not firebase_admin._apps:
+    try:
+        cert_dict = dict(st.secrets["firebase"])
+        db_url = cert_dict.pop("databaseURL")
+        # 修復私鑰的換行字元問題
+        cert_dict["private_key"] = cert_dict["private_key"].replace('\\n', '\n')
+        
+        cred = credentials.Certificate(cert_dict)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': db_url
+        })
+    except Exception as e:
+        st.error(f"🚨 Firebase 初始化失敗！請檢查 Streamlit Secrets 設定是否正確。錯誤訊息：{e}")
+        st.stop()
+
+# --- 寶可夢角色與屬性設定 ---
 EMOJI_LIST = ["🎮", "🧸", "🎲", "🧩", "🎯", "🪀", "🪁", "🚂", "🍔", "🍟", "🍕", "🍦", "🍩", "🍫", "🍬", "🍿", "🥤", "🧋", "👑", "🏆", "🥇", "⭐", "💰", "💎", "🐬", "🎬", "🚲", "⚽", "🏀", "🏊", "⛺", "🚀", "📖", "🖍️", "🎨", "🎒"]
 
 CHARACTERS = {
@@ -122,28 +132,71 @@ MONSTER_DATA = [
 ]
 MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in MONSTER_DATA]
 
-# --- 系統初始化 ---
-def load_json(f, default):
-    if os.path.exists(f):
-        try:
-            with open(f, "r", encoding="utf-8") as file: return json.load(file)
-        except: pass
-    return default
+# ==========================================
+# ☁️ 核心 API (替換為 Firebase Realtime DB)
+# ==========================================
+def get_admin(): return db.reference("system/admin").get() or {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3}
+def save_admin(d): db.reference("system/admin").set(d)
 
-def save_json(f, d):
-    with open(f, "w", encoding="utf-8") as file: json.dump(d, file, ensure_ascii=False, indent=2)
+def get_parents(): return db.reference("parents").get() or {}
+def save_parents(d): db.reference("parents").set(d)
 
-def init_system():
-    if not os.path.exists(ADMIN_FILE): save_json(ADMIN_FILE, {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3})
-    if not os.path.exists(PARENTS_FILE): save_json(PARENTS_FILE, {})
-    if not os.path.exists(USERS_FILE): save_json(USERS_FILE, {})
-    if not os.path.exists(SHARE_FILE): save_json(SHARE_FILE, {})
-    if not os.path.exists(FEEDBACK_FILE): save_json(FEEDBACK_FILE, [])
-    if not os.path.exists(VOCAB_FILES["國小"]): pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}).to_csv(VOCAB_FILES["國小"], index=False, encoding="utf-8-sig")
-    if not os.path.exists(VOCAB_FILES["國中"]): pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}).to_csv(VOCAB_FILES["國中"], index=False, encoding="utf-8-sig")
-    if not os.path.exists(VOCAB_FILES["多益"]): pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}).to_csv(VOCAB_FILES["多益"], index=False, encoding="utf-8-sig")
+def get_users(): return db.reference("users").get() or {}
+def save_users(d): db.reference("users").set(d)
 
-init_system()
+def get_shares(): return db.reference("shares").get() or {}
+def save_shares(d): db.reference("shares").set(d)
+
+def load_vocab_db(bank_key):
+    data = db.reference(f"vocab_banks/{bank_key}").get()
+    return data if data else []
+
+def save_vocab_db(bank_key, df):
+    records = df.fillna("").to_dict('records')
+    db.reference(f"vocab_banks/{bank_key}").set(records)
+
+# 系統初始預設字庫上傳 (僅執行一次)
+if not db.reference("vocab_banks/國小").get():
+    save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
+if not db.reference("vocab_banks/國中").get():
+    save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+if not db.reference("vocab_banks/多益").get():
+    save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
+
+def load_user_data(u_key): 
+    d = db.reference(f"user_data/{u_key}").get()
+    if not d:
+        d = {
+            "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
+            "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], 
+            "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
+            "last_login_date": "", "login_streak": 0, "inventory": {"potion": 0, "shield": 0, "magnifier": 0}
+        }
+    else:
+        if "vocab_bank" not in d or d["vocab_bank"] == "家長自訂": d["vocab_bank"] = "custom_1"
+        if "word_stats" not in d: d["word_stats"] = {}
+        if "gold" not in d: d["gold"] = 0
+        if "shield_active" not in d: d["shield_active"] = False
+        if "last_login_date" not in d: d["last_login_date"] = ""
+        if "login_streak" not in d: d["login_streak"] = 0
+        if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
+        if "history" not in d: d["history"] = []
+        if "trophies" not in d: d["trophies"] = []
+        if "monster_dex" not in d: d["monster_dex"] = []
+    return d
+
+def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
+
+def load_error_log(u_key): return db.reference(f"error_log/{u_key}").get() or []
+def save_error_log(u_key, l): db.reference(f"error_log/{u_key}").set(l)
+
+def delete_user(u_key):
+    db.reference(f"user_data/{u_key}").delete()
+    db.reference(f"error_log/{u_key}").delete()
+    users = get_users()
+    if u_key in users:
+        del users[u_key]
+        save_users(users)
 
 def get_max_hp(level): return min(10, 3 + (level // 5)) 
 def get_title(level):
@@ -153,45 +206,7 @@ def get_title(level):
     if level < 20: return "🔥 四天王候補"
     return "👑 寶可夢大師"
 
-def get_admin(): return load_json(ADMIN_FILE, {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3})
-def save_admin(d): save_json(ADMIN_FILE, d)
-def get_parents(): return load_json(PARENTS_FILE, {})
-def save_parents(d): save_json(PARENTS_FILE, d)
-def get_users(): return load_json(USERS_FILE, {})
-def save_users(d): save_json(USERS_FILE, d)
-def get_shares(): return load_json(SHARE_FILE, {})
-def save_shares(d): save_json(SHARE_FILE, d)
-
-def load_user_data(u_key): 
-    d = load_json(f"data_{u_key}.json", {
-        "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
-        "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], 
-        "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
-        "last_login_date": "", "login_streak": 0
-    })
-    if "vocab_bank" not in d or d["vocab_bank"] == "家長自訂": d["vocab_bank"] = "custom_1"
-    if "word_stats" not in d: d["word_stats"] = {}
-    if "gold" not in d: d["gold"] = 0
-    if "shield_active" not in d: d["shield_active"] = False
-    if "last_login_date" not in d: d["last_login_date"] = ""
-    if "login_streak" not in d: d["login_streak"] = 0
-    if "death_count" in d: del d["death_count"]
-    if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
-    return d
-
-def save_user_data(u_key, d): save_json(f"data_{u_key}.json", d)
-def load_error_log(u_key): return load_json(f"error_{u_key}.json", [])
-def save_error_log(u_key, l): save_json(f"error_{u_key}.json", l)
-def delete_user(u_key):
-    if os.path.exists(f"data_{u_key}.json"): os.remove(f"data_{u_key}.json")
-    if os.path.exists(f"error_{u_key}.json"): os.remove(f"error_{u_key}.json")
-    users = get_users()
-    if u_key in users: del users[u_key]; save_users(users)
-
-def load_csv(f):
-    try: return pd.read_csv(f, encoding="utf-8-sig").fillna("").to_dict('records')
-    except: return []
-
+# --- 艾賓浩斯智慧配題演算法 ---
 EBBINGHAUS_INTERVALS = [0, 60, 600, 86400, 86400*3, 86400*7, 86400*15]
 
 def pick_next_question(v_list, err_log, total_q, word_stats):
@@ -243,8 +258,6 @@ st.markdown("""
 .hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; white-space: nowrap; }
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
-.item-card { background: #fdfefe; border: 2px solid #bdc3c7; border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;}
-.item-title { font-weight: bold; color: #2c3e50; margin-bottom: 8px; font-size: 1.1rem;}
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
@@ -415,13 +428,12 @@ elif st.session_state.page == 'game':
     bank_name = bank_id
     if bank_id.startswith("custom_"):
         cb_id = bank_id.split("_")[1]
-        v_file = f"vocab_custom_{parent_id}_{cb_id}.csv"
-        if not os.path.exists(v_file): v_list = [{"en": "apple", "zh": "蘋果 (請家長至控制台新增單字)", "hint": "預設單字"}]
-        else: v_list = load_csv(v_file)
+        v_list = load_vocab_db(f"custom_{parent_id}_{cb_id}")
+        if not v_list: v_list = [{"en": "apple", "zh": "蘋果 (請家長至控制台新增單字)", "hint": "預設單字"}]
         bank_name = next((b["name"] for b in p_db[parent_id].get("custom_banks", []) if b["id"] == cb_id), "自訂字庫")
     else:
-        v_file = VOCAB_FILES.get(bank_id, VOCAB_FILES["國小"])
-        v_list = load_csv(v_file) or [{"en": "hero", "zh": "英雄", "hint": ""}]
+        v_list = load_vocab_db(bank_id)
+        if not v_list: v_list = [{"en": "hero", "zh": "英雄", "hint": ""}]
     
     r_list = p_db.get(parent_id, {}).get("rewards", [])
     store_prices = p_db.get(parent_id, {}).get("store_prices", {"potion": 50, "shield": 100, "magnifier": 30})
@@ -946,20 +958,26 @@ elif st.session_state.page == 'game':
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_d_del")
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
-                st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", key="text_input_field", autocomplete="off")
                 
-                # --- 📱 電競級原生手機虛擬鍵盤 (純 HTML/JS，零延遲打字 + 自動送出同步) ---
-                kb_html = """
+                # 將輸入框改為唯讀的文字顯示區，避免跳出原生鍵盤
+                st.markdown(f"""
+                <div style="background-color: #f8f9fa; border: 2px solid #bdc3c7; border-radius: 8px; padding: 10px; font-size: 1.5rem; text-align: center; letter-spacing: 3px; font-family: monospace; min-height: 50px; margin-bottom: 15px;" id="display_input">
+                    {st.session_state.text_input_field}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # --- 📱 電競級原生手機虛擬鍵盤 ---
+                kb_html = f"""
                 <style>
-                .kb-container { background-color: #d1d5db; padding: 8px 4px; border-radius: 8px; width: 100%; max-width: 500px; margin: 0 auto; user-select: none; }
-                .kb-row { display: flex; justify-content: center; margin-bottom: 6px; gap: 4px; }
-                .kb-key { flex: 1; height: 45px; background: #ffffff; border-radius: 5px; border: none; font-size: 1.2rem; font-weight: bold; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
-                .kb-key:active { background: #9ca3af; transform: translateY(1px); }
-                .kb-row-2 { padding: 0 5%; }
-                .kb-key-wide { flex: 1.5; font-size: 1rem;}
-                .kb-key-space { flex: 3; font-size: 1rem; }
-                .kb-submit { background-color: #e74c3c; color: #fff; flex: 3; font-size: 1.1rem; }
-                .kb-submit:active { background-color: #c0392b; }
+                .kb-container {{ background-color: #d1d5db; padding: 8px 4px; border-radius: 8px; width: 100%; max-width: 500px; margin: 0 auto; user-select: none; }}
+                .kb-row {{ display: flex; justify-content: center; margin-bottom: 6px; gap: 4px; }}
+                .kb-key {{ flex: 1; height: 45px; background: #ffffff; border-radius: 5px; border: none; font-size: 1.2rem; font-weight: bold; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }}
+                .kb-key:active {{ background: #9ca3af; transform: translateY(1px); }}
+                .kb-row-2 {{ padding: 0 5%; }}
+                .kb-key-wide {{ flex: 1.5; font-size: 1rem;}}
+                .kb-key-space {{ flex: 3; font-size: 1rem; }}
+                .kb-submit {{ background-color: #e74c3c; color: #fff; flex: 3; font-size: 1.1rem; }}
+                .kb-submit:active {{ background-color: #c0392b; }}
                 </style>
                 <div class="kb-container">
                     <div class="kb-row">
@@ -978,69 +996,54 @@ elif st.session_state.page == 'game':
                 </div>
                 <script>
                     let p = window.parent.document;
+                    let currentVal = "{st.session_state.text_input_field}";
                     
-                    function hideBtn() {
-                        p.querySelectorAll('button').forEach(b => {
-                            if(b.innerText.includes('隱藏送出按鈕')) {
-                                b.style.display = 'none';
-                                if(b.parentElement) b.parentElement.style.display = 'none';
-                            }
-                        });
-                    }
-                    hideBtn();
-                    setInterval(hideBtn, 500);
-
-                    function tk(char) {
-                        let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
-                        if(input) {
+                    function updateDisplay() {{
+                        let disp = p.getElementById('display_input');
+                        if(disp) disp.innerText = currentVal;
+                    }}
+                    
+                    function tk(char) {{
+                        currentVal += char;
+                        updateDisplay();
+                    }}
+                    
+                    function bk() {{
+                        if(currentVal.length > 0) {{
+                            currentVal = currentVal.slice(0, -1);
+                            updateDisplay();
+                        }}
+                    }}
+                    
+                    function sm() {{
+                        let hiddenInput = p.querySelector('input[aria-label="hidden_input"]');
+                        if(hiddenInput) {{
                             let nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                            nativeSetter.call(input, input.value + char);
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    }
-                    
-                    function bk() {
-                        let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
-                        if(input && input.value.length > 0) {
-                            let nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                            nativeSetter.call(input, input.value.slice(0, -1));
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    }
-                    
-                    function sm() {
-                        let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
-                        if(input) {
-                            input.focus();
-                            input.blur(); 
-                        }
-                        setTimeout(() => {
-                            p.querySelectorAll('button').forEach(b => {
-                                if(b.innerText.includes('隱藏送出按鈕')) b.click();
-                            });
-                        }, 150);
-                    }
+                            nativeSetter.call(hiddenInput, currentVal);
+                            hiddenInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                            
+                            setTimeout(() => {{
+                                p.querySelectorAll('button').forEach(b => {{
+                                    if(b.innerText.includes('隱藏送出按鈕')) b.click();
+                                }});
+                            }}, 100);
+                        }}
+                    }}
 
-                    if(!window.parent.enterListenerAdded) {
-                        p.addEventListener('keydown', function(e) {
-                            if(e.key === 'Enter') {
-                                let activeEl = p.activeElement;
-                                if(activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'text') {
-                                    e.preventDefault();
-                                    activeEl.blur();
-                                    setTimeout(() => {
-                                        p.querySelectorAll('button').forEach(b => {
-                                            if(b.innerText.includes('隱藏送出按鈕')) b.click();
-                                        });
-                                    }, 150);
-                                }
-                            }
-                        });
+                    if(!window.parent.enterListenerAdded) {{
+                        p.addEventListener('keydown', function(e) {{
+                            if(e.key === 'Enter') sm();
+                            else if(e.key === 'Backspace') bk();
+                            else if(e.key.length === 1 && e.key.match(/[a-zA-Z\- ]/)) tk(e.key.toUpperCase());
+                        }});
                         window.parent.enterListenerAdded = true;
-                    }
+                    }}
                 </script>
                 """
                 st.components.v1.html(kb_html, height=250)
+                
+                # 用一個隱藏的 text_input 來接收 JS 傳遞的最終答案
+                st.text_input("hidden_input", key="text_input_field", label_visibility="collapsed", disabled=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1218,7 +1221,6 @@ elif st.session_state.page == 'parent':
             sel_bank_id = st.selectbox("選擇要管理/編輯的字庫", [b["id"] for b in p_data["custom_banks"]], format_func=lambda x: next(b["name"] for b in p_data["custom_banks"] if b["id"]==x))
             c_file = f"vocab_custom_{p_id}_{sel_bank_id}.csv"
             
-            # --- 字庫更名與一鍵清空功能 ---
             st.markdown("---")
             st.subheader("⚙️ 字庫設定")
             col_set1, col_set2 = st.columns(2)
@@ -1238,7 +1240,7 @@ elif st.session_state.page == 'parent':
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("🧹 一鍵清空此字庫內容", type="secondary"):
                     empty_df = pd.DataFrame(columns=["en", "zh", "hint"])
-                    empty_df.to_csv(c_file, index=False, encoding="utf-8-sig")
+                    save_vocab_db(f"custom_{p_id}_{sel_bank_id}", empty_df)
                     st.success("✅ 字庫內容已清空！")
                     st.rerun()
             
@@ -1272,24 +1274,27 @@ elif st.session_state.page == 'parent':
                         if isinstance(share_data, str): source_p_id, source_bank_id = share_data, "1"
                         else: source_p_id, source_bank_id = share_data["p_id"], share_data["bank_id"]
 
-                        source_file = f"vocab_custom_{source_p_id}_{source_bank_id}.csv"
-                        if os.path.exists(source_file):
-                            src_df = pd.read_csv(source_file)
-                            if os.path.exists(c_file):
-                                curr_df = pd.read_csv(c_file)
+                        src_data = load_vocab_db(f"custom_{source_p_id}_{source_bank_id}")
+                        if src_data:
+                            src_df = pd.DataFrame(src_data)
+                            curr_data = load_vocab_db(f"custom_{p_id}_{sel_bank_id}")
+                            if curr_data:
+                                curr_df = pd.DataFrame(curr_data)
                                 merged_df = pd.concat([curr_df, src_df]).drop_duplicates(subset=['en'], keep='last')
                             else: merged_df = src_df
-                            merged_df.to_csv(c_file, index=False, encoding="utf-8-sig")
+                            save_vocab_db(f"custom_{p_id}_{sel_bank_id}", merged_df)
                             st.success("✅ 匯入成功！已將對方的單字加入您的題庫中。"); st.rerun()
                         else: st.error("對方的題庫目前是空的喔！")
                     else: st.error("❌ 無效的分享碼")
 
             st.markdown("---")
-            v_df = pd.read_csv(c_file) if os.path.exists(c_file) else pd.DataFrame(columns=["en", "zh", "hint"])
+            v_data = load_vocab_db(f"custom_{p_id}_{sel_bank_id}")
+            v_df = pd.DataFrame(v_data) if v_data else pd.DataFrame(columns=["en", "zh", "hint"])
             edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
             if st.button("💾 儲存自訂單字庫", type="primary"):
                 if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
-                edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("您的自訂題庫已更新成功！")
+                save_vocab_db(f"custom_{p_id}_{sel_bank_id}", edited_df)
+                st.success("您的自訂題庫已更新成功！")
             
     with t4:
         st.subheader("🌟 夥伴寶可夢進化路線")
@@ -1402,8 +1407,8 @@ elif st.session_state.page == 'admin':
                 cols[4].caption(f"By {fb['p_id']}")
                 c_btn1, c_btn2 = cols[5].columns(2)
                 if c_btn1.button("✅ 核准", key=f"fb_app_{fb['id']}"):
-                    v_file = VOCAB_FILES[fb['bank']]
-                    df = pd.read_csv(v_file)
+                    bank_key = fb['bank']
+                    df = pd.DataFrame(load_vocab_db(bank_key))
                     if fb['en'] in df['en'].values:
                         idx = df.index[df['en'] == fb['en']].tolist()[0]
                         df.at[idx, 'zh'] = fb['zh']
@@ -1411,7 +1416,7 @@ elif st.session_state.page == 'admin':
                     else:
                         new_row = pd.DataFrame([{"en": fb['en'], "zh": fb['zh'], "hint": fb['hint']}])
                         df = pd.concat([df, new_row], ignore_index=True)
-                    df.to_csv(v_file, index=False, encoding="utf-8-sig")
+                    save_vocab_db(bank_key, df)
                     
                     fbs = [f for f in fbs if f['id'] != fb['id']]
                     save_json(FEEDBACK_FILE, fbs)
@@ -1425,22 +1430,28 @@ elif st.session_state.page == 'admin':
     with t3:
         st.subheader("編輯全域單字庫")
         edit_bank = st.radio("選擇要編輯的題庫", ["國小", "國中", "多益"], horizontal=True)
-        edit_file = VOCAB_FILES[edit_bank]
-        v_df = pd.read_csv(edit_file) if os.path.exists(edit_file) else pd.DataFrame(columns=["en", "zh", "hint"])
+        v_data = load_vocab_db(edit_bank)
+        v_df = pd.DataFrame(v_data) if v_data else pd.DataFrame(columns=["en", "zh", "hint"])
         edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
         if st.button("💾 儲存題庫修改", type="primary"):
             if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
-            edited_df.to_csv(edit_file, index=False, encoding="utf-8-sig"); st.success(f"【{edit_bank}】題庫更新成功！")
+            save_vocab_db(edit_bank, edited_df)
+            st.success(f"【{edit_bank}】題庫更新成功！")
             
     with t4:
         st.subheader("系統安全設定")
         admin_cfg = get_admin()
         with st.form("admin_settings"):
+            new_a_id = st.text_input("GM 帳號", value=admin_cfg.get("admin_id", "admin"))
             new_a_pwd = st.text_input("GM 密碼", value=admin_cfg.get("password", "1234"), type="password")
             new_h_limit = st.number_input("全域預設帳號上限", min_value=1, value=admin_cfg.get("default_hero_limit", 3))
             new_b_limit = st.number_input("全域預設字庫上限", min_value=1, value=admin_cfg.get("default_bank_limit", 3))
             if st.form_submit_button("儲存系統設定"):
-                admin_cfg["password"] = new_a_pwd
-                admin_cfg["default_hero_limit"] = new_h_limit
-                admin_cfg["default_bank_limit"] = new_b_limit
-                save_admin(admin_cfg); st.success("系統設定已儲存！"); st.rerun()
+                if new_a_id.strip() == "":
+                    st.error("帳號不可為空！")
+                else:
+                    admin_cfg["admin_id"] = new_a_id.strip()
+                    admin_cfg["password"] = new_a_pwd
+                    admin_cfg["default_hero_limit"] = new_h_limit
+                    admin_cfg["default_bank_limit"] = new_b_limit
+                    save_admin(admin_cfg); st.success("系統設定已儲存！"); st.rerun()
