@@ -481,19 +481,8 @@ elif st.session_state.page == 'game':
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
-        
-        # 🌟 使用本來最具寶可夢經典風格的官方精靈球圖標（Pixel Art 像素風格）
-        PIXEL_BALL_IMAGES = {
-            "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png",      
-            "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png",    
-            "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",    
-            "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",     
-            "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",     
-            "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"       
-        }
-        
-        b_img = PIXEL_BALL_IMAGES["五獎"]
-        for k, v in PIXEL_BALL_IMAGES.items():
+        b_img = BALL_IMAGES["五獎"]
+        for k, v in BALL_IMAGES.items():
             if k in prize['name']: 
                 b_img = v
                 if k == "特獎": b_color = "#f1c40f"
@@ -503,7 +492,7 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 絕對置中 + 像素風高清銳利化渲染排版（還原三獎的頂級高質量視覺）
+        # 🌟 絕對置中 + 高清平滑抗鋸齒渲染（還原三獎的高質量滑順質感）
         st.markdown(f"""
         <style>
             /* 隱藏預設標題與邊界，設定深色背景 */
@@ -542,19 +531,17 @@ elif st.session_state.page == 'game':
                 animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 關鍵：使用 pixelated 確保像素放大時顆粒根根分明、絕不模糊！ */
+            /* 🎯 高清平滑大球設定：使用 auto 啟動瀏覽器平滑抗鋸齒，消除所有鋸齒與模糊 */
             .result-ball {{ 
-                width: 240px !important; 
-                height: 240px !important; 
-                min-width: 240px !important;
-                min-height: 240px !important;
-                max-width: 240px !important;
+                width: 200px !important; 
+                height: 200px !important; 
+                min-width: 200px !important;
+                min-height: 200px !important;
+                max-width: 200px !important;
                 object-fit: contain !important; 
-                image-rendering: -moz-crisp-edges !important;
-                image-rendering: -webkit-optimize-contrast !important;
-                image-rendering: pixelated !important; /* 鎖死像素顆粒，呈現極致清晰的經典質感 */
+                image-rendering: auto !important; /* 啟用平滑縮放與抗鋸齒 */
                 filter: drop-shadow(0 0 30px {b_color}) brightness(1.15) !important; 
-                margin-bottom: -120px !important; /* 精準卡在卡片正上方一半 */
+                margin-bottom: -100px !important; /* 精準卡在卡片正上方一半處 */
                 z-index: 50 !important; 
                 position: relative !important; 
                 animation: dropAndBounce 1.2s ease-out forwards !important; 
@@ -563,7 +550,7 @@ elif st.session_state.page == 'game':
             /* 中獎卡片 */
             .result-card {{ 
                 background: white; 
-                padding: 130px 20px 30px 20px !important; 
+                padding: 115px 20px 30px 20px !important; 
                 border-radius: 20px; 
                 text-align: center; 
                 box-shadow: 0 0 40px {b_color}; 
@@ -608,7 +595,7 @@ elif st.session_state.page == 'game':
         </style>
         
         <div class="result-container">
-            <img class="result-ball" src="{b_img}" style="width: 240px !important; height: 240px !important;">
+            <img class="result-ball" src="{b_img}" style="width: 200px !important; height: 200px !important;">
             <div class="result-card">
                 <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.8rem;">🎉 恭喜中獎 🎉</h1>
                 <h2 style="color: {b_color}; font-size: 1.4rem; margin: 0; padding: 15px 10px; background: #f2f2f2; border-radius: 12px; font-weight: 900; text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);">{prize['name']}</h2>
