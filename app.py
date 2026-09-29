@@ -153,12 +153,12 @@ DEFAULT_STORE = {"potion": 200, "shield": 250, "magnifier": 100}
 
 # 🌟 HD 高清 3D 寶可夢精靈球 (Pokémon GO / PGL 高解析度來源)
 BALL_IMAGES = {
-    "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png", # 究極球 (Beast Ball)
-    "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png", # 豪華球 (Luxury Ball)
-    "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png", # 大師球 (Master Ball)
-    "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",  # 高級球 (Ultra Ball)
-    "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",  # 超級球 (Great Ball)
-    "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"    # 精靈球 (Poké Ball)
+    "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png", # 究極球
+    "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png", # 豪華球
+    "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png", # 大師球
+    "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",  # 高級球
+    "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",  # 超級球
+    "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"    # 精靈球
 }
 
 def get_admin(): 
@@ -168,6 +168,7 @@ def get_admin():
         "password": cfg.get("password", "1234"), 
         "default_hero_limit": cfg.get("default_hero_limit", 3), 
         "default_bank_limit": cfg.get("default_bank_limit", 3),
+        "default_reward_limit": cfg.get("default_reward_limit", 99), # 加入預設兌換次數上限
         "game_rates": cfg.get("game_rates", DEFAULT_RATES),
         "store_prices": cfg.get("store_prices", DEFAULT_STORE),
         "gacha": cfg.get("gacha", DEFAULT_GACHA)
@@ -199,7 +200,8 @@ def load_user_data(u_key):
             "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
             "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], 
             "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
-            "last_login_date": "", "login_streak": 0, "inventory": {"potion": 0, "shield": 0, "magnifier": 0}
+            "last_login_date": "", "login_streak": 0, "inventory": {"potion": 0, "shield": 0, "magnifier": 0},
+            "reward_counts": {}
         }
     else:
         if "vocab_bank" not in d or d["vocab_bank"] == "家長自訂": d["vocab_bank"] = "custom_1"
@@ -213,6 +215,7 @@ def load_user_data(u_key):
         if "history" not in d: d["history"] = []
         if "trophies" not in d: d["trophies"] = []
         if "monster_dex" not in d: d["monster_dex"] = []
+        if "reward_counts" not in d: d["reward_counts"] = {} # 記錄家庭獎勵兌換次數
     return d
 
 def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
@@ -222,6 +225,17 @@ def delete_user(u_key):
     db.reference(f"user_data/{u_key}").delete(); db.reference(f"error_log/{u_key}").delete()
     users = get_users()
     if u_key in users: del users[u_key]; save_users(users)
+
+def reset_user_data(u_key):
+    d = load_user_data(u_key)
+    d.update({
+        "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
+        "history": [], "total_questions": 0, "trophies": [], "monster_dex": [], 
+        "word_stats": {}, "gold": 0, "shield_active": False, "login_streak": 0,
+        "inventory": {"potion": 0, "shield": 0, "magnifier": 0}, "reward_counts": {}
+    })
+    save_user_data(u_key, d)
+    save_error_log(u_key, [])
 
 def get_max_hp(level): return min(10, 3 + (level // 5)) 
 def get_title(level):
@@ -304,6 +318,12 @@ div[data-testid="column"] button { height: 55px; padding: 0 !important; font-siz
 .dex-item img:hover { transform: scale(1.2); }
 .dex-name { font-size: 0.75rem; color: #555; margin-top: 5px; font-weight: bold; }
 
+/* 🎰 扭蛋機完美置中與動畫 */
+.gacha-wrapper { display: flex; justify-content: center; align-items: center; padding: 15px 0; width: 100%; margin: 0 auto; }
+.gacha-machine { background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; width: 280px; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative; margin: 0 auto; }
+.gacha-glass { background-color: #f1f2f6; border: 4px solid #2f3542; border-radius: 15px; height: 160px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }
+.gacha-ball { position: absolute; width: 45px; height: 45px; background-size: contain; background-repeat: no-repeat; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); image-rendering: pixelated; }
+
 @media screen and (max-width: 600px) {
     .poke-title { font-size: 2rem; }
     .poke-subtitle { font-size: 0.9rem; }
@@ -328,26 +348,6 @@ div[data-testid="column"] button { height: 55px; padding: 0 !important; font-siz
 @keyframes healFx { 0% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } 50% { filter: brightness(1.5) drop-shadow(0 0 20px #2ecc71); } 100% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } }
 .m-fx { position: absolute; top: 40%; font-size: 60px; animation: mBall 0.7s ease-in-out forwards; z-index: 10; }
 </style>
-
-<!-- 🥷 終極高頻掃描抹除腳本：確保隱藏按鈕連同其父容器徹底消失 -->
-<script>
-    setInterval(() => {
-        const btns = window.parent.document.querySelectorAll('button');
-        btns.forEach(b => {
-            if(b.innerText.includes('🎮隱藏抽獎發動🎮')) {
-                b.style.display = 'none';
-                let c1 = b.closest('div[data-testid="stElementContainer"]');
-                if(c1) {
-                    c1.style.position = 'absolute'; c1.style.top = '-9999px'; c1.style.opacity = '0'; c1.style.pointerEvents = 'none'; c1.style.margin = '0'; c1.style.padding = '0';
-                    let c2 = c1.parentElement;
-                    if(c2 && c2.children.length === 1) {
-                        c2.style.position = 'absolute'; c2.style.top = '-9999px'; c2.style.opacity = '0'; c2.style.pointerEvents = 'none'; c2.style.margin = '0'; c2.style.padding = '0';
-                    }
-                }
-            }
-        });
-    }, 10);
-</script>
 """, unsafe_allow_html=True)
 
 st.components.v1.html("""<script>
@@ -375,14 +375,14 @@ if st.session_state.page == 'login':
     </div>
     """, unsafe_allow_html=True)
     
-    t1, t2, t3 = st.tabs(["🎒 訓練家遊玩登入", "👨‍👩‍👧 家長控制台", "👑 GM 管理中心"])
+    t1, t2, t3 = st.tabs(["🎒 訓練家遊玩登入", "👨‍👩‍👧 家庭控制台", "👑 GM 管理中心"])
     
     with t1:
         st.subheader("選擇您的家庭與訓練家")
         parents = get_parents()
-        if not parents: st.info("目前還沒有家庭建立帳號喔！請先請家長到「家長控制台」註冊。")
+        if not parents: st.info("目前還沒有家庭建立帳號喔！請先請家長到「家庭控制台」註冊。")
         else:
-            family_input = st.text_input("1️⃣ 請輸入您的家長 (家庭) 帳號", placeholder="輸入後按下 Enter 鍵確認...")
+            family_input = st.text_input("1️⃣ 請輸入您的家庭帳號", placeholder="輸入後按下 Enter 鍵確認...")
             if family_input:
                 if family_input in parents:
                     users = get_users()
@@ -411,7 +411,7 @@ if st.session_state.page == 'login':
                                     bonus_gold = min(rates.get('normal_gold', 10) * 5, init_data["login_streak"] * rates.get('normal_gold', 10))
                                     init_data["gold"] = init_data.get("gold", 0) + bonus_gold
                                     init_data["last_login_date"] = today_str
-                                    init_data["history"].append(f"{datetime.now().strftime('%m-%d %H:%M')} 連續登入 {init_data['login_streak']} 天！獲得 {bonus_gold} G")
+                                    # 登入不寫入 history，保持版面乾淨
                                     save_user_data(sel_hero_key, init_data)
                                     st.session_state.show_streak = f"🔥 連續冒險 {init_data['login_streak']} 天！獲得 {bonus_gold} 枚金幣！"
                                 
@@ -429,7 +429,7 @@ if st.session_state.page == 'login':
         colA, colB = st.columns(2)
         with colA:
             st.subheader("家長登入")
-            l_acc = st.text_input("家長帳號", key="l_acc")
+            l_acc = st.text_input("家庭帳號", key="l_acc")
             l_pwd = st.text_input("密碼", type="password", key="l_pwd")
             if st.button("登入", use_container_width=True):
                 p_db = get_parents()
@@ -438,7 +438,7 @@ if st.session_state.page == 'login':
                     st.session_state.page = 'parent'; st.rerun()
                 else: st.error("帳號或密碼錯誤！")
         with colB:
-            st.subheader("註冊新家長帳號")
+            st.subheader("註冊新家庭帳號")
             r_acc = st.text_input("設定帳號 (不可更改)", key="r_acc")
             r_pwd = st.text_input("設定密碼", type="password", key="r_pwd")
             if st.button("註冊", use_container_width=True):
@@ -448,7 +448,7 @@ if st.session_state.page == 'login':
                 else:
                     p_db[r_acc] = {
                         "password": r_pwd, "hero_limit": None, "bank_limit": None,
-                        "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮"}],
+                        "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮", "limit": 99}],
                         "custom_banks": [{"id": "1", "name": "預設自建字庫"}]
                     }
                     save_parents(p_db)
@@ -472,29 +472,18 @@ elif st.session_state.page == 'game':
     p_db = get_parents()
     admin_cfg = get_admin()
     
+    # 讀取全域與家庭專屬設定
     p_info = p_db.get(parent_id, {})
     rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
-# ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+    # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
-        
-        # 🌟 核心修復：全面替換為 PGL (Pokemon Global Link) 高清官方圖庫！
-        # 捨棄原本 30x30 的低畫質圖片，改用高畫質大圖，保證放大後絕對滑順、無鋸齒、不模糊！
-        HD_BALL_IMAGES = {
-            "特獎": "https://www.serebii.net/itemdex/sprites/pgl/beastball.png",
-            "一獎": "https://www.serebii.net/itemdex/sprites/pgl/luxuryball.png",
-            "二獎": "https://www.serebii.net/itemdex/sprites/pgl/masterball.png",
-            "三獎": "https://www.serebii.net/itemdex/sprites/pgl/ultraball.png",
-            "四獎": "https://www.serebii.net/itemdex/sprites/pgl/greatball.png",
-            "五獎": "https://www.serebii.net/itemdex/sprites/pgl/pokeball.png"
-        }
-        
-        b_img = HD_BALL_IMAGES["五獎"]
-        for k, v in HD_BALL_IMAGES.items():
+        b_img = BALL_IMAGES["五獎"]
+        for k, v in BALL_IMAGES.items():
             if k in prize['name']: 
                 b_img = v
                 if k == "特獎": b_color = "#f1c40f"
@@ -504,33 +493,23 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 完美復刻黃金尺寸、光暈與高質感平滑渲染
+        # 🌟 完美三位一體置中排版：拔除 Streamlit 鎖定，絕對居中
         st.markdown(f"""
         <style>
-            /* 隱藏預設標題與邊界，設定深色背景 */
-            [data-testid="stHeader"] {{ display: none !important; }}
-            [data-testid="stAppViewContainer"] {{ background: rgba(40, 40, 40, 0.95) !important; overflow: hidden !important; }}
+            [data-testid="stHeader"] {{ display: none; }}
+            [data-testid="stAppViewContainer"] {{ background: rgba(30,30,30,0.95) !important; }}
             
-            /* 清除所有 Streamlit 預設留白 */
-            .main, .main .block-container {{ 
+            /* 將 Streamlit 預設佈局完全隱藏，打造無干擾全螢幕 */
+            .block-container {{ 
+                max-width: 100% !important; 
                 padding: 0 !important; 
                 margin: 0 !important; 
-                height: 100vh !important;
-                max-width: 100% !important;
-            }}
-            
-            /* 🎯 絕對置中容器：確保不受其他元素擠壓 */
-            .main .block-container > div {{
-                position: fixed !important;
-                top: 50% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                width: 100% !important;
-                z-index: 9999 !important;
+                display: flex !important; 
+                flex-direction: column !important; 
+                align-items: center !important; 
+                justify-content: center !important; 
+                height: 100vh !important; 
+                overflow: hidden !important; 
             }}
             
             .result-container {{ 
@@ -539,84 +518,86 @@ elif st.session_state.page == 'game':
                 align-items: center; 
                 justify-content: center; 
                 width: 100%; 
+                max-width: 400px; 
                 position: relative; 
-                animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
+                z-index: 50; 
+                animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 畫質保證：配合高清圖源，使用 140px 黃金比例，展現最高級的圓滑質感 */
             .result-ball {{ 
-                width: 180px !important; 
-                height: 500px !important; 
-                min-width: 140px !important;
-                min-height: 140px !important;
-                object-fit: contain !important; 
-                image-rendering: auto !important; /* 啟動瀏覽器平滑抗鋸齒 */
-                filter: drop-shadow(0 0 20px {b_color}) brightness(1.1) !important; 
-                margin-bottom: -250px !important; /* 精準卡在卡片正上方一半處 (500的一半) */
-                z-index: 50 !important; 
-                position: relative !important; 
-                animation: dropAndBounce 1s cubic-bezier(0.28, 0.84, 0.42, 1) forwards !important; 
+                width: 250px !important; 
+                height: 250px !important; 
+                object-fit: contain; 
+                filter: drop-shadow(0 0 30px {b_color}) brightness(1.2); 
+                margin-bottom: -50px; 
+                z-index: 50; 
+                position: relative; 
+                animation: dropAndBounce 1.2s ease-out forwards; 
             }}
             
-            /* 🎯 中獎卡片：完美還原發光粗邊框與完美比例 */
             .result-card {{ 
-                background: white !important; 
-                padding: 95px 20px 30px 20px !important; 
-                border-radius: 16px !important; 
-                text-align: center !important; 
-                box-shadow: 0 0 50px {b_color} !important; 
-                border: 4px solid {b_color} !important; 
-                width: 85% !important; 
-                max-width: 320px !important; 
-                z-index: 10 !important; 
-                position: relative !important; 
+                background: white; 
+                padding: 60px 20px 25px 20px; 
+                border-radius: 20px; 
+                text-align: center; 
+                box-shadow: 0 0 40px {b_color}; 
+                border: 6px solid {b_color}; 
+                width: 90%; 
+                max-width: 350px; 
+                z-index: 10; 
+                position: relative; 
             }}
             
+            /* 讓收下獎勵按鈕直接跟隨卡片下方，不鎖定在螢幕底部 */
+            div[data-testid="stVerticalBlock"] > div:has(button) {{ 
+                display: flex; 
+                justify-content: center; 
+                width: 100%; 
+                margin-top: 15px; 
+                z-index: 100000; 
+            }}
+            div[data-testid="stButton"] {{ 
+                width: 100%; 
+                max-width: 350px; 
+                display: flex; 
+                justify-content: center; 
+                margin: 0; 
+            }}
+            div[data-testid="stButton"] button {{ 
+                font-size: 1.2rem !important; 
+                font-weight: bold; 
+                padding: 15px !important; 
+                box-shadow: 0 0 20px rgba(255,255,255,0.3); 
+                border: 2px solid white !important; 
+                width: 100% !important; 
+                background-color: #ff4757 !important; 
+                color: white !important; 
+                border-radius: 10px !important; 
+            }}
+            div[data-testid="stButton"] button:hover {{ 
+                border-color: #ff6b81 !important; 
+            }}
+
             @keyframes dropAndBounce {{
-                0% {{ transform: translateY(-300px) scale(0.5); opacity: 0; }}
-                50% {{ transform: translateY(0px) scale(1.1); opacity: 1; }}
-                70% {{ transform: translateY(-20px) scale(1); }}
+                0% {{ transform: translateY(-400px) scale(0.5); opacity: 0; }}
+                50% {{ transform: translateY(0px) scale(1.2); opacity: 1; }}
+                70% {{ transform: translateY(-40px) scale(1); }}
                 85% {{ transform: translateY(0px) scale(1); }}
-                95% {{ transform: translateY(-8px) scale(1); }}
-                100% {{ transform: translateY(0px) scale(1.05); }}
+                95% {{ transform: translateY(-15px) scale(1); }}
+                100% {{ transform: translateY(0px) scale(1); }}
             }}
             @keyframes popIn {{ 
-                0% {{ transform: scale(0.8) translateY(50px); opacity: 0; }} 
+                0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 
+                60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 
                 100% {{ transform: scale(1) translateY(0); opacity: 1; }} 
             }}
-            
-            /* 按鈕容器與樣式：還原漸層與立體懸浮效果 */
-            div[data-testid="stVerticalBlock"] > div:has(button) {{ 
-                display: flex !important; 
-                justify-content: center !important; 
-                width: 100% !important; 
-                margin-top: 25px !important;
-            }}
-            div[data-testid="stButton"] {{ width: 100% !important; max-width: 320px !important; display: flex !important; justify-content: center !important; margin: 0 !important; }}
-            div[data-testid="stButton"] button {{ 
-                font-size: 1.1rem !important; 
-                font-weight: 900 !important; 
-                padding: 12px !important; 
-                background: linear-gradient(180deg, #ff6b6b 0%, #ff4757 100%) !important; 
-                color: white !important; 
-                border-radius: 12px !important; 
-                border: 2px solid white !important;
-                box-shadow: 0 6px 15px rgba(255, 71, 87, 0.4) !important;
-                width: 100% !important; 
-                transition: transform 0.2s, filter 0.2s !important;
-            }}
-            div[data-testid="stButton"] button:hover {{ filter: brightness(1.15) !important; transform: translateY(-2px) !important; }}
         </style>
         
         <div class="result-container">
             <img class="result-ball" src="{b_img}">
             <div class="result-card">
-                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.6rem; font-weight: 800; letter-spacing: 1px;">🎉 恭喜中獎 🎉</h1>
-                <div style="background: #f4f4f4; border-radius: 12px; padding: 15px 10px; margin: 0;">
-                    <h2 style="color: {b_color}; font-size: 1.35rem; margin: 0; font-weight: 900; text-shadow: 1px 1px 0px rgba(0,0,0,0.15), -1px -1px 0px rgba(255,255,255,0.8); line-height: 1.4;">
-                        {prize['name'].replace(' (', '<br>(')}
-                    </h2>
-                </div>
+                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 1.8rem;">🎉 恭喜中獎 🎉</h1>
+                <h2 style="color: {b_color}; font-size: 1.5rem; text-shadow: 1px 1px 0px #000; margin: 0; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 10px;">{prize['name'].replace(' (', '<br>(')}</h2>
             </div>
         </div>
         <script>
@@ -624,20 +605,31 @@ elif st.session_state.page == 'game':
                 let ctx = window.parent.gameAudioCtx;
                 if(ctx) {{
                     if(ctx.state === 'suspended') ctx.resume();
+                    
+                    /* 老虎機音效馬上播放 */
                     let osc = ctx.createOscillator(); let gain = ctx.createGain();
-                    osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
                     let now = ctx.currentTime;
-                    osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554, now + 0.1);
-                    osc.frequency.setValueAtTime(659, now + 0.2); osc.frequency.setValueAtTime(880, now + 0.3);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.5, now+0.1);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
-                    osc.start(now); osc.stop(now + 1.5);
+                    for(let i=0; i<10; i++){{osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.05);}}
+                    gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                    osc.start(now); osc.stop(now + 0.5);
+
+                    /* 中獎音效等球掉下來後播放 (1.2秒) */
+                    setTimeout(() => {{
+                        let oscW = ctx.createOscillator(); let gainW = ctx.createGain();
+                        oscW.type = 'triangle'; oscW.connect(gainW); gainW.connect(ctx.destination);
+                        let nowW = ctx.currentTime;
+                        oscW.frequency.setValueAtTime(440, nowW); oscW.frequency.setValueAtTime(554, nowW + 0.1);
+                        oscW.frequency.setValueAtTime(659, nowW + 0.2); oscW.frequency.setValueAtTime(880, nowW + 0.3);
+                        gainW.gain.setValueAtTime(0, nowW); gainW.gain.linearRampToValueAtTime(0.5, nowW+0.1);
+                        gainW.gain.exponentialRampToValueAtTime(0.01, nowW + 1.5);
+                        oscW.start(nowW); oscW.stop(nowW + 1.5);
+                    }}, 1200);
                 }}
-            }}, 500);
+            }}, 100);
         </script>
         """, unsafe_allow_html=True)
         
-        # 領取按鈕
         if st.button("🎁 點擊收下獎勵", type="primary"):
             st.session_state.show_gacha_result = False
             st.rerun()
@@ -849,16 +841,9 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣與庫存皆不足！")
 
-    # --- 🎰 經典擬真幸運扭蛋機 (完美居中與無干擾按鈕) ---
+    # --- 🎰 經典擬真幸運扭蛋機 (無干擾原生 Streamlit 按鈕) ---
     with st.expander("🎰 幸運扭蛋機 (花費金幣抽大獎)", expanded=False):
         gacha_html = f"""
-        <html><head><style>
-            body {{ margin: 0; padding: 0; font-family: sans-serif; background: transparent; overflow: hidden; display: flex; justify-content: center; align-items: center; }}
-            .gacha-wrapper {{ display: flex; justify-content: center; align-items: center; padding: 25px 0 10px 0; width: 100%; }}
-            .gacha-machine {{ background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; width: 280px; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative; margin: 0 auto; }}
-            .gacha-glass {{ background-color: #f1f2f6; border: 4px solid #2f3542; border-radius: 15px; height: 160px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }}
-            .gacha-ball {{ position: absolute; width: 45px; height: 45px; background-size: contain; background-repeat: no-repeat; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }}
-        </style></head><body>
         <div class="gacha-wrapper">
             <div class="gacha-machine">
                 <div style="background: #feca57; width: 100px; height: 30px; border: 4px solid #2f3542; border-radius: 20px 20px 0 0; position: absolute; top: -34px; left: 50%; transform: translateX(-50%);">
@@ -875,71 +860,42 @@ elif st.session_state.page == 'game':
                     <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 10px; left:110px; transform: rotate(-40deg);"></div>
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 50%); pointer-events: none;"></div>
                 </div>
-                
-                <!-- 🎯 點擊旋鈕發動 -->
-                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 5px;">
-                    <div style="font-weight: bold; color: white; text-shadow: 1px 1px 0px #000; font-size: 1.1rem; text-align: left; line-height: 1.2;">點擊旋轉<br>({gacha_cfg['cost']}G) 👉</div>
-                    <div id="gacha-knob" style="width: 70px; height: 70px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.5s; box-shadow: 0 4px 0 #10ac84, inset 0 2px 5px rgba(255,255,255,0.5);">
-                        <div style="width: 50px; height: 12px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg); border-radius: 5px;"></div>
+                <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: -15px; z-index: 10; position: relative;">
+                    <div style="width: 50px; height: 50px; background: #1e90ff; border: 4px solid #2f3542; border-radius: 10px 10px 0 0;"></div>
+                    <div style="width: 60px; height: 60px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <div style="width: 40px; height: 10px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg);"></div>
                     </div>
                 </div>
             </div>
         </div>
-        <script>
-            document.getElementById('gacha-knob').onclick = function() {{
-                this.style.transform = 'rotate(360deg)';
-                let ctx = window.parent.gameAudioCtx;
-                if(ctx) {{
-                    if(ctx.state === 'suspended') ctx.resume();
-                    let osc = ctx.createOscillator(); let gain = ctx.createGain();
-                    osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
-                    let now = ctx.currentTime;
-                    for(let i=0; i<10; i++){{osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.05);}}
-                    gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
-                    osc.start(now); osc.stop(now + 0.5);
-                }}
-                setTimeout(() => {{
-                    // 尋找隱藏的按鈕並點擊發送攻擊指令給 Streamlit 後端
-                    const btns = window.parent.document.querySelectorAll('button');
-                    for (let b of btns) {{
-                        if(b.innerText.includes('🎮隱藏抽獎發動🎮')) {{
-                            b.click();
-                            break;
-                        }}
-                    }}
-                    setTimeout(() => {{ document.getElementById('gacha-knob').style.transform = 'rotate(0deg)'; }}, 500);
-                }}, 600);
-            }};
-        </script>
-        </body></html>
         """
+        st.markdown(gacha_html, unsafe_allow_html=True)
         
-        # 將扭蛋機完全隔離在獨立的 iframe 中，防止破圖與排版偏移
-        st.components.v1.html(gacha_html, height=360)
-        
-        # 徹底隱藏的觸發按鈕，名稱改為「🎮隱藏抽獎發動🎮」以便 JS 攔截
-        if st.button("🎮隱藏抽獎發動🎮"):
-            if u_data['gold'] >= gacha_cfg['cost']:
-                u_data['gold'] -= gacha_cfg['cost']
-                prizes = gacha_cfg['prizes']
-                weights = [p['prob'] for p in prizes]
-                prize = random.choices(prizes, weights=weights)[0]
-                
-                if prize['type'] == 'medal': u_data['medals'] += prize['val']
-                elif prize['type'] == 'gold': u_data['gold'] += prize['val']
-                elif prize['type'] == 'item':
-                    u_data['inventory']['potion'] += prize['val']
-                    u_data['inventory']['shield'] += prize['val']
-                    u_data['inventory']['magnifier'] += prize['val']
-                
-                u_data['history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 扭蛋獲得：{prize['name']}")
-                save_user_data(u_key, u_data)
-                
-                st.session_state.show_gacha_result = True
-                st.session_state.gacha_result_prize = prize
-                st.rerun()
-            else:
-                st.error("金幣不足！快去打怪賺錢吧！")
+        # 🎯 乾淨俐落的原生 Streamlit 按鈕，顯示即時金額，絕無隱藏機制干擾
+        col1, col2, col3 = st.columns([1, 4, 1])
+        with col2:
+            if st.button(f"🎰 點擊旋轉扭蛋 ({gacha_cfg['cost']}G)", use_container_width=True):
+                if u_data['gold'] >= gacha_cfg['cost']:
+                    u_data['gold'] -= gacha_cfg['cost']
+                    prizes = gacha_cfg['prizes']
+                    weights = [p['prob'] for p in prizes]
+                    prize = random.choices(prizes, weights=weights)[0]
+                    
+                    if prize['type'] == 'medal': u_data['medals'] += prize['val']
+                    elif prize['type'] == 'gold': u_data['gold'] += prize['val']
+                    elif prize['type'] == 'item':
+                        u_data['inventory']['potion'] += prize['val']
+                        u_data['inventory']['shield'] += prize['val']
+                        u_data['inventory']['magnifier'] += prize['val']
+                    
+                    # 扭蛋獎勵不寫入 history，保持版面乾淨
+                    save_user_data(u_key, u_data)
+                    
+                    st.session_state.show_gacha_result = True
+                    st.session_state.gacha_result_prize = prize
+                    st.rerun()
+                else:
+                    st.error("金幣不足！快去打怪賺錢吧！")
 
     # --- 🎁 家庭獎勵兌換系統 ---
     with st.expander("🎁 家庭獎勵兌換與紀錄 (花費勳章)", expanded=False):
@@ -947,15 +903,25 @@ elif st.session_state.page == 'game':
         with r_cols[0]:
             st.markdown("**🏪 可兌換獎勵**")
             if not r_list: st.info("家長尚未設定獎勵")
+            u_reward_counts = u_data.get("reward_counts", {})
             for r in r_list:
-                if st.button(f"{r['icon']} {r['reward']} (需 {r['cost_medals']} 勳章)", use_container_width=True, key=f"ex_{r['reward']}"):
-                    if u_data['medals'] >= int(r['cost_medals']):
+                r_name = r['reward']
+                r_limit = r.get('limit', admin_cfg.get('default_reward_limit', 99))
+                r_count = u_reward_counts.get(r_name, 0)
+                r_left = r_limit - r_count
+                
+                btn_disabled = (u_data['medals'] < int(r['cost_medals'])) or (r_left <= 0)
+                btn_lbl = f"{r['icon']} {r_name} (需 {r['cost_medals']} 勳章) - 剩餘 {r_left} 次" if r_left > 0 else f"❌ {r_name} (已達兌換上限)"
+                
+                if st.button(btn_lbl, use_container_width=True, key=f"ex_{r_name}", disabled=btn_disabled):
+                    if u_data['medals'] >= int(r['cost_medals']) and r_left > 0:
                         u_data['medals'] -= int(r['cost_medals'])
-                        u_data['history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 兌換 {r['reward']}")
+                        u_reward_counts[r_name] = r_count + 1
+                        u_data['reward_counts'] = u_reward_counts
+                        u_data['history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 兌換 {r_name}")
                         save_user_data(u_key, u_data)
-                        st.success(f"🎉 成功兌換 {r['reward']}！")
+                        st.success(f"🎉 成功兌換 {r_name}！")
                         st.rerun()
-                    else: st.error("勳章不足！")
         with r_cols[1]:
             st.markdown("**📜 我的兌換紀錄**")
             if u_data.get('history'):
@@ -1065,7 +1031,7 @@ elif st.session_state.page == 'game':
     if anim:
         if anim == 'attack': st.success(f"💥 命中！獲得 {int(rates['normal_exp'] * diff_multi)} EXP 與 {rates['normal_gold']} G！")
         elif anim == 'heal': st.success("🧪 喝下生命藥水，生命值恢復了！")
-        elif anim == 'shield_block': st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！")
+        elif anim == 'shield_block': st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
         elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
         elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'] * diff_multi)} EXP、{rates['boss_gold']} G 與 {int(rates['boss_medal'] * diff_multi)} 枚勳章！")
         elif anim == 'dead': 
@@ -1077,7 +1043,7 @@ elif st.session_state.page == 'game':
         
         st.session_state.action_anim = None
         st.session_state.level_dropped = False 
-        if anim == 'hurt' or anim == 'dead' or anim == 'boss_defeat': 
+        if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']: 
             if anim != 'boss_defeat': st.session_state.force_learning = True
             else:
                 st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
@@ -1313,7 +1279,7 @@ elif st.session_state.page == 'game':
         st.session_state.page = 'login'
         st.rerun()
 
-# ==================== 家長控制台 ====================
+# ==================== 家庭控制台 ====================
 elif st.session_state.page == 'parent':
     p_id = st.session_state.current_parent
     p_db = get_parents()
@@ -1326,7 +1292,7 @@ elif st.session_state.page == 'parent':
         old_file = f"vocab_custom_{p_id}.csv"
         if os.path.exists(old_file): os.rename(old_file, f"vocab_custom_{p_id}_1.csv")
 
-    st.markdown("<h1 style='text-align: center; color:#e67e22;'>👨‍👩‍👧 家長專區</h1><hr>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color:#e67e22;'>👨‍👩‍👧 家庭專區</h1><hr>", unsafe_allow_html=True)
     c_top1, c_top2 = st.columns([1, 1])
     with c_top1:
         if st.button("⬅️ 登出並返回大廳", use_container_width=True): st.session_state.page = 'login'; st.rerun()
@@ -1430,7 +1396,7 @@ elif st.session_state.page == 'parent':
                 with b1:
                     if st.button(f"🔄 清空訓練家學習資料", key=f"rs_{u_key}"): reset_user_data(u_key); st.rerun()
                 with b2:
-                    if st.button(f"🗑️ 永久刪除此帳號", key=f"dl_{u_key}"): delete_user(u_key); st.rerun()
+                    if st.button(f"🗑️️ 永久刪除此帳號", key=f"dl_{u_key}"): delete_user(u_key); st.rerun()
 
     with t2:
         st.subheader("🛒 道具販售價格設定")
@@ -1449,11 +1415,12 @@ elif st.session_state.page == 'parent':
         with st.form("add_r"):
             n_r = st.text_input("名稱")
             n_c = st.number_input("需要勳章", min_value=1, value=1)
+            n_limit = st.number_input("兌換次數上限 (每位孩子)", min_value=1, value=admin_cfg.get("default_reward_limit", 99))
             n_i = st.selectbox("圖示", EMOJI_LIST)
             if st.form_submit_button("➕ 新增獎勵"):
                 if n_r.strip():
                     if "rewards" not in p_db[p_id]: p_db[p_id]["rewards"] = []
-                    p_db[p_id]["rewards"].append({"reward": n_r, "cost_medals": n_c, "icon": n_i})
+                    p_db[p_id]["rewards"].append({"reward": n_r, "cost_medals": n_c, "icon": n_i, "limit": n_limit})
                     save_parents(p_db); st.success("✅ 成功！"); st.rerun()
         
         st.subheader("目前可兌換清單")
@@ -1461,7 +1428,7 @@ elif st.session_state.page == 'parent':
         if not r_list: st.info("目前沒有設定任何獎勵。")
         for idx, r in enumerate(r_list):
             cA, cB = st.columns([4, 1])
-            with cA: st.info(f"{r['icon']} {r['reward']} (需 {r['cost_medals']} 勳章)")
+            with cA: st.info(f"{r['icon']} {r['reward']} (需 {r['cost_medals']} 勳章 | 上限: {r.get('limit', admin_cfg.get('default_reward_limit', 99))}次)")
             with cB:
                 if st.button("🗑️", key=f"d_r_{idx}"):
                     p_db[p_id]["rewards"].pop(idx)
@@ -1472,7 +1439,7 @@ elif st.session_state.page == 'parent':
         rates = p_data.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
         gacha = p_data.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
         
-        with st.expander("⚔️️ 戰鬥掉落率設定", expanded=True):
+        with st.expander("⚔️ 戰鬥掉落率設定", expanded=True):
             r1, r2 = st.columns(2)
             n_exp = r1.number_input("一般怪 EXP", min_value=1, value=rates.get("normal_exp", 5))
             n_gld = r2.number_input("一般怪 金幣", min_value=1, value=rates.get("normal_gold", 10))
@@ -1494,7 +1461,7 @@ elif st.session_state.page == 'parent':
                 "val": st.column_config.NumberColumn("數量", min_value=1, required=True)
             }, hide_index=True)
             if st.button("💾 儲存扭蛋機設定"):
-                if edited_gacha['prob'].sum() != 100:
+                if round(edited_gacha['prob'].sum()) != 100:
                     st.error(f"❌ 機率總和必須等於 100%！目前為 {edited_gacha['prob'].sum()}%")
                 else:
                     p_db[p_id]["gacha"] = {"cost": g_cost, "prizes": edited_gacha.to_dict('records')}
@@ -1670,9 +1637,9 @@ elif st.session_state.page == 'admin':
     with t1:
         p_db = get_parents()
         u_db = get_users()
-        if not p_db: st.info("目前沒有任何家長註冊。")
+        if not p_db: st.info("目前沒有任何家庭註冊。")
         for p_id, p_info in p_db.items():
-            with st.expander(f"🏠 家族帳號：{p_id}"):
+            with st.expander(f"🏠 家庭帳號：{p_id}"):
                 c1, c2, c3 = st.columns(3)
                 new_pwd = c1.text_input("修改密碼", value=p_info['password'], key=f"apwd_{p_id}")
                 
@@ -1704,7 +1671,7 @@ elif st.session_state.page == 'admin':
                         delete_user(u_key); st.rerun()
                         
                 st.markdown("---")
-                if st.button(f"🚨 刪除此家族 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
+                if st.button(f"🚨 刪除此家庭 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
                     for u_key in heroes: delete_user(u_key)
                     del p_db[p_id]
                     save_parents(p_db); st.rerun()
@@ -1746,7 +1713,7 @@ elif st.session_state.page == 'admin':
                 "val": st.column_config.NumberColumn("數量", min_value=1, required=True)
             }, hide_index=True, key="gm_gacha_editor")
             if st.button("💾 儲存全域扭蛋機設定"):
-                if edited_gacha['prob'].sum() != 100:
+                if round(edited_gacha['prob'].sum()) != 100:
                     st.error(f"❌ 機率總和必須等於 100%！目前為 {edited_gacha['prob'].sum()}%")
                 else:
                     admin_cfg["gacha"] = {"cost": g_cost, "prizes": edited_gacha.to_dict('records')}
@@ -1824,6 +1791,7 @@ elif st.session_state.page == 'admin':
             new_a_pwd = st.text_input("GM 密碼", value=admin_cfg.get("password", "1234"), type="password")
             new_h_limit = st.number_input("全域預設帳號上限", min_value=1, value=admin_cfg.get("default_hero_limit", 3))
             new_b_limit = st.number_input("全域預設字庫上限", min_value=1, value=admin_cfg.get("default_bank_limit", 3))
+            new_r_limit = st.number_input("全域預設家庭獎勵兌換上限", min_value=1, value=admin_cfg.get("default_reward_limit", 99))
             if st.form_submit_button("儲存系統設定"):
                 if new_a_id.strip() == "":
                     st.error("帳號不可為空！")
@@ -1832,4 +1800,5 @@ elif st.session_state.page == 'admin':
                     admin_cfg["password"] = new_a_pwd
                     admin_cfg["default_hero_limit"] = new_h_limit
                     admin_cfg["default_bank_limit"] = new_b_limit
+                    admin_cfg["default_reward_limit"] = new_r_limit
                     save_admin(admin_cfg); st.success("系統設定已儲存！"); st.rerun()
