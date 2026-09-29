@@ -151,6 +151,7 @@ def save_vocab_db(bank_key, df):
     records = df.fillna("").to_dict('records')
     db.reference(f"vocab_banks/{bank_key}").set(records)
 
+# 系統初始預設字庫上傳
 if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
 if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
 if not db.reference("vocab_banks/多益").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
@@ -165,6 +166,7 @@ def load_user_data(u_key):
             "last_login_date": "", "login_streak": 0, "inventory": {"potion": 0, "shield": 0, "magnifier": 0}
         }
     else:
+        # 🛡️ 安全機制：確保舊玩家也有所有新版欄位，避免 KeyError 當機
         if "vocab_bank" not in d or d["vocab_bank"] == "家長自訂": d["vocab_bank"] = "custom_1"
         if "word_stats" not in d: d["word_stats"] = {}
         if "gold" not in d: d["gold"] = 0
@@ -173,6 +175,9 @@ def load_user_data(u_key):
         if "login_streak" not in d: d["login_streak"] = 0
         if "death_count" in d: del d["death_count"]
         if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
+        if "history" not in d: d["history"] = []
+        if "trophies" not in d: d["trophies"] = []
+        if "monster_dex" not in d: d["monster_dex"] = []
     return d
 
 def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
@@ -872,7 +877,7 @@ elif st.session_state.page == 'game':
             auto_script = "setTimeout(() => window.playNormal(false), 500);" if st.session_state.play_auto_audio else ""
             st.session_state.play_auto_audio = False 
             
-            # --- 🔊 終極流暢：強制兩秒解鎖，完全移除畫面鎖定干擾 ---
+            # --- 🔊 終極流暢：強制兩秒解鎖 ---
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
                 <button id="normal-tts-btn" onclick="window.playNormal(true)" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">
@@ -884,8 +889,14 @@ elif st.session_state.page == 'game':
                 let isSpeaking = false;
                 let forceUnlockTimeout = null;
 
-                // 🌟 兩秒強制按鈕復原：確保永遠不會卡在「播放中」
+                setTimeout(() => {{
+                    const answerDiv = window.parent.document.getElementById('answer-zone');
+                    if (answerDiv) {{ answerDiv.style.opacity = '0.3'; answerDiv.style.pointerEvents = 'none'; }}
+                }}, 50);
+
                 forceUnlockTimeout = setTimeout(() => {{
+                    const answerDiv = window.parent.document.getElementById('answer-zone');
+                    if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
                     if (!isSpeaking) btn.innerText = "🔊 點擊聆聽單字";
                 }}, 2000);
 
@@ -904,6 +915,8 @@ elif st.session_state.page == 'game':
                     msg.onend = function() {{
                         isSpeaking = false;
                         btn.innerText = "🔊 點擊重聽單字";
+                        const answerDiv = window.parent.document.getElementById('answer-zone');
+                        if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
                     }};
                     
                     msg.onerror = function() {{
@@ -919,11 +932,12 @@ elif st.session_state.page == 'game':
             """
             st.components.v1.html(btn_html, height=70)
 
-            # --- ⚡ 終極流暢：移除 st.form，改用 on_change 事件瞬間觸發 ---
+            st.markdown('<div id="answer-zone" style="transition: opacity 0.5s;">', unsafe_allow_html=True)
+            
             def handle_spell_submit():
                 ans = st.session_state.get("spell_input", "")
                 if ans.strip():
-                    st.session_state.spell_input = "" # 送出後立刻清空輸入框
+                    st.session_state.spell_input = "" 
                     process_ans(ans.strip())
 
             # 答題區 (利用 on_click 或 on_change 達成零延遲送出)
@@ -941,16 +955,12 @@ elif st.session_state.page == 'game':
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_d_del")
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
-                
-                # 直接使用 on_change 綁定，只要按下 Enter / Go / 完成，瞬間發動攻擊！
                 st.text_input(
                     "✍️ 施展拼寫魔法 (輸入完請直接按鍵盤 Enter，或點擊下方按鈕)：", 
                     key="spell_input", 
                     autocomplete="off", 
                     on_change=handle_spell_submit
                 )
-                
-                # 保留按鈕給習慣點擊的玩家，同樣綁定相同的處理函數
                 st.button("⚔️ 送出攻擊", type="primary", use_container_width=True, on_click=handle_spell_submit)
             
     # 放置返回大廳按鈕於最底部
