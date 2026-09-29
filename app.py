@@ -3,6 +3,7 @@ import sys
 import subprocess
 import random
 import time
+import re  # 新增正則表達式模組，用來過濾單字發音
 from datetime import datetime
 import pandas as pd
 import eng_to_ipa as ipa
@@ -189,6 +190,7 @@ def delete_user(u_key):
 
 # --- 成長屬性設定 ---
 def get_max_hp(level): return min(10, 3 + (level // 5)) 
+
 def get_title(level):
     if level < 3: return "🌱 新手訓練家"
     if level < 7: return "⚔️ 道館挑戰者"
@@ -230,7 +232,6 @@ def generate_options(c_v, f_list):
 # --- 網頁設定與寶可夢主題 CSS ---
 st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
-# 🎨 深度排版與佈局 CSS 優化
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
@@ -258,7 +259,7 @@ st.markdown("""
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:8px; text-shadow: 1px 1px 3px #000; font-size: 1.1rem; background: rgba(0,0,0,0.4); padding: 2px 10px; border-radius: 10px;}
 
-/* 🛍️ 道具店三小格強制同行 (覆寫 Streamlit Mobile 行為) */
+/* 🛍️ 道具店三小格強制同行 */
 div[data-testid="column"]:nth-child(1),
 div[data-testid="column"]:nth-child(2),
 div[data-testid="column"]:nth-child(3) { width: 33.33% !important; flex: 1 1 33.33% !important; min-width: 30% !important; }
@@ -484,13 +485,29 @@ elif st.session_state.page == 'game':
                     u_data['gold'] += 50 
                     u_data['is_boss_fight'] = False
                     u_data['combo'] = 0 
-                    if st.session_state.current_boss['name'] not in u_data.get('trophies', []): u_data['trophies'].append(st.session_state.current_boss['name'])
+                    
+                    # 🐛 安全儲存打敗的 Boss，避免 KeyError 當機
+                    if 'current_boss' in st.session_state:
+                        b_name = st.session_state.current_boss.get('name')
+                        if b_name:
+                            if 'trophies' not in u_data: u_data['trophies'] = []
+                            if b_name not in u_data['trophies']: u_data['trophies'].append(b_name)
+                        del st.session_state.current_boss
+                        
                     st.session_state.action_anim = 'boss_defeat'
                 else: st.session_state.action_anim = 'attack'
             else:
                 u_data['exp'] += (5 * diff_multi) 
-                if st.session_state.current_monster['name'] not in u_data.get('monster_dex', []): u_data.setdefault('monster_dex', []).append(st.session_state.current_monster['name'])
+                
+                # 🐛 安全儲存打敗的小怪，避免 KeyError 當機
+                if 'current_monster' in st.session_state:
+                    m_name = st.session_state.current_monster.get('name')
+                    if m_name:
+                        if 'monster_dex' not in u_data: u_data['monster_dex'] = []
+                        if m_name not in u_data['monster_dex']: u_data['monster_dex'].append(m_name)
+                        
                 st.session_state.action_anim = 'attack'
+                st.session_state.current_monster = random.choice(MONSTERS)
                 if u_data['combo'] >= 10 and not u_data.get('is_boss_fight', False):
                     u_data['is_boss_fight'] = True
                     u_data['boss_hp'] = 3
@@ -529,7 +546,7 @@ elif st.session_state.page == 'game':
     def text_input_submit():
         ans = st.session_state.spell_input
         if ans:
-            st.session_state.spell_input = "" # 清空輸入框
+            st.session_state.spell_input = "" 
             process_ans(ans)
 
     # --- 🎛️ 絕美深色儀表板 ---
@@ -700,7 +717,6 @@ elif st.session_state.page == 'game':
     if audio_js: st.components.v1.html(audio_js, height=0)
 
     # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
-    # 如果正在播放動畫，顯示訊息並隱藏答題區塊！完全消除 Lag 與連點問題！
     if anim:
         if anim == 'attack': st.success(f"💥 命中！獲得 {5 * diff_multi} EXP 與 10 G！")
         elif anim == 'heal': st.success("🧪 喝下生命藥水，生命值恢復了！")
@@ -730,7 +746,12 @@ elif st.session_state.page == 'game':
 
     else:
         opts = st.session_state.current_options
-        ipa_txt = ipa.convert(c_w['en'])
+        
+        # --- 🛡️ 智能淨化發音與音標 (去除括號與標點符號) ---
+        clean_en = re.sub(r'[\(\[].*?[\)\]]', '', c_w['en']).strip()
+        tts_word = clean_en.replace('"', '\\"').replace("'", "\\'")
+        
+        ipa_txt = ipa.convert(clean_en)
         ipa_d = f"[{ipa_txt}]" if ipa_txt and '*' not in ipa_txt else ""
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
@@ -782,7 +803,7 @@ elif st.session_state.page == 'game':
                     }}
 
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
-                    let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
+                    let msg = new SpeechSynthesisUtterance("{tts_word}"); 
                     msg.lang = 'en-US'; msg.rate = 0.85; msg.volume = 0.8;
 
                     let started = false; let ended = false;
@@ -829,7 +850,7 @@ elif st.session_state.page == 'game':
                 w_len = len(word_en)
                 
                 if st.session_state.magnifier_active:
-                    reveal_count = 1
+                    reveal_count = min(1, w_len)
                     r = random.Random(word_en)
                     indices = sorted(r.sample(range(w_len), reveal_count))
                 else:
@@ -844,46 +865,75 @@ elif st.session_state.page == 'game':
                 hint_chars = [char if (i in indices or char in [' ', '-']) else '_' for i, char in enumerate(word_en)]
                 hint_str = " ".join(hint_chars)
                 v_html += f'<h1 style="color:#2980b9; font-size: 1.8rem; margin: 10px 0; font-weight: 800;">{c_w["zh"]}</h1>'
-                v_html += f'<div class="vocab-hint-str">{hint_str}</div><h3 style="color:#e67e22; margin:0 0 10px 0; font-family: monospace; font-size: 1rem;">請拼出對應的英文單字</h3>'
+                
+                # --- 🔤 中困難模式補上音標 ---
+                if ipa_d:
+                    v_html += f'<h3 style="color:#e67e22; margin:0 0 5px 0; font-family: monospace; font-size: 1.2rem;">{ipa_d}</h3>'
+                    
+                v_html += f'<div class="vocab-hint-str">{hint_str}</div><h3 style="color:#7f8c8d; margin:0 0 10px 0; font-size: 0.9rem;">請拼出對應的英文單字</h3>'
             
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            auto_script = "setTimeout(window.playNormal, 500);" if st.session_state.play_auto_audio else ""
+            auto_script = "setTimeout(() => window.playNormal(false), 500);" if st.session_state.play_auto_audio else ""
             st.session_state.play_auto_audio = False 
             
+            # --- 🔇 修正語音無限重播 Bug (最多唸3次) ---
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="normal-tts-btn" onclick="window.playNormal()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
+                <button id="normal-tts-btn" onclick="window.playNormal(true)" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
                     🔊 準備出題... (若無聲請點擊解鎖)
                 </button>
             </div>
             <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
+                setTimeout(() => {{
+                    const answerDiv = window.parent.document.getElementById('answer-zone');
+                    if (answerDiv) {{ answerDiv.style.opacity = '0.3'; answerDiv.style.pointerEvents = 'none'; }}
+                }}, 100);
+
                 let isSpeaking = false;
                 let loopTimeout = null;
+                let playCount = 0; // 新增計算次數變數
 
-                window.playNormal = function() {{ 
+                window.playNormal = function(isManual = false) {{ 
                     if (isSpeaking) return;
+                    if (isManual) playCount = 0; // 若為手動點擊按鈕，則重置次數
+                    
+                    // 若已唸滿3次，則不再循環，按鈕改為「點擊重聽」
+                    if (playCount >= 3) {{
+                        document.getElementById('normal-tts-btn').innerText = "🔊 點擊重聽單字";
+                        return;
+                    }}
+
                     clearTimeout(loopTimeout);
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
                     
-                    let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
+                    let msg = new SpeechSynthesisUtterance("{tts_word}"); 
                     msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = 0.8; 
                     
                     let started = false; let ended = false;
 
                     msg.onstart = function() {{
                         started = true; isSpeaking = true;
-                        document.getElementById('normal-tts-btn').innerText = "🔊 播放中...";
+                        document.getElementById('normal-tts-btn').innerText = "🔊 播放中... (" + (playCount + 1) + "/3)";
                         document.getElementById('normal-tts-btn').style.animation = "none";
                     }};
 
                     msg.onend = function() {{
                         if(ended) return;
                         ended = true; isSpeaking = false;
-                        document.getElementById('normal-tts-btn').innerText = "🔊 播放 / 重聽單字";
-                        loopTimeout = setTimeout(window.playNormal, 2000);
+                        playCount++;
+                        
+                        const answerDiv = window.parent.document.getElementById('answer-zone');
+                        if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
+                        
+                        if (playCount < 3) {{
+                            document.getElementById('normal-tts-btn').innerText = "⏳ 停頓 2 秒... (" + playCount + "/3)";
+                            loopTimeout = setTimeout(() => window.playNormal(false), 2000);
+                        }} else {{
+                            document.getElementById('normal-tts-btn').innerText = "🔊 點擊重聽單字";
+                        }}
                     }};
 
                     setTimeout(() => {{
@@ -901,6 +951,8 @@ elif st.session_state.page == 'game':
             """
             st.components.v1.html(btn_html, height=70)
 
+            st.markdown('<div id="answer-zone" style="transition: opacity 0.5s;">', unsafe_allow_html=True)
+            
             # 答題區 (利用 on_click 達成零延遲送出)
             if diff == '簡單':
                 cA, cB = st.columns(2)
@@ -917,9 +969,17 @@ elif st.session_state.page == 'game':
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
                 # 使用最穩定的原生 text_input 與 button，並綁定 on_click
-                st.text_input("✍️ 施展拼寫魔法 (點擊輸入後按鍵盤完成或點擊下方按鈕)：", key="spell_input", autocomplete="off", on_change=text_input_submit)
-                st.button("⚔️ 送出攻擊", type="primary", use_container_width=True, on_click=text_input_submit)
-
+                with st.form("spell_form", clear_on_submit=True):
+                    user_ans = st.text_input("✍️ 施展拼寫魔法 (點擊輸入後按鍵盤完成或點擊下方按鈕)：", autocomplete="off")
+                    if st.form_submit_button("⚔️ 送出攻擊", type="primary", use_container_width=True):
+                        if user_ans.strip():
+                            if user_ans.strip().lower() == c_w['en'].lower():
+                                process_ans(c_w['zh'])
+                            else:
+                                process_ans("WRONG_ANSWER")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
     # 放置返回大廳按鈕於最底部
     st.markdown("---")
     if st.button("🚪 離開戰鬥返回大廳", use_container_width=True): 
@@ -979,6 +1039,7 @@ elif st.session_state.page == 'parent':
                 n_pin = st.text_input("設定登入密碼 (建議設定 4 位數字)", value="0000")
                 n_char = st.selectbox("選擇夥伴寶可夢", ["火系 (小火龍)", "水系 (傑尼龜)", "草系 (妙蛙種子)", "電系 (皮丘)", "隨機"])
                 n_bank = st.selectbox("選擇預設學習題庫", all_banks, format_func=format_bank)
+                n_diff = st.selectbox("選擇初始難度", ["簡單", "中等", "困難"], index=0) # --- ⚙️ 建立時即可選難度 ---
                 if st.button("確認建立"):
                     if not n_name.strip() or not n_pin.strip(): st.error("名稱與密碼不可為空")
                     else:
@@ -991,6 +1052,7 @@ elif st.session_state.page == 'parent':
                             
                             init_data = load_user_data(u_key)
                             init_data["vocab_bank"] = n_bank
+                            init_data["difficulty"] = n_diff
                             save_user_data(u_key, init_data)
                             st.success("✅ 建立成功！"); st.rerun()
         
@@ -1301,6 +1363,7 @@ elif st.session_state.page == 'admin':
                 cols[3].write(fb['hint'])
                 cols[4].caption(f"By {fb['p_id']}")
                 c_btn1, c_btn2 = cols[5].columns(2)
+                
                 if c_btn1.button("✅ 核准", key=f"fb_app_{fb['id']}"):
                     bank_key = fb['bank']
                     v_data = load_vocab_db(bank_key)
