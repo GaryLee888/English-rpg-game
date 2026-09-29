@@ -477,12 +477,23 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
- # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+# ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
-        b_img = BALL_IMAGES["五獎"]
-        for k, v in BALL_IMAGES.items():
+        
+        # 🌟 改用高清高畫質的 3D 渲染精靈球圖片來源（非原始像素小圖，保證放大高清不模糊）
+        HD_BALL_IMAGES = {
+            "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dream-ball.png",      
+            "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png",    
+            "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",    
+            "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",     
+            "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",     
+            "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"       
+        }
+        
+        b_img = HD_BALL_IMAGES["五獎"]
+        for k, v in HD_BALL_IMAGES.items():
             if k in prize['name']: 
                 b_img = v
                 if k == "特獎": b_color = "#f1c40f"
@@ -492,7 +503,7 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 終極絕對置中魔法 + 暴力強制放大精靈球
+        # 🌟 完美置中 + 高清大球渲染排版
         st.markdown(f"""
         <style>
             /* 隱藏預設標題與邊界，設定深色背景 */
@@ -531,26 +542,25 @@ elif st.session_state.page == 'game':
                 animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 暴力破解 Streamlit 限制：強制放大精靈球 (設定 260px 超大尺寸) */
+            /* 🎯 高清大球設定：改用平滑渲染，維持 240px 大尺寸且邊緣超滑順 */
             .result-ball {{ 
-                width: 260px !important; 
-                height: 260px !important; 
-                min-width: 260px !important; /* 防禦 Streamlit 預設縮放 */
-                min-height: 260px !important;
-                max-width: 260px !important;
+                width: 240px !important; 
+                height: 240px !important; 
+                min-width: 240px !important;
+                min-height: 240px !important;
+                max-width: 240px !important;
                 object-fit: contain !important; 
-                image-rendering: pixelated !important; /* 確保小圖放大後保持像素銳利不模糊 */
-                filter: drop-shadow(0 0 35px {b_color}) brightness(1.2) !important; 
-                margin-bottom: -130px !important; /* 必須精準設定為 height 的一半負數 (-130px) 才能卡在一半！ */
+                filter: drop-shadow(0 0 30px {b_color}) brightness(1.15) !important; 
+                margin-bottom: -120px !important; /* 精準卡在卡片正上方一半 */
                 z-index: 50 !important; 
                 position: relative !important; 
                 animation: dropAndBounce 1.2s ease-out forwards !important; 
             }}
             
-            /* 中獎卡片：配合超大精靈球，把上方 Padding 加大到 140px，避免文字被大球擋住 */
+            /* 中獎卡片 */
             .result-card {{ 
                 background: white; 
-                padding: 140px 20px 30px 20px !important; 
+                padding: 130px 20px 30px 20px !important; 
                 border-radius: 20px; 
                 text-align: center; 
                 box-shadow: 0 0 40px {b_color}; 
@@ -595,7 +605,7 @@ elif st.session_state.page == 'game':
         </style>
         
         <div class="result-container">
-            <img class="result-ball" src="{b_img}" style="width: 260px !important; height: 260px !important;">
+            <img class="result-ball" src="{b_img}" style="width: 240px !important; height: 240px !important;">
             <div class="result-card">
                 <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.8rem;">🎉 恭喜中獎 🎉</h1>
                 <h2 style="color: {b_color}; font-size: 1.4rem; margin: 0; padding: 15px 10px; background: #f2f2f2; border-radius: 12px; font-weight: 900; text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);">{prize['name']}</h2>
