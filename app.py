@@ -460,7 +460,7 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
-    # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+   # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
@@ -478,11 +478,30 @@ elif st.session_state.page == 'game':
         # 🌟 完美置中排版與高度還原截圖設計
         st.markdown(f"""
         <style>
-            [data-testid="stHeader"] {{ display: none; }}
-            [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95); }}
+            [data-testid="stHeader"] {{ display: none !important; }}
+            [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95) !important; }}
             
             /* 讓整個畫面強制滿版，並使用 flexbox 將所有內容完美置中 */
-            .main .block-container {{ max-width: 100% !important; padding: 0 !important; margin: 0 !important; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh !important; }}
+            .main .block-container {{ 
+                max-width: 100% !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                display: flex !important; 
+                flex-direction: column !important; 
+                align-items: center !important; 
+                justify-content: center !important; 
+                min-height: 100vh !important; 
+            }}
+            
+            /* 強制 Streamlit 內部容器也垂直置中，避免整體被往上推 */
+            div[data-testid="stVerticalBlock"] {{
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex: 1 !important;
+            }}
             
             .result-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; position: relative; z-index: 50; animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }}
             
@@ -502,8 +521,8 @@ elif st.session_state.page == 'game':
             }}
             @keyframes popIn {{ 0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 100% {{ transform: scale(1) translateY(0); opacity: 1; }} }}
             
-            /* 將按鈕貼齊在卡片正下方一點點，取消置底 */
-            div[data-testid="stVerticalBlock"] > div:has(button) {{ display: flex; justify-content: center; width: 100%; margin-top: 25px; z-index: 100000; }}
+            /* 將按鈕貼齊在卡片正下方一點點 */
+            div[data-testid="stVerticalBlock"] > div:has(button) {{ display: flex; justify-content: center; width: 100%; margin-top: 25px; z-index: 100000; flex: 0 0 auto !important; }}
             div[data-testid="stButton"] {{ width: 100%; max-width: 320px; display: flex; justify-content: center; margin: 0; }}
             div[data-testid="stButton"] button {{ 
                 font-size: 1.1rem !important; 
