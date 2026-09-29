@@ -531,13 +531,14 @@ elif st.session_state.page == 'game':
                 animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 精靈球：精準卡在白色卡片正上方交疊處 */
+            /* 🎯 這裡控制球的大小！已修復 object-fit 並加入 pixelated 保持放大清晰 */
             .result-ball {{ 
-                width: 450px; 
-                height: 450px; 
-                object-fit: 1 contain; 
+                width: 240px;  /* 球的寬度 */
+                height: 240px; /* 球的高度 */
+                object-fit: contain; 
+                image-rendering: pixelated; /* 確保寶可夢小圖放大後不會糊掉 */
                 filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); 
-                margin-bottom: -150px; 
+                margin-bottom: -120px; /* 必須是 height 的一半的負數，才能剛好卡在一半！ */
                 z-index: 50; 
                 position: relative; 
                 animation: dropAndBounce 1.2s ease-out forwards; 
@@ -546,7 +547,7 @@ elif st.session_state.page == 'game':
             /* 中獎卡片 */
             .result-card {{ 
                 background: white; 
-                padding: 95px 20px 30px 20px; 
+                padding: 110px 20px 30px 20px; /* 上方 padding 加大，避免被變大的球擋住文字 */
                 border-radius: 20px; 
                 text-align: center; 
                 box-shadow: 0 0 40px {b_color}; 
