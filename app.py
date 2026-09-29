@@ -533,8 +533,8 @@ elif st.session_state.page == 'game':
             
             /* 🎯 這裡控制球的大小！已修復 object-fit 並加入 pixelated 保持放大清晰 */
             .result-ball {{ 
-                width: 240px;  /* 球的寬度 */
-                height: 240px; /* 球的高度 */
+                width: 450px;  /* 球的寬度 */
+                height: 450px; /* 球的高度 */
                 object-fit: contain; 
                 image-rendering: pixelated; /* 確保寶可夢小圖放大後不會糊掉 */
                 filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); 
