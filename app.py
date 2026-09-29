@@ -477,7 +477,7 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
-   # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+  # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
@@ -533,8 +533,8 @@ elif st.session_state.page == 'game':
             
             /* 🎯 這裡控制球的大小！已修復 object-fit 並加入 pixelated 保持放大清晰 */
             .result-ball {{ 
-                width: 450px;  /* 球的寬度 */
-                height: 450px; /* 球的高度 */
+                width: 240px;  /* 球的寬度 */
+                height: 240px; /* 球的高度 */
                 object-fit: contain; 
                 image-rendering: pixelated; /* 確保寶可夢小圖放大後不會糊掉 */
                 filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); 
