@@ -141,7 +141,6 @@ def init_system():
 
 init_system()
 
-# --- 成長屬性設定 ---
 def get_max_hp(level): return min(10, 3 + (level // 5)) 
 def get_title(level):
     if level < 3: return "🌱 新手訓練家"
@@ -150,7 +149,6 @@ def get_title(level):
     if level < 20: return "🔥 四天王候補"
     return "👑 寶可夢大師"
 
-# --- 資料存取 API ---
 def get_admin(): return load_json(ADMIN_FILE, {})
 def save_admin(d): save_json(ADMIN_FILE, d)
 def get_parents(): return load_json(PARENTS_FILE, {})
@@ -162,14 +160,12 @@ def load_user_data(u_key):
     d = load_json(f"data_{u_key}.json", {
         "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
         "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], 
-        "death_count": 0, "vocab_bank": "國小", "word_stats": {}, "gold": 0, 
-        "inventory": {"potion": 0, "shield": 0, "magnifier": 0}, "shield_active": False,
+        "death_count": 0, "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
         "last_login_date": "", "login_streak": 0
     })
     if "vocab_bank" not in d: d["vocab_bank"] = "國小"
     if "word_stats" not in d: d["word_stats"] = {}
     if "gold" not in d: d["gold"] = 0
-    if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
     if "shield_active" not in d: d["shield_active"] = False
     if "last_login_date" not in d: d["last_login_date"] = ""
     if "login_streak" not in d: d["login_streak"] = 0
@@ -178,7 +174,6 @@ def load_user_data(u_key):
 def save_user_data(u_key, d): save_json(f"data_{u_key}.json", d)
 def load_error_log(u_key): return load_json(f"error_{u_key}.json", [])
 def save_error_log(u_key, l): save_json(f"error_{u_key}.json", l)
-
 def delete_user(u_key):
     if os.path.exists(f"data_{u_key}.json"): os.remove(f"data_{u_key}.json")
     if os.path.exists(f"error_{u_key}.json"): os.remove(f"error_{u_key}.json")
@@ -189,7 +184,6 @@ def load_csv(f):
     try: return pd.read_csv(f, encoding="utf-8-sig").fillna("").to_dict('records')
     except: return []
 
-# --- 艾賓浩斯智慧配題演算法 ---
 EBBINGHAUS_INTERVALS = [0, 60, 600, 86400, 86400*3, 86400*7, 86400*15]
 
 def pick_next_question(v_list, err_log, total_q, word_stats):
@@ -220,19 +214,16 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 網頁設定與寶可夢主題 CSS ---
+# --- 網頁設定與 CSS ---
 st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 .block-container { max-width: 900px; padding-top: 1rem; padding-bottom: 2rem; }
-
-/* 寶可夢大廳標題特效 */
 .poke-title-box { background-color: #ffcb05; padding: 20px; border-radius: 15px; border: 5px solid #3c5aa6; text-align: center; margin-bottom: 25px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
 .poke-title { color: #3c5aa6; margin: 0; font-size: 3.2rem; font-weight: 900; letter-spacing: 2px; text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff, 2px -2px 0px #fff, -2px 2px 0px #fff; }
 .poke-subtitle { color: #e74c3c; font-weight: bold; font-size: 1.2rem; margin-top: 10px; background: white; display: inline-block; padding: 5px 20px; border-radius: 20px; border: 2px solid #e74c3c;}
-
 .status-bar-container { display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; background-color: #f8f9fa; border-radius: 12px; padding: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .status-item { text-align: center; flex: 1 1 15%; min-width: 60px; padding: 5px; }
 .status-label { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 2px; }
@@ -244,11 +235,7 @@ st.markdown("""
 .hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; white-space: nowrap; }
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
-
-/* 道具商店卡片 */
-.item-card { background: #fdfefe; border: 2px solid #bdc3c7; border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;}
-.item-title { font-weight: bold; color: #2c3e50; margin-bottom: 8px; font-size: 1.1rem;}
-
+.shield-fx { filter: drop-shadow(0 0 15px #3498db) brightness(1.2); }
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
@@ -256,7 +243,6 @@ st.markdown("""
 .dex-item img { width: 100%; max-width: 60px; height: auto; transition: transform 0.2s; }
 .dex-item img:hover { transform: scale(1.2); }
 .dex-name { font-size: 0.75rem; color: #555; margin-top: 5px; font-weight: bold; }
-
 @media screen and (max-width: 600px) {
     .poke-title { font-size: 2rem; }
     .poke-subtitle { font-size: 0.9rem; }
@@ -271,7 +257,6 @@ st.markdown("""
     .dex-grid { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px;}
     .dex-name { font-size: 0.6rem; }
 }
-
 @keyframes heroDash { 0% { transform: scaleX(-1) translateX(0px); } 30% { transform: scaleX(-1) translateX(-40px); } 100% { transform: scaleX(-1) translateX(0px); } }
 @keyframes shakeHurt { 0% { transform: translateX(0); filter: brightness(1); } 20% { transform: translateX(-10px); filter: brightness(2.5) drop-shadow(0 0 25px red); } 40% { transform: translateX(10px); } 60% { transform: translateX(-10px); } 80% { transform: translateX(10px); } 100% { transform: translateX(0); filter: brightness(1); } }
 @keyframes monsterDash { 0% { transform: translateX(0px); } 30% { transform: translateX(-40px); } 100% { transform: translateX(0px); } }
@@ -283,7 +268,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 破解手機靜音機制
 st.components.v1.html("""<script>
 if (!window.parent.gameAudioCtx) {
     const AudioContext = window.parent.AudioContext || window.parent.webkitAudioContext;
@@ -313,8 +297,7 @@ if st.session_state.page == 'login':
     with t1:
         st.subheader("選擇您的家庭與訓練家")
         parents = get_parents()
-        if not parents:
-            st.info("目前還沒有家庭建立帳號喔！請先請家長到「家長控制台」註冊。")
+        if not parents: st.info("目前還沒有家庭建立帳號喔！請先請家長到「家長控制台」註冊。")
         else:
             family_input = st.text_input("1️⃣ 請輸入您的家長 (家庭) 帳號", placeholder="輸入後按下 Enter 鍵確認...")
             if family_input:
@@ -322,8 +305,7 @@ if st.session_state.page == 'login':
                     users = get_users()
                     family_heroes = {k: v for k, v in users.items() if v.get("parent") == family_input}
                     
-                    if not family_heroes:
-                        st.warning("這個家庭還沒有建立訓練家帳號，請家長先登入控制台建立喔！")
+                    if not family_heroes: st.warning("這個家庭還沒有建立訓練家帳號，請家長先登入控制台建立喔！")
                     else:
                         hero_display = {k: v["name"] for k, v in family_heroes.items()}
                         sel_hero_key = st.selectbox("2️⃣ 選擇你的訓練家", list(hero_display.keys()), format_func=lambda x: hero_display[x])
@@ -332,8 +314,6 @@ if st.session_state.page == 'login':
                         if st.button("🚀 出發冒險！", type="primary", use_container_width=True):
                             if hero_pin == users[sel_hero_key].get("pin", "0000"):
                                 init_data = load_user_data(sel_hero_key)
-                                
-                                # 登入獎勵與簽到機制
                                 today_str = str(datetime.now().date())
                                 last_date = init_data.get("last_login_date", "")
                                 if last_date != today_str:
@@ -357,10 +337,8 @@ if st.session_state.page == 'login':
                                 st.session_state.vk_input = ""
                                 st.session_state.play_auto_audio = True
                                 st.session_state.page = 'game'; st.rerun()
-                            else:
-                                st.error("❌ 密碼錯誤！請確認密碼是否正確。")
-                else:
-                    st.error("找不到這個家庭帳號，請確認輸入是否正確。")
+                            else: st.error("❌ 密碼錯誤！請確認密碼是否正確。")
+                else: st.error("找不到這個家庭帳號，請確認輸入是否正確。")
 
     with t2:
         colA, colB = st.columns(2)
@@ -384,8 +362,7 @@ if st.session_state.page == 'login':
                 elif r_acc in p_db: st.error("帳號已存在！")
                 else:
                     p_db[r_acc] = {
-                        "password": r_pwd,
-                        "hero_limit": None,
+                        "password": r_pwd, "hero_limit": None,
                         "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮"}],
                         "store_prices": {"potion": 50, "shield": 100, "magnifier": 30}
                     }
@@ -397,8 +374,7 @@ if st.session_state.page == 'login':
         admin_db = get_admin()
         gm_pwd = st.text_input("輸入 GM 密碼", type="password", key="gm_pwd")
         if st.button("GM 登入", use_container_width=True):
-            if gm_pwd == admin_db["password"]:
-                st.session_state.page = 'admin'; st.rerun()
+            if gm_pwd == admin_db["password"]: st.session_state.page = 'admin'; st.rerun()
             else: st.error("密碼錯誤！")
 
 # ==================== 遊戲主畫面 ====================
@@ -512,8 +488,7 @@ elif st.session_state.page == 'game':
                         u_data['level'] = max(1, u_data['level'] - 1)
                         u_data['death_count'] = 0
                         st.session_state.level_dropped = True
-                    else:
-                        st.session_state.level_dropped = False
+                    else: st.session_state.level_dropped = False
                     u_data['hero_hp'] = get_max_hp(u_data['level'])
                     if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
                     st.session_state.action_anim = 'dead'
@@ -528,7 +503,7 @@ elif st.session_state.page == 'game':
         if ans.lower() == c_w['en'].lower(): process_ans(c_w['zh'])
         else: process_ans("WRONG_ANSWER")
 
-    # --- 側邊欄 ---
+    # --- 側邊欄 (僅保留家族獎勵兌換與返回大廳) ---
     with st.sidebar:
         st.subheader("🏪 家族獎勵兌換")
         for r in r_list:
@@ -561,43 +536,38 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 🏪 道具商店與背包 (一體化設計) ---
-    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:5px;'>🏪 道具商店與背包 (點擊購買 / 使用)</div>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    inv = u_data['inventory']
+    # --- 🏪 道具商店 (點擊扣除金幣並立即使用) ---
+    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:5px;'>🏪 道具商店 (點擊扣除金幣並立即使用)</div>", unsafe_allow_html=True)
+    c_btn1, c_btn2, c_btn3 = st.columns(3)
     
-    with c1:
-        st.markdown("<div class='item-card'><div class='item-title'>🧪 藥水</div>", unsafe_allow_html=True)
-        if st.button(f"🛒 購買 ({store_prices['potion']}G)", use_container_width=True, key="buy_pot"):
-            if u_data['gold'] >= store_prices['potion']:
-                u_data['gold'] -= store_prices['potion']; inv['potion'] += 1; save_user_data(u_key, u_data); st.rerun()
-            else: st.error("金幣不足")
-        if st.button(f"✨ 使用 ({inv['potion']})", use_container_width=True, key="use_pot", disabled=inv['potion']<=0 or u_data['hero_hp']>=max_hp):
-            inv['potion'] -= 1; u_data['hero_hp'] = min(max_hp, u_data['hero_hp'] + 1)
-            st.session_state.action_anim = 'heal'; save_user_data(u_key, u_data); st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with c2:
-        st.markdown("<div class='item-card'><div class='item-title'>🛡️ 護盾</div>", unsafe_allow_html=True)
-        if st.button(f"🛒 購買 ({store_prices['shield']}G)", use_container_width=True, key="buy_sh"):
-            if u_data['gold'] >= store_prices['shield']:
-                u_data['gold'] -= store_prices['shield']; inv['shield'] += 1; save_user_data(u_key, u_data); st.rerun()
-            else: st.error("金幣不足")
-        if st.button(f"✨ 展開 ({inv['shield']})", use_container_width=True, key="use_sh", disabled=inv['shield']<=0 or u_data.get('shield_active', False)):
-            inv['shield'] -= 1; u_data['shield_active'] = True
+    if c_btn1.button(f"🧪 藥水 ({store_prices['potion']}G)", use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
+        if u_data['gold'] >= store_prices['potion']:
+            u_data['gold'] -= store_prices['potion']
+            u_data['hero_hp'] = min(max_hp, u_data['hero_hp'] + 1)
+            st.session_state.action_anim = 'heal'
             save_user_data(u_key, u_data); st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with c3:
-        st.markdown("<div class='item-card'><div class='item-title'>🔍 放大鏡</div>", unsafe_allow_html=True)
-        if st.button(f"🛒 購買 ({store_prices['magnifier']}G)", use_container_width=True, key="buy_mag"):
-            if u_data['gold'] >= store_prices['magnifier']:
-                u_data['gold'] -= store_prices['magnifier']; inv['magnifier'] += 1; save_user_data(u_key, u_data); st.rerun()
-            else: st.error("金幣不足")
-        if st.button(f"✨ 裝備 ({inv['magnifier']})", use_container_width=True, key="use_mag", disabled=inv['magnifier']<=0 or diff=='簡單' or st.session_state.magnifier_active):
-            inv['magnifier'] -= 1; st.session_state.magnifier_active = True
+        else: st.error("金幣不足！")
+            
+    if c_btn2.button(f"🛡️ 護盾 ({store_prices['shield']}G)", use_container_width=True, disabled=u_data.get('shield_active', False)):
+        if u_data['gold'] >= store_prices['shield']:
+            u_data['gold'] -= store_prices['shield']
+            u_data['shield_active'] = True
             save_user_data(u_key, u_data); st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        else: st.error("金幣不足！")
+            
+    if c_btn3.button(f"🔍 放大鏡 ({store_prices['magnifier']}G)", use_container_width=True, disabled=st.session_state.magnifier_active):
+        if u_data['gold'] >= store_prices['magnifier']:
+            u_data['gold'] -= store_prices['magnifier']
+            st.session_state.magnifier_active = True
+            if diff == '簡單':
+                # 在簡單模式下，刪去兩個錯誤選項
+                correct_ans = c_w['zh']
+                wrong_indices = [i for i, opt in enumerate(st.session_state.current_options) if opt != correct_ans and opt != "❌"]
+                if len(wrong_indices) >= 2:
+                    to_remove = random.sample(wrong_indices, 2)
+                    for i in to_remove: st.session_state.current_options[i] = "❌"
+            save_user_data(u_key, u_data); st.rerun()
+        else: st.error("金幣不足！")
 
     # --- 冒險圖鑑 ---
     with st.expander(f"📖 寶可夢圖鑑 (題庫: {bank_name} | 收集: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 傳說: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
@@ -754,6 +724,7 @@ elif st.session_state.page == 'game':
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
             st.session_state.play_auto_audio = True
             st.session_state.vk_input = ""
+            st.session_state.magnifier_active = False 
         st.rerun()
 
     else:
@@ -859,7 +830,6 @@ elif st.session_state.page == 'game':
                 
                 if st.session_state.magnifier_active:
                     reveal_count = max(1, int(w_len * 0.8))
-                    # 完美的 Seed 鎖定：確保放大鏡提示字母在重整時不會亂跳
                     r = random.Random(word_en)
                     indices = sorted(r.sample(range(w_len), reveal_count))
                 else:
@@ -945,11 +915,21 @@ elif st.session_state.page == 'game':
             if diff == '簡單':
                 cA, cB = st.columns(2)
                 with cA:
-                    if st.button(f"A. {opts[0]}", use_container_width=True, key="ans_a"): process_ans(opts[0])
-                    if st.button(f"C. {opts[2]}", use_container_width=True, key="ans_c"): process_ans(opts[2])
+                    if opts[0] != "❌":
+                        if st.button(f"A. {opts[0]}", use_container_width=True, key="ans_a"): process_ans(opts[0])
+                    else: st.button("❌", disabled=True, use_container_width=True, key="ans_a_del")
+                    
+                    if opts[2] != "❌":
+                        if st.button(f"C. {opts[2]}", use_container_width=True, key="ans_c"): process_ans(opts[2])
+                    else: st.button("❌", disabled=True, use_container_width=True, key="ans_c_del")
                 with cB:
-                    if st.button(f"B. {opts[1]}", use_container_width=True, key="ans_b"): process_ans(opts[1])
-                    if st.button(f"D. {opts[3]}", use_container_width=True, key="ans_d"): process_ans(opts[3])
+                    if opts[1] != "❌":
+                        if st.button(f"B. {opts[1]}", use_container_width=True, key="ans_b"): process_ans(opts[1])
+                    else: st.button("❌", disabled=True, use_container_width=True, key="ans_b_del")
+                    
+                    if opts[3] != "❌":
+                        if st.button(f"D. {opts[3]}", use_container_width=True, key="ans_d"): process_ans(opts[3])
+                    else: st.button("❌", disabled=True, use_container_width=True, key="ans_d_del")
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
                 user_input = st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", value=st.session_state.vk_input, key="text_input_field", autocomplete="off")
