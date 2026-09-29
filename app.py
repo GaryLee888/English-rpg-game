@@ -195,7 +195,7 @@ def generate_options(c_v, f_list):
     return o
 
 # --- 網頁設定與自適應 CSS ---
-st.set_page_config(page_title="英文英雄 RPG", page_icon="⚔️", layout="wide")
+st.set_page_config(page_title="寶可夢英文大挑戰", page_icon="⚔️", layout="wide")
 
 st.markdown("""
 <style>
