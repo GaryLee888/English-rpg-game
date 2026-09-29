@@ -1,6 +1,8 @@
 import os
 import sys
 import subprocess
+import json
+import csv
 import random
 import time
 from datetime import datetime
@@ -153,7 +155,6 @@ def save_vocab_db(bank_key, df):
     records = df.fillna("").to_dict('records')
     db.reference(f"vocab_banks/{bank_key}").set(records)
 
-# 系統初始預設字庫上傳 (僅執行一次)
 if not db.reference("vocab_banks/國小").get():
     save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
 if not db.reference("vocab_banks/國中").get():
@@ -177,34 +178,23 @@ def load_user_data(u_key):
         if "shield_active" not in d: d["shield_active"] = False
         if "last_login_date" not in d: d["last_login_date"] = ""
         if "login_streak" not in d: d["login_streak"] = 0
+        if "death_count" in d: del d["death_count"]
         if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
-        if "history" not in d: d["history"] = []
-        if "trophies" not in d: d["trophies"] = []
-        if "monster_dex" not in d: d["monster_dex"] = []
     return d
 
 def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
-
 def load_error_log(u_key): return db.reference(f"error_log/{u_key}").get() or []
 def save_error_log(u_key, l): db.reference(f"error_log/{u_key}").set(l)
-
 def delete_user(u_key):
     db.reference(f"user_data/{u_key}").delete()
     db.reference(f"error_log/{u_key}").delete()
     users = get_users()
-    if u_key in users:
-        del users[u_key]
-        save_users(users)
+    if u_key in users: del users[u_key]; save_users(users)
 
-def get_max_hp(level): return min(10, 3 + (level // 5)) 
-def get_title(level):
-    if level < 3: return "🌱 新手訓練家"
-    if level < 7: return "⚔️ 道館挑戰者"
-    if level < 12: return "🌟 菁英訓練家"
-    if level < 20: return "🔥 四天王候補"
-    return "👑 寶可夢大師"
+def load_csv(f):
+    try: return pd.read_csv(f, encoding="utf-8-sig").fillna("").to_dict('records')
+    except: return []
 
-# --- 艾賓浩斯智慧配題演算法 ---
 EBBINGHAUS_INTERVALS = [0, 60, 600, 86400, 86400*3, 86400*7, 86400*15]
 
 def pick_next_question(v_list, err_log, total_q, word_stats):
@@ -429,7 +419,7 @@ elif st.session_state.page == 'game':
     if bank_id.startswith("custom_"):
         cb_id = bank_id.split("_")[1]
         v_list = load_vocab_db(f"custom_{parent_id}_{cb_id}")
-        if not v_list: v_list = [{"en": "apple", "zh": "蘋果 (請家長至控制台新增單字)", "hint": "預設單字"}]
+        if not v_list: v_list = [{"en": "apple", "zh": "蘋果", "hint": "預設單字"}]
         bank_name = next((b["name"] for b in p_db[parent_id].get("custom_banks", []) if b["id"] == cb_id), "自訂字庫")
     else:
         v_list = load_vocab_db(bank_id)
@@ -563,7 +553,7 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 🏪 道具商店「一鍵買＆用」 ---
+    # --- 🏪 道具商店 ---
     st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊立刻扣除金幣並發動)</div>", unsafe_allow_html=True)
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
@@ -1288,7 +1278,21 @@ elif st.session_state.page == 'parent':
             st.markdown("---")
             v_data = load_vocab_db(f"custom_{p_id}_{sel_bank_id}")
             v_df = pd.DataFrame(v_data) if v_data else pd.DataFrame(columns=["en", "zh", "hint"])
-            edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
+            
+            if st.button("🔄 修復：互換【中文】與【提示】欄位", key=f"swap_parent_{sel_bank_id}"):
+                if not v_df.empty and 'zh' in v_df.columns and 'hint' in v_df.columns:
+                    v_df['zh'], v_df['hint'] = v_df['hint'], v_df['zh']
+                    save_vocab_db(f"custom_{p_id}_{sel_bank_id}", v_df)
+                    st.success("✅ 欄位互換成功！")
+                    st.rerun()
+                    
+            edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True,
+                                       column_order=["en", "zh", "hint"],
+                                       column_config={
+                                           "en": st.column_config.TextColumn("英文單字 (en)", required=True),
+                                           "zh": st.column_config.TextColumn("正確中文/答案 (zh)", required=True),
+                                           "hint": st.column_config.TextColumn("輔助提示/詞性 (hint)")
+                                       })
             if st.button("💾 儲存自訂單字庫", type="primary"):
                 if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
                 save_vocab_db(f"custom_{p_id}_{sel_bank_id}", edited_df)
@@ -1430,7 +1434,21 @@ elif st.session_state.page == 'admin':
         edit_bank = st.radio("選擇要編輯的題庫", ["國小", "國中", "多益"], horizontal=True)
         v_data = load_vocab_db(edit_bank)
         v_df = pd.DataFrame(v_data) if v_data else pd.DataFrame(columns=["en", "zh", "hint"])
-        edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
+        
+        if st.button(f"🔄 修復：互換【{edit_bank}】的中文與提示欄位", key=f"swap_gm_{edit_bank}"):
+            if not v_df.empty and 'zh' in v_df.columns and 'hint' in v_df.columns:
+                v_df['zh'], v_df['hint'] = v_df['hint'], v_df['zh']
+                save_vocab_db(edit_bank, v_df)
+                st.success("✅ 欄位互換成功！")
+                st.rerun()
+                
+        edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True,
+                                   column_order=["en", "zh", "hint"],
+                                   column_config={
+                                       "en": st.column_config.TextColumn("英文單字 (en)", required=True),
+                                       "zh": st.column_config.TextColumn("正確中文/答案 (zh)", required=True),
+                                       "hint": st.column_config.TextColumn("輔助提示/詞性 (hint)")
+                                   })
         if st.button("💾 儲存題庫修改", type="primary"):
             if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
             save_vocab_db(edit_bank, edited_df)
