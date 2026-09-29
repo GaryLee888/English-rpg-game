@@ -481,8 +481,19 @@ elif st.session_state.page == 'game':
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
-        b_img = BALL_IMAGES["五獎"]
-        for k, v in BALL_IMAGES.items():
+        
+        # 🌟 使用本來最具寶可夢經典風格的官方精靈球圖標（Pixel Art 像素風格）
+        PIXEL_BALL_IMAGES = {
+            "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png",      
+            "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png",    
+            "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",    
+            "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",     
+            "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",     
+            "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"       
+        }
+        
+        b_img = PIXEL_BALL_IMAGES["五獎"]
+        for k, v in PIXEL_BALL_IMAGES.items():
             if k in prize['name']: 
                 b_img = v
                 if k == "特獎": b_color = "#f1c40f"
@@ -492,7 +503,7 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 絕對置中 + 高清平滑抗鋸齒渲染排版（呈現如三獎般的高質量滑順感）
+        # 🌟 絕對置中 + 像素風高清銳利化渲染排版（還原三獎的頂級高質量視覺）
         st.markdown(f"""
         <style>
             /* 隱藏預設標題與邊界，設定深色背景 */
@@ -531,7 +542,7 @@ elif st.session_state.page == 'game':
                 animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
-            /* 🎯 高清平滑大球設定：使用 auto 讓瀏覽器進行平滑抗鋸齒縮放，告別粗糙像素 */
+            /* 🎯 關鍵：使用 pixelated 確保像素放大時顆粒根根分明、絕不模糊！ */
             .result-ball {{ 
                 width: 240px !important; 
                 height: 240px !important; 
@@ -539,7 +550,9 @@ elif st.session_state.page == 'game':
                 min-height: 240px !important;
                 max-width: 240px !important;
                 object-fit: contain !important; 
-                image-rendering: auto !important; /* 啟用瀏覽器平滑過濾與抗鋸齒，呈現高級質感 */
+                image-rendering: -moz-crisp-edges !important;
+                image-rendering: -webkit-optimize-contrast !important;
+                image-rendering: pixelated !important; /* 鎖死像素顆粒，呈現極致清晰的經典質感 */
                 filter: drop-shadow(0 0 30px {b_color}) brightness(1.15) !important; 
                 margin-bottom: -120px !important; /* 精準卡在卡片正上方一半 */
                 z-index: 50 !important; 
