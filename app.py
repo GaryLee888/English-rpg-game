@@ -535,7 +535,7 @@ elif st.session_state.page == 'game':
             .result-ball {{ 
                 width: 250px; 
                 height: 250px; 
-                object-fit: contain; 
+                object-fit: 1 contain; 
                 filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); 
                 margin-bottom: -75px; 
                 z-index: 50; 
