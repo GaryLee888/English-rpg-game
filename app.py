@@ -475,47 +475,55 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 完美置中，完全無視 Streamlit 佈局
+        # 🌟 完美置中排版與高度還原截圖設計
         st.markdown(f"""
         <style>
             [data-testid="stHeader"] {{ display: none; }}
-            [data-testid="stAppViewContainer"] {{ background: rgba(30,30,30,0.95) !important; }}
+            [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95); }}
             
-            /* 將 Streamlit 預設佈局完全隱藏，打造無干擾全螢幕 */
-            .block-container {{ max-width: 100% !important; padding: 0 !important; margin: 0 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; height: 100vh !important; overflow: hidden !important; }}
+            /* 讓整個畫面強制滿版，並使用 flexbox 將所有內容完美置中 */
+            .main .block-container {{ max-width: 100% !important; padding: 0 !important; margin: 0 !important; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh !important; }}
             
-            .result-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; max-width: 400px; position: relative; z-index: 50; animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; margin-top: -10vh; }}
+            .result-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; position: relative; z-index: 50; animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }}
             
-            .result-ball {{ width: 250px !important; height: 250px !important; object-fit: contain; filter: drop-shadow(0 0 30px {b_color}) brightness(1.1); margin-bottom: -60px; z-index: 50; position: relative; animation: dropAndBounce 1.2s ease-out forwards; }}
+            /* 精靈球：精準卡在白色卡片正上方交疊處 */
+            .result-ball {{ width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); margin-bottom: -75px; z-index: 50; position: relative; animation: dropAndBounce 1.2s ease-out forwards; }}
             
-            .result-card {{ background: white; padding: 60px 20px 25px 20px; border-radius: 20px; text-align: center; box-shadow: 0 0 40px {b_color}; border: 6px solid {b_color}; width: 90%; max-width: 350px; z-index: 10; position: relative; }}
+            /* 中獎卡片 */
+            .result-card {{ background: white; padding: 95px 20px 30px 20px; border-radius: 20px; text-align: center; box-shadow: 0 0 40px {b_color}; border: 5px solid {b_color}; width: 85%; max-width: 320px; z-index: 10; position: relative; }}
             
-            /* 讓收下獎勵按鈕強制在螢幕正下方置中，跟卡片完美對齊 */
-            div[data-testid="stVerticalBlock"] > div:has(button) {{ display: flex; justify-content: center; width: 100%; position: absolute; bottom: 0; z-index: 100000; }}
-            div[data-testid="stButton"] {{ width: 100%; max-width: 350px; display: flex; justify-content: center; margin: 0; position: fixed !important; bottom: 8vh !important; left: 50% !important; transform: translateX(-50%) !important; z-index: 99999 !important; }}
-            div[data-testid="stButton"] button {{ font-size: 1.2rem !important; font-weight: bold; padding: 15px !important; box-shadow: 0 0 20px rgba(255,255,255,0.3); border: 2px solid white; width: 100% !important; background-color: #ff4757; color: white; border-radius: 10px; }}
-            div[data-testid="stButton"] button:hover {{ border-color: #ff6b81; color: white; }}
-
             @keyframes dropAndBounce {{
                 0% {{ transform: translateY(-400px) scale(0.5); opacity: 0; }}
                 50% {{ transform: translateY(0px) scale(1.2); opacity: 1; }}
-                70% {{ transform: translateY(-40px) scale(1); }}
+                70% {{ transform: translateY(-30px) scale(1); }}
                 85% {{ transform: translateY(0px) scale(1); }}
-                95% {{ transform: translateY(-15px) scale(1); }}
-                100% {{ transform: translateY(0px) scale(1); }}
+                95% {{ transform: translateY(-10px) scale(1); }}
+                100% {{ transform: translateY(0px) scale(1.1); }}
             }}
-            @keyframes popIn {{ 
-                0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 
-                60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 
-                100% {{ transform: scale(1) translateY(0); opacity: 1; }} 
+            @keyframes popIn {{ 0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 100% {{ transform: scale(1) translateY(0); opacity: 1; }} }}
+            
+            /* 將按鈕貼齊在卡片正下方一點點，取消置底 */
+            div[data-testid="stVerticalBlock"] > div:has(button) {{ display: flex; justify-content: center; width: 100%; margin-top: 25px; z-index: 100000; }}
+            div[data-testid="stButton"] {{ width: 100%; max-width: 320px; display: flex; justify-content: center; margin: 0; }}
+            div[data-testid="stButton"] button {{ 
+                font-size: 1.1rem !important; 
+                font-weight: bold; 
+                padding: 12px !important; 
+                background-color: #ff4d4d !important; 
+                color: white !important; 
+                border-radius: 10px !important; 
+                border: 2px solid white !important;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
+                width: 100%; 
             }}
+            div[data-testid="stButton"] button:hover {{ filter: brightness(1.1); }}
         </style>
         
         <div class="result-container">
             <img class="result-ball" src="{b_img}">
             <div class="result-card">
-                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 1.8rem;">🎉 恭喜中獎 🎉</h1>
-                <h2 style="color: {b_color}; font-size: 1.5rem; text-shadow: 1px 1px 0px #000; margin: 0; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 10px;">{prize['name']}</h2>
+                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.6rem;">🎉 恭喜中獎 🎉</h1>
+                <h2 style="color: {b_color}; font-size: 1.3rem; margin: 0; padding: 15px 10px; background: #f2f2f2; border-radius: 12px; font-weight: 800; text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);">{prize['name']}</h2>
             </div>
         </div>
         <script>
@@ -523,31 +531,20 @@ elif st.session_state.page == 'game':
                 let ctx = window.parent.gameAudioCtx;
                 if(ctx) {{
                     if(ctx.state === 'suspended') ctx.resume();
-                    
-                    /* 老虎機音效馬上播放 */
                     let osc = ctx.createOscillator(); let gain = ctx.createGain();
-                    osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
                     let now = ctx.currentTime;
-                    for(let i=0; i<10; i++){{osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.05);}}
-                    gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
-                    osc.start(now); osc.stop(now + 0.5);
-
-                    /* 中獎音效等球掉下來後播放 (1.2秒) */
-                    setTimeout(() => {{
-                        let oscW = ctx.createOscillator(); let gainW = ctx.createGain();
-                        oscW.type = 'triangle'; oscW.connect(gainW); gainW.connect(ctx.destination);
-                        let nowW = ctx.currentTime;
-                        oscW.frequency.setValueAtTime(440, nowW); oscW.frequency.setValueAtTime(554, nowW + 0.1);
-                        oscW.frequency.setValueAtTime(659, nowW + 0.2); oscW.frequency.setValueAtTime(880, nowW + 0.3);
-                        gainW.gain.setValueAtTime(0, nowW); gainW.gain.linearRampToValueAtTime(0.5, nowW+0.1);
-                        gainW.gain.exponentialRampToValueAtTime(0.01, nowW + 1.5);
-                        oscW.start(nowW); oscW.stop(nowW + 1.5);
-                    }}, 1200);
+                    osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554, now + 0.1);
+                    osc.frequency.setValueAtTime(659, now + 0.2); osc.frequency.setValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.5, now+0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+                    osc.start(now); osc.stop(now + 1.5);
                 }}
-            }}, 100);
+            }}, 500);
         </script>
         """, unsafe_allow_html=True)
         
+        # 領取按鈕 (會被上方 CSS 自動置靠在卡片下方)
         if st.button("🎁 點擊收下獎勵", type="primary"):
             st.session_state.show_gacha_result = False
             st.rerun()
