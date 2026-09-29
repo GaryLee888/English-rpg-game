@@ -477,7 +477,7 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
-    # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+   # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
@@ -492,41 +492,109 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 完美三位一體置中排版
+        # 🌟 終極絕對置中魔法：直接設定 Fixed 綁定螢幕正中央
         st.markdown(f"""
         <style>
-            [data-testid="stHeader"] {{ display: none; }}
-            [data-testid="stAppViewContainer"] {{ background: rgba(0,0,0,0.85); }}
-            /* 讓整個畫面強制滿版，並使用 flexbox 將所有內容完美置中 */
-            .main .block-container {{ max-width: 100% !important; padding: 0 !important; margin: 0 !important; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh !important; }}
+            /* 隱藏預設標題與邊界，設定深色背景 */
+            [data-testid="stHeader"] {{ display: none !important; }}
+            [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95) !important; overflow: hidden !important; }}
             
-            .result-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; max-width: 400px; position: relative; z-index: 50; animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; padding-bottom: 80px; }}
+            /* 清除所有 Streamlit 預設留白 */
+            .main, .main .block-container {{ 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                height: 100vh !important;
+                max-width: 100% !important;
+            }}
             
-            .result-ball {{ width: 200px; height: 200px; object-fit: contain; filter: drop-shadow(0 0 30px {b_color}) brightness(1.2); margin-bottom: -30px; z-index: 50; position: relative; animation: dropAndBounce 1.2s ease-out forwards; }}
+            /* 🚨 關鍵破壞：將包含【球+卡片+按鈕】的最外層容器直接釘死在畫面「正中央」 */
+            .main .block-container > div {{
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 100% !important;
+                z-index: 9999 !important;
+            }}
             
-            .result-card {{ background: white; padding: 50px 20px 25px 20px; border-radius: 20px; text-align: center; box-shadow: 0 0 40px {b_color}; border: 6px solid {b_color}; width: 90%; max-width: 350px; z-index: 10; position: relative; }}
+            .result-container {{ 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                justify-content: center; 
+                width: 100%; 
+                position: relative; 
+                animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
+            }}
+            
+            /* 精靈球：精準卡在白色卡片正上方交疊處 */
+            .result-ball {{ 
+                width: 150px; 
+                height: 150px; 
+                object-fit: contain; 
+                filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); 
+                margin-bottom: -75px; 
+                z-index: 50; 
+                position: relative; 
+                animation: dropAndBounce 1.2s ease-out forwards; 
+            }}
+            
+            /* 中獎卡片 */
+            .result-card {{ 
+                background: white; 
+                padding: 95px 20px 30px 20px; 
+                border-radius: 20px; 
+                text-align: center; 
+                box-shadow: 0 0 40px {b_color}; 
+                border: 5px solid {b_color}; 
+                width: 85%; 
+                max-width: 320px; 
+                z-index: 10; 
+                position: relative; 
+            }}
             
             @keyframes dropAndBounce {{
                 0% {{ transform: translateY(-400px) scale(0.5); opacity: 0; }}
                 50% {{ transform: translateY(0px) scale(1.2); opacity: 1; }}
-                70% {{ transform: translateY(-40px) scale(1); }}
+                70% {{ transform: translateY(-30px) scale(1); }}
                 85% {{ transform: translateY(0px) scale(1); }}
-                95% {{ transform: translateY(-15px) scale(1); }}
-                100% {{ transform: translateY(0px) scale(1.2); }}
+                95% {{ transform: translateY(-10px) scale(1); }}
+                100% {{ transform: translateY(0px) scale(1.1); }}
             }}
             @keyframes popIn {{ 0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 100% {{ transform: scale(1) translateY(0); opacity: 1; }} }}
             
-            /* 將按鈕強制置於最下方 */
-            div[data-testid="stVerticalBlock"] > div:has(button) {{ display: flex; justify-content: center; width: 100%; position: absolute; bottom: 0; z-index: 100000; }}
-            div[data-testid="stButton"] {{ width: 100%; max-width: 350px; display: flex; justify-content: center; margin: 0; }}
-            div[data-testid="stButton"] button {{ font-size: 1.2rem !important; font-weight: bold; padding: 15px !important; box-shadow: 0 0 20px rgba(255,255,255,0.3); border: 2px solid white; width: 100%; }}
+            /* 按鈕間距設定 */
+            div[data-testid="stVerticalBlock"] > div:has(button) {{ 
+                display: flex; 
+                justify-content: center; 
+                width: 100%; 
+                margin-top: 20px !important;
+            }}
+            div[data-testid="stButton"] {{ width: 100%; max-width: 320px; display: flex; justify-content: center; margin: 0; }}
+            div[data-testid="stButton"] button {{ 
+                font-size: 1.1rem !important; 
+                font-weight: bold; 
+                padding: 12px !important; 
+                background-color: #ff4d4d !important; 
+                color: white !important; 
+                border-radius: 10px !important; 
+                border: 2px solid white !important;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
+                width: 100%; 
+                transition: transform 0.2s, filter 0.2s;
+            }}
+            div[data-testid="stButton"] button:hover {{ filter: brightness(1.1); transform: translateY(-2px); }}
         </style>
         
         <div class="result-container">
             <img class="result-ball" src="{b_img}">
             <div class="result-card">
-                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 1.8rem;">🎉 恭喜中獎 🎉</h1>
-                <h2 style="color: {b_color}; font-size: 1.4rem; text-shadow: 1px 1px 0px #000; margin: 0; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 10px;">{prize['name']}</h2>
+                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.6rem;">🎉 恭喜中獎 🎉</h1>
+                <h2 style="color: {b_color}; font-size: 1.3rem; margin: 0; padding: 15px 10px; background: #f2f2f2; border-radius: 12px; font-weight: 800; text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);">{prize['name']}</h2>
             </div>
         </div>
         <script>
@@ -547,7 +615,7 @@ elif st.session_state.page == 'game':
         </script>
         """, unsafe_allow_html=True)
         
-        # 領取按鈕 (會被上方 CSS 自動置中貼合在卡片下)
+        # 領取按鈕
         if st.button("🎁 點擊收下獎勵", type="primary"):
             st.session_state.show_gacha_result = False
             st.rerun()
