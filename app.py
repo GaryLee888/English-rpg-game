@@ -533,8 +533,8 @@ elif st.session_state.page == 'game':
             
             /* 精靈球：精準卡在白色卡片正上方交疊處 */
             .result-ball {{ 
-                width: 400px; 
-                height: 400px; 
+                width: 600px; 
+                height: 600px; 
                 object-fit: 1 contain; 
                 filter: drop-shadow(0 0 25px {b_color}) brightness(1.2); 
                 margin-bottom: -150px; 
