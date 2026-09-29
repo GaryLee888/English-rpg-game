@@ -135,13 +135,10 @@ MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprit
 # ==========================================
 def get_admin(): return db.reference("system/admin").get() or {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3}
 def save_admin(d): db.reference("system/admin").set(d)
-
 def get_parents(): return db.reference("parents").get() or {}
 def save_parents(d): db.reference("parents").set(d)
-
 def get_users(): return db.reference("users").get() or {}
 def save_users(d): db.reference("users").set(d)
-
 def get_shares(): return db.reference("shares").get() or {}
 def save_shares(d): db.reference("shares").set(d)
 
@@ -179,7 +176,6 @@ def load_user_data(u_key):
         if "login_streak" not in d: d["login_streak"] = 0
         if "death_count" in d: del d["death_count"]
         if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
-        if "history" not in d: d["history"] = []
     return d
 
 def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
@@ -193,7 +189,6 @@ def delete_user(u_key):
 
 # --- 成長屬性設定 ---
 def get_max_hp(level): return min(10, 3 + (level // 5)) 
-
 def get_title(level):
     if level < 3: return "🌱 新手訓練家"
     if level < 7: return "⚔️ 道館挑戰者"
@@ -235,24 +230,41 @@ def generate_options(c_v, f_list):
 # --- 網頁設定與寶可夢主題 CSS ---
 st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
+# 🎨 深度排版與佈局 CSS 優化
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 .block-container { max-width: 900px; padding-top: 1rem; padding-bottom: 2rem; }
+
+/* 大廳標題 */
 .poke-title-box { background-color: #ffcb05; padding: 20px; border-radius: 15px; border: 5px solid #3c5aa6; text-align: center; margin-bottom: 25px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
 .poke-title { color: #3c5aa6; margin: 0; font-size: 3.2rem; font-weight: 900; letter-spacing: 2px; text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff, 2px -2px 0px #fff, -2px 2px 0px #fff; }
 .poke-subtitle { color: #e74c3c; font-weight: bold; font-size: 1.2rem; margin-top: 10px; background: white; display: inline-block; padding: 5px 20px; border-radius: 20px; border: 2px solid #e74c3c;}
-.status-bar-container { display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; background-color: #f8f9fa; border-radius: 12px; padding: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.status-item { text-align: center; flex: 1 1 15%; min-width: 60px; padding: 5px; }
-.status-label { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 2px; }
-.status-value { font-size: 1.2rem; font-weight: bold; color: #2c3e50; }
-.arena-bg { position: relative; display: flex; justify-content: space-between; align-items: flex-end; padding: 5%; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 15px 0; min-height: 250px; overflow: hidden; }
-.hero-box, .monster-box { width: 40%; text-align: center; z-index: 5; }
-.vs-box { width: 20%; text-align: center; z-index: 5; align-self: center; }
+
+/* 🎛️ 絕美深色儀表板 */
+.dash-board { display: flex; justify-content: space-between; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 12px 15px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 6px 12px rgba(0,0,0,0.2); border: 2px solid #334155; align-items: center; }
+.dash-item { text-align: center; flex: 1; border-right: 1px solid #334155; }
+.dash-item:last-child { border-right: none; }
+.dash-label { font-size: 0.75rem; color: #94a3b8; font-weight: bold; margin-bottom: 3px; letter-spacing: 1px;}
+.dash-val { font-size: 1.2rem; font-weight: 900; }
+.val-hp { color: #ef4444; } .val-gold { color: #facc15; } .val-medal { color: #38bdf8; } .val-lvl { color: #a78bfa; }
+
+/* 🎯 戰鬥舞台完美置中校正 */
+.arena-bg { position: relative; display: flex; justify-content: center; align-items: flex-end; padding: 30px 10px 20px 10px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.3); margin: 15px 0; min-height: 250px; overflow: hidden; gap: 20px;}
+.hero-box, .monster-box { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 35%; max-width: 160px; z-index: 5; }
+.vs-box { width: 15%; text-align: center; z-index: 5; align-self: center; }
 .vs-text { color: #f1c40f; font-size: 3rem; font-style: italic; text-shadow: 2px 2px 0 #000; margin:0; }
-.hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; white-space: nowrap; }
+.hp-badge { font-size: 1rem; margin-bottom: 10px; background: rgba(0,0,0,0.5); border-radius: 20px; padding: 3px 12px; display: inline-block; color: #fff; white-space: nowrap; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 2px 4px rgba(0,0,0,0.3);}
 .hp-badge-enemy { color: #ff6b6b; }
-.monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
+.monster-name { color:white; font-weight:bold; margin-top:8px; text-shadow: 1px 1px 3px #000; font-size: 1.1rem; background: rgba(0,0,0,0.4); padding: 2px 10px; border-radius: 10px;}
+
+/* 🛍️ 道具店三小格強制同行 (覆寫 Streamlit Mobile 行為) */
+div[data-testid="column"]:nth-child(1),
+div[data-testid="column"]:nth-child(2),
+div[data-testid="column"]:nth-child(3) { width: 33.33% !important; flex: 1 1 33.33% !important; min-width: 30% !important; }
+div[data-testid="column"] button { height: 55px; padding: 0 !important; font-size: 0.95rem !important; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+/* 單字卡與圖鑑 */
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
@@ -260,20 +272,23 @@ st.markdown("""
 .dex-item img { width: 100%; max-width: 60px; height: auto; transition: transform 0.2s; }
 .dex-item img:hover { transform: scale(1.2); }
 .dex-name { font-size: 0.75rem; color: #555; margin-top: 5px; font-weight: bold; }
+
 @media screen and (max-width: 600px) {
     .poke-title { font-size: 2rem; }
     .poke-subtitle { font-size: 0.9rem; }
-    .arena-bg { min-height: 160px; padding: 15px 5px; }
-    .vs-text { font-size: 1.5rem; }
-    .hp-badge { font-size: 0.8rem; padding: 2px 6px; }
-    .monster-name { font-size: 0.8rem; }
+    .arena-bg { min-height: 180px; padding: 20px 5px; gap: 10px;}
+    .hero-box, .monster-box { width: 40%; max-width: 120px;}
+    .vs-text { font-size: 2rem; }
+    .hp-badge { font-size: 0.75rem; padding: 2px 8px; margin-bottom: 5px;}
+    .monster-name { font-size: 0.85rem; }
     .m-fx { font-size: 40px !important; }
     .vocab-word { font-size: 2.5rem; }
     .vocab-hint-str { font-size: 1.8rem; letter-spacing: 3px;}
-    .status-value { font-size: 1rem; }
-    .dex-grid { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px;}
-    .dex-name { font-size: 0.6rem; }
+    .dash-val { font-size: 1rem; }
+    div[data-testid="column"] button { font-size: 0.8rem !important; height: 50px;}
 }
+
+/* 動畫設定 */
 @keyframes heroDash { 0% { transform: scaleX(-1) translateX(0px); } 30% { transform: scaleX(-1) translateX(-40px); } 100% { transform: scaleX(-1) translateX(0px); } }
 @keyframes shakeHurt { 0% { transform: translateX(0); filter: brightness(1); } 20% { transform: translateX(-10px); filter: brightness(2.5) drop-shadow(0 0 25px red); } 40% { transform: translateX(10px); } 60% { transform: translateX(-10px); } 80% { transform: translateX(10px); } 100% { transform: translateX(0); filter: brightness(1); } }
 @keyframes monsterDash { 0% { transform: translateX(0px); } 30% { transform: translateX(-40px); } 100% { transform: translateX(0px); } }
@@ -430,7 +445,6 @@ elif st.session_state.page == 'game':
     
     r_list = p_db.get(parent_id, {}).get("rewards", [])
     store_prices = p_db.get(parent_id, {}).get("store_prices", {"potion": 50, "shield": 100, "magnifier": 30})
-    vol = 0.8
 
     if 'current_monster' not in st.session_state: st.session_state.current_monster = random.choice(MONSTERS)
     if 'action_anim' not in st.session_state: st.session_state.action_anim = None
@@ -442,13 +456,14 @@ elif st.session_state.page == 'game':
     c_w = st.session_state.current_vocab
     max_hp = get_max_hp(u_data['level'])
 
+    # --- ⚡ 零延遲回呼函數 (On-click Callbacks) ---
     def process_ans(s):
         st.session_state.play_auto_audio = True 
         st.session_state.magnifier_active = False 
         u_data['total_questions'] += 1 
         word = c_w['en']
         
-        if s == c_w['zh']:
+        if s.strip().lower() == c_w['zh'].strip().lower() or s.strip().lower() == word.strip().lower():
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
             stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
@@ -470,14 +485,12 @@ elif st.session_state.page == 'game':
                     u_data['is_boss_fight'] = False
                     u_data['combo'] = 0 
                     if st.session_state.current_boss['name'] not in u_data.get('trophies', []): u_data['trophies'].append(st.session_state.current_boss['name'])
-                    if 'current_boss' in st.session_state: del st.session_state.current_boss
                     st.session_state.action_anim = 'boss_defeat'
                 else: st.session_state.action_anim = 'attack'
             else:
                 u_data['exp'] += (5 * diff_multi) 
                 if st.session_state.current_monster['name'] not in u_data.get('monster_dex', []): u_data.setdefault('monster_dex', []).append(st.session_state.current_monster['name'])
                 st.session_state.action_anim = 'attack'
-                st.session_state.current_monster = random.choice(MONSTERS)
                 if u_data['combo'] >= 10 and not u_data.get('is_boss_fight', False):
                     u_data['is_boss_fight'] = True
                     u_data['boss_hp'] = 3
@@ -504,8 +517,7 @@ elif st.session_state.page == 'game':
                     if u_data['level'] > 1:
                         u_data['level'] -= 1
                         st.session_state.level_dropped = True
-                    else:
-                        st.session_state.level_dropped = False
+                    else: st.session_state.level_dropped = False
                         
                     u_data['exp'] = (u_data['level'] - 1) * 100
                     u_data['hero_hp'] = get_max_hp(u_data['level'])
@@ -514,23 +526,40 @@ elif st.session_state.page == 'game':
                 else: st.session_state.action_anim = 'hurt'
         save_user_data(u_key, u_data)
 
-    # --- 頂端狀態列 ---
+    def text_input_submit():
+        ans = st.session_state.spell_input
+        if ans:
+            st.session_state.spell_input = "" # 清空輸入框
+            process_ans(ans)
+
+    # --- 🎛️ 絕美深色儀表板 ---
     hero_title = get_title(u_data['level'])
     st.markdown(f"""
-    <div class="status-bar-container">
-        <div class="status-item"><div class="status-label">{hero_title}</div><div class="status-value">{hero_name}</div></div>
-        <div class="status-item"><div class="status-label">🛡️ 等級</div><div class="status-value">Lv. {u_data['level']}</div></div>
-        <div class="status-item"><div class="status-label">🔥 連擊</div><div class="status-value">{u_data['combo']} / 10</div></div>
-        <div class="status-item"><div class="status-label">🎖️ 勳章</div><div class="status-value">{u_data['medals']}</div></div>
-        <div class="status-item"><div class="status-label">💰 金幣</div><div class="status-value">{u_data['gold']}</div></div>
+    <div class="dash-board">
+        <div class="dash-item">
+            <div class="dash-label">{hero_title}</div>
+            <div class="dash-val val-lvl">Lv.{u_data['level']}</div>
+        </div>
+        <div class="dash-item">
+            <div class="dash-label">❤️ 生命</div>
+            <div class="dash-val val-hp">{u_data['hero_hp']}/{max_hp}</div>
+        </div>
+        <div class="dash-item">
+            <div class="dash-label">💰 金幣</div>
+            <div class="dash-val val-gold">{u_data['gold']}</div>
+        </div>
+        <div class="dash-item">
+            <div class="dash-label">🎖️ 勳章</div>
+            <div class="dash-val val-medal">{u_data['medals']}</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 🏪 道具商店「一鍵買＆用」 ---
-    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊立刻扣除金幣並發動)</div>", unsafe_allow_html=True)
+    # --- 🏪 道具商店三小格 ---
+    st.markdown("<div style='font-size:0.8rem; font-weight:bold; color:#7f8c8d; margin-bottom:5px;'>🏪 道具店 (點擊花費金幣立即發動)</div>", unsafe_allow_html=True)
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
-    if c_btn1.button(f"🧪 藥水 ({store_prices['potion']}G)", use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
+    if c_btn1.button(f"🧪 藥水\n{store_prices['potion']}G", use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
         if u_data['gold'] >= store_prices['potion']:
             u_data['gold'] -= store_prices['potion']
             u_data['hero_hp'] = min(max_hp, u_data['hero_hp'] + 1)
@@ -538,14 +567,14 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣不足！")
             
-    if c_btn2.button(f"🛡️ 護盾 ({store_prices['shield']}G)", use_container_width=True, disabled=u_data.get('shield_active', False)):
+    if c_btn2.button(f"🛡️ 護盾\n{store_prices['shield']}G", use_container_width=True, disabled=u_data.get('shield_active', False)):
         if u_data['gold'] >= store_prices['shield']:
             u_data['gold'] -= store_prices['shield']
             u_data['shield_active'] = True
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣不足！")
             
-    if c_btn3.button(f"🔍 放大鏡 ({store_prices['magnifier']}G)", use_container_width=True, disabled=st.session_state.magnifier_active):
+    if c_btn3.button(f"🔍 放大鏡\n{store_prices['magnifier']}G", use_container_width=True, disabled=st.session_state.magnifier_active):
         if u_data['gold'] >= store_prices['magnifier']:
             u_data['gold'] -= store_prices['magnifier']
             st.session_state.magnifier_active = True
@@ -558,7 +587,7 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣不足！")
 
-    # --- 🎁 家族獎勵兌換系統 (移至主畫面) ---
+    # --- 🎁 家族獎勵兌換系統 (置中於主畫面) ---
     with st.expander("🎁 家族獎勵兌換與紀錄 (花費勳章)", expanded=False):
         r_cols = st.columns(2)
         with r_cols[0]:
@@ -599,7 +628,8 @@ elif st.session_state.page == 'game':
                     if m_name in mon_dict: html_dex += f'<div class="dex-item"><img src="{mon_dict[m_name]}"><div class="dex-name">{m_name}</div></div>'
                 html_dex += '</div>'; st.markdown(html_dex, unsafe_allow_html=True)
             else: st.write("尚未收集到寶可夢。")
-    
+
+    # ==================== 🎯 戰鬥舞台與動畫邏輯 ====================
     scale_factor = 1 + min(u_data['medals'] * 0.1, 2.0)
     h_width = int(100 * scale_factor)
 
@@ -612,76 +642,29 @@ elif st.session_state.page == 'game':
     fx_html = ""
     audio_js = ""
 
-    # --- 戰鬥與道具特效/音效處理 ---
+    # 動畫設定
     if anim == 'attack':
         h_s += " animation: heroDash 0.7s ease-in-out;"
         m_s += " animation: shakeHurt 0.7s ease-in-out 0.2s;"
         fx_html = f'<div class="m-fx">{char_d["fx"]}</div>'
-        audio_js = f"""<script>
-        let ctx = window.parent.gameAudioCtx;
-        if(ctx) {{
-            if(ctx.state === 'suspended') ctx.resume();
-            let osc = ctx.createOscillator(); let gain = ctx.createGain();
-            osc.type = '{char_d["snd_type"]}'; osc.frequency.setValueAtTime({char_d["snd_freq"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d["snd_drop"]}, ctx.currentTime + {char_d["snd_len"]});
-            gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d["snd_len"]});
-            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d["snd_len"]});
-        }}
-        </script>"""
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{char_d['snd_type']}'; osc.frequency.setValueAtTime({char_d['snd_freq']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d['snd_drop']}, ctx.currentTime + {char_d['snd_len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d['snd_len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d['snd_len']}); }}</script>"
     elif anim == 'hurt':
         m_s += " animation: monsterDash 0.7s ease-in-out;"
         h_s += " animation: heroHurt 0.7s ease-in-out 0.2s;"
         h_snd = random.choice(HURT_SOUNDS)
-        audio_js = f"""<script>
-        let ctx = window.parent.gameAudioCtx;
-        if(ctx) {{
-            if(ctx.state === 'suspended') ctx.resume();
-            let osc = ctx.createOscillator(); let gain = ctx.createGain();
-            osc.type = '{h_snd["type"]}'; osc.frequency.setValueAtTime({h_snd["f1"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd["f2"]}, ctx.currentTime + {h_snd["len"]});
-            gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd["len"]});
-            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd["len"]});
-        }}
-        </script>"""
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{h_snd['type']}'; osc.frequency.setValueAtTime({h_snd['f1']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd['f2']}, ctx.currentTime + {h_snd['len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd['len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd['len']}); }}</script>"
     elif anim == 'shield_block':
         m_s += " animation: monsterDash 0.7s ease-in-out;"
         h_s += " animation: heroDash 0.5s ease-in-out 0.2s;"
-        audio_js = f"""<script>
-        let ctx = window.parent.gameAudioCtx;
-        if(ctx) {{
-            if(ctx.state === 'suspended') ctx.resume();
-            let osc = ctx.createOscillator(); let gain = ctx.createGain();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3);
-        }}
-        </script>"""
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.3); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); }}</script>"
     elif anim == 'dead':
         h_s += " animation: heroDead 1s forwards;"
-        audio_js = f"""<script>
-        let ctx = window.parent.gameAudioCtx;
-        if(ctx) {{
-            if(ctx.state === 'suspended') ctx.resume();
-            let osc = ctx.createOscillator(); let gain = ctx.createGain();
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5);
-            gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5);
-            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5);
-        }}
-        </script>"""
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5); }}</script>"
     elif anim == 'heal':
         h_s += " animation: healFx 1s ease-in-out;"
-        audio_js = f"""<script>
-        let ctx = window.parent.gameAudioCtx;
-        if(ctx) {{
-            if(ctx.state === 'suspended') ctx.resume();
-            let osc = ctx.createOscillator(); let gain = ctx.createGain();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5);
-            gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5);
-        }}
-        </script>"""
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5); }}</script>"
 
     is_boss = u_data.get('is_boss_fight', False)
-    h_hp = u_data['hero_hp']
-
     if is_boss:
         if 'current_boss' not in st.session_state: st.session_state.current_boss = random.choice(BOSSES)
         e_n = st.session_state.current_boss['name']
@@ -702,12 +685,12 @@ elif st.session_state.page == 'game':
         f'<div class="arena-bg" style="{bg_s}">'
         f'{fx_html}'
         f'<div class="hero-box">'
-        f'<div class="hp-badge">{"❤️"*h_hp}{"🖤"*(max_hp-h_hp)}</div><br>'
+        f'<div class="hp-badge">{"❤️"*(u_data["hero_hp"])}{"🖤"*(max_hp-u_data["hero_hp"])}</div>'
         f'<img src="{hero_url}" style="{h_s}">'
         f'</div>'
         f'<div class="vs-box"><h1 class="vs-text">VS</h1></div>'
         f'<div class="monster-box">'
-        f'<div class="hp-badge hp-badge-enemy">{"🩸"*e_hp}{"🖤"*(m_hp-e_hp)}</div><br>'
+        f'<div class="hp-badge hp-badge-enemy">{"🩸"*e_hp}{"🖤"*(m_hp-e_hp)}</div>'
         f'<img src="{e_u}" style="{m_s}">'
         f'<div class="monster-name">{e_n}</div>'
         f'</div></div>'
@@ -716,6 +699,8 @@ elif st.session_state.page == 'game':
     st.markdown(arena_html, unsafe_allow_html=True)
     if audio_js: st.components.v1.html(audio_js, height=0)
 
+    # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
+    # 如果正在播放動畫，顯示訊息並隱藏答題區塊！完全消除 Lag 與連點問題！
     if anim:
         if anim == 'attack': st.success(f"💥 命中！獲得 {5 * diff_multi} EXP 與 10 G！")
         elif anim == 'heal': st.success("🧪 喝下生命藥水，生命值恢復了！")
@@ -725,11 +710,17 @@ elif st.session_state.page == 'game':
         elif anim == 'dead': 
             if st.session_state.get('level_dropped', False): st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
             else: st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
-        time.sleep(1.8)
+        
+        st.info("⚔️ 戰鬥結算中，請稍候...")
+        time.sleep(1.5)
         
         st.session_state.action_anim = None
         st.session_state.level_dropped = False 
-        if anim == 'hurt' or anim == 'dead': st.session_state.force_learning = True
+        if anim == 'hurt' or anim == 'dead' or anim == 'boss_defeat': 
+            if anim != 'boss_defeat': st.session_state.force_learning = True
+            else:
+                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
+                st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
         else:
             st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
@@ -838,7 +829,7 @@ elif st.session_state.page == 'game':
                 w_len = len(word_en)
                 
                 if st.session_state.magnifier_active:
-                    reveal_count = min(1, w_len)
+                    reveal_count = 1
                     r = random.Random(word_en)
                     indices = sorted(r.sample(range(w_len), reveal_count))
                 else:
@@ -869,11 +860,6 @@ elif st.session_state.page == 'game':
             </div>
             <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
-                setTimeout(() => {{
-                    const answerDiv = window.parent.document.getElementById('answer-zone');
-                    if (answerDiv) {{ answerDiv.style.opacity = '0.3'; answerDiv.style.pointerEvents = 'none'; }}
-                }}, 100);
-
                 let isSpeaking = false;
                 let loopTimeout = null;
 
@@ -897,10 +883,6 @@ elif st.session_state.page == 'game':
                         if(ended) return;
                         ended = true; isSpeaking = false;
                         document.getElementById('normal-tts-btn').innerText = "🔊 播放 / 重聽單字";
-                        
-                        const answerDiv = window.parent.document.getElementById('answer-zone');
-                        if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
-                        
                         loopTimeout = setTimeout(window.playNormal, 2000);
                     }};
 
@@ -919,44 +901,28 @@ elif st.session_state.page == 'game':
             """
             st.components.v1.html(btn_html, height=70)
 
-            st.markdown('<div id="answer-zone" style="transition: opacity 0.5s;">', unsafe_allow_html=True)
-            
+            # 答題區 (利用 on_click 達成零延遲送出)
             if diff == '簡單':
                 cA, cB = st.columns(2)
                 with cA:
-                    if opts[0] != "❌":
-                        if st.button(f"A. {opts[0]}", use_container_width=True, key="ans_a"): process_ans(opts[0])
+                    if opts[0] != "❌": st.button(f"A. {opts[0]}", use_container_width=True, key="ans_a", on_click=process_ans, args=(opts[0],))
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_a_del")
-                    
-                    if opts[2] != "❌":
-                        if st.button(f"C. {opts[2]}", use_container_width=True, key="ans_c"): process_ans(opts[2])
+                    if opts[2] != "❌": st.button(f"C. {opts[2]}", use_container_width=True, key="ans_c", on_click=process_ans, args=(opts[2],))
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_c_del")
                 with cB:
-                    if opts[1] != "❌":
-                        if st.button(f"B. {opts[1]}", use_container_width=True, key="ans_b"): process_ans(opts[1])
+                    if opts[1] != "❌": st.button(f"B. {opts[1]}", use_container_width=True, key="ans_b", on_click=process_ans, args=(opts[1],))
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_b_del")
-                    
-                    if opts[3] != "❌":
-                        if st.button(f"D. {opts[3]}", use_container_width=True, key="ans_d"): process_ans(opts[3])
+                    if opts[3] != "❌": st.button(f"D. {opts[3]}", use_container_width=True, key="ans_d", on_click=process_ans, args=(opts[3],))
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_d_del")
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
-                
-                # --- 🛑 取消虛擬鍵盤，全面使用 Streamlit 原生表單 (Native Keyboard) ---
-                with st.form("spell_form", clear_on_submit=True):
-                    user_ans = st.text_input("✍️ 施展拼寫魔法 (點擊輸入後按鍵盤完成或點擊下方按鈕)：", autocomplete="off")
-                    if st.form_submit_button("⚔️ 送出攻擊", type="primary", use_container_width=True):
-                        if user_ans.strip():
-                            if user_ans.strip().lower() == c_w['en'].lower():
-                                process_ans(c_w['zh'])
-                            else:
-                                process_ans("WRONG_ANSWER")
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-            
+                # 使用最穩定的原生 text_input 與 button，並綁定 on_click
+                st.text_input("✍️ 施展拼寫魔法 (點擊輸入後按鍵盤完成或點擊下方按鈕)：", key="spell_input", autocomplete="off", on_change=text_input_submit)
+                st.button("⚔️ 送出攻擊", type="primary", use_container_width=True, on_click=text_input_submit)
+
     # 放置返回大廳按鈕於最底部
     st.markdown("---")
-    if st.button("🚪 返回大廳", use_container_width=True): 
+    if st.button("🚪 離開戰鬥返回大廳", use_container_width=True): 
         st.session_state.page = 'login'
         st.rerun()
 
