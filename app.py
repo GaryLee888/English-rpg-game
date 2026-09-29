@@ -599,8 +599,8 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣不足！")
 
-    # --- 🎁 家族獎勵兌換系統 (置中於主畫面) ---
-    with st.expander("🎁 家族獎勵兌換與紀錄 (花費勳章)", expanded=False):
+    # --- 🎁 家庭獎勵兌換系統 (置中於主畫面) ---
+    with st.expander("🎁 家庭獎勵兌換與紀錄 (花費勳章)", expanded=False):
         r_cols = st.columns(2)
         with r_cols[0]:
             st.markdown("**🏪 可兌換獎勵**")
@@ -1230,7 +1230,7 @@ elif st.session_state.page == 'parent':
         st.subheader("🌟 夥伴寶可夢進化路線")
         st.info("孩子達到指定等級後，夥伴寶可夢就會自動進化！可以拿這個當作他們的目標。")
         for h_k, h_v in CHARACTERS.items():
-            st.markdown(f"**{h_k} 家族**")
+            st.markdown(f"**{h_k} 家庭**")
             h_cols = st.columns(min(len(h_v["stages"]), 5))
             for idx, (h_id, h_name) in enumerate(h_v["stages"]):
                 lvl_req = 1 if idx==0 else (5 if idx==1 else 10)
@@ -1285,7 +1285,7 @@ elif st.session_state.page == 'admin':
         u_db = get_users()
         if not p_db: st.info("目前沒有任何家長註冊。")
         for p_id, p_info in p_db.items():
-            with st.expander(f"🏠 家族帳號：{p_id}"):
+            with st.expander(f"🏠 家庭帳號：{p_id}"):
                 c1, c2, c3 = st.columns(3)
                 new_pwd = c1.text_input("修改密碼", value=p_info['password'], key=f"apwd_{p_id}")
                 
@@ -1318,7 +1318,7 @@ elif st.session_state.page == 'admin':
                         delete_user(u_key); st.rerun()
                         
                 st.markdown("---")
-                if st.button(f"🚨 刪除此家族 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
+                if st.button(f"🚨 刪除此家庭 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
                     for u_key in heroes: delete_user(u_key)
                     del p_db[p_id]
                     save_parents(p_db); st.rerun()
