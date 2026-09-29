@@ -60,14 +60,13 @@ HURT_SOUNDS = [
     {"type": "triangle", "f1": 100, "f2": 20, "len": 0.4}
 ]
 
-# --- 大幅擴充！傳說神獸與反派標誌性寶可夢 (48 隻) ---
+# --- 傳說神獸與反派標誌性寶可夢 (48 隻 BOSS) ---
 BOSS_DATA = [
     (144,"急凍鳥"), (145,"閃電鳥"), (146,"火焰鳥"), (149,"快龍"), (150,"超夢"), (151,"夢幻"),
     (243,"雷公"), (244,"炎帝"), (245,"水君"), (248,"班基拉斯"), (249,"洛奇亞"), (250,"鳳王"), (251,"時拉比"),
     (373,"暴飛龍"), (376,"巨金怪"), (377,"雷吉洛克"), (378,"雷吉艾斯"), (379,"雷吉斯奇魯"),
     (380,"拉帝亞斯"), (381,"拉帝歐斯"), (382,"蓋歐卡"), (383,"固拉多"), (384,"烈空坐"),
-    (385,"基拉祈"), (386,"代歐奇希斯"),
-    (445,"烈咬陸鯊"), (480,"由克希"), (481,"艾姆利多"), (482,"亞克諾姆"),
+    (385,"基拉祈"), (386,"代歐奇希斯"), (445,"烈咬陸鯊"), (480,"由克希"), (481,"艾姆利多"), (482,"亞克諾姆"),
     (483,"帝牙盧卡"), (484,"帕路奇亞"), (485,"席多藍恩"), (486,"雷吉奇卡斯"),
     (487,"騎拉帝納"), (488,"克雷色利亞"), (491,"達克萊伊"), (493,"阿爾宙斯"),
     (494,"比克提尼"), (635,"三首惡龍"), (638,"勾帕路翁"), (639,"代拉基翁"), (640,"畢力吉翁"),
@@ -75,19 +74,51 @@ BOSS_DATA = [
 ]
 BOSSES = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in BOSS_DATA]
 
-# --- 大幅擴充！經典一般怪物 (115 隻) ---
+# --- 大幅擴充！一般怪物圖鑑 (包含完整 2階 / 3階進化，共 160 隻) ---
 MONSTER_DATA = [
-    (10,"綠毛蟲"),(13,"獨角蟲"),(16,"波波"),(19,"小拉達"),(21,"烈雀"),(23,"阿柏蛇"),(27,"穿山鼠"),(29,"尼多蘭"),(32,"尼多朗"),(35,"皮皮"),(37,"六尾"),(39,"胖丁"),
-    (41,"超音蝠"),(43,"走路草"),(46,"派拉斯"),(48,"毛球"),(50,"地鼠"),(52,"喵喵"),(54,"可達鴨"),(56,"猴怪"),(58,"卡蒂狗"),(60,"蚊香蝌蚪"),(63,"凱西"),
-    (66,"腕力"),(69,"喇叭芽"),(72,"瑪瑙水母"),(74,"小拳石"),(77,"小火馬"),(79,"呆呆獸"),(81,"小磁怪"),(83,"大蔥鴨"),(84,"嘟嘟"),(86,"小海獅"),(88,"臭泥"),
-    (90,"大舌貝"),(92,"鬼斯"),(95,"大岩蛇"),(96,"催眠貘"),(98,"大鉗蟹"),(100,"霹靂電球"),(102,"蛋蛋"),(104,"卡拉卡拉"),(108,"大舌頭"),(109,"瓦斯彈"),
-    (111,"獨角犀牛"),(114,"蔓藤怪"),(116,"墨海馬"),(118,"角金魚"),(120,"海星星"),(127,"凱羅斯"),(128,"肯泰羅"),(129,"鯉魚王"),(132,"百變怪"),(133,"伊布"),
-    (137,"多邊獸"),(143,"卡比獸"),(161,"尾立"),(163,"咕咕"),(165,"芭瓢蟲"),(167,"圓絲蛛"),(170,"燈籠魚"),(173,"皮寶寶"),(174,"寶寶丁"),(175,"波克比"),
-    (177,"天然雀"),(179,"咩利羊"),(183,"瑪力露"),(185,"胡說樹"),(187,"毽子草"),(190,"長尾怪手"),(191,"向日種子"),(193,"陽々瑪"),(194,"烏波"),(198,"黑暗鴉"),
-    (200,"夢妖"),(202,"果然翁"),(203,"麒麟奇"),(204,"榛果球"),(206,"土龍弟弟"),(209,"布魯"),(213,"壺壺"),(214,"赫拉克羅斯"),(216,"熊寶寶"),(218,"熔岩蟲"),
-    (220,"小山豬"),(222,"太陽珊瑚"),(223,"鐵炮魚"),(225,"信使鳥"),(228,"戴魯比"),(231,"小小象"),(234,"驚角鹿"),(235,"圖圖犬"),(236,"巴爾郎"),(238,"迷唇娃"),
-    (239,"電擊怪"),(240,"小鴨嘴龍"),(241,"大奶罐"),(246,"幼基拉斯"),(261,"土狼犬"),(263,"蛇紋熊"),(265,"刺尾蟲"),(270,"蓮葉童子"),(273,"橡實果"),
-    (276,"傲骨燕"),(278,"長翅鷗"),(280,"拉魯拉絲"),(283,"溜溜糖宇"),(285,"蘑蘑菇"),(287,"懶人獺"),(290,"土居忍士"),(293,"咕妞妞"),(296,"幕下力士")
+    (10,"綠毛蟲"),(11,"鐵甲蛹"),(12,"巴大蝶"), (13,"獨角蟲"),(14,"鐵殼蛹"),(15,"大針蜂"),
+    (16,"波波"),(17,"比比鳥"),(18,"大比鳥"), (19,"小拉達"),(20,"拉達"), (21,"烈雀"),(22,"大嘴雀"),
+    (23,"阿柏蛇"),(24,"阿柏怪"), (27,"穿山鼠"),(28,"穿山王"),
+    (29,"尼多蘭"),(30,"尼多娜"),(31,"尼多后"), (32,"尼多朗"),(33,"尼多力諾"),(34,"尼多王"),
+    (35,"皮皮"),(36,"皮可西"), (37,"六尾"),(38,"九尾"), (39,"胖丁"),(40,"胖可丁"),
+    (41,"超音蝠"),(42,"大嘴蝠"),(169,"叉字蝠"),
+    (43,"走路草"),(44,"臭臭花"),(45,"霸王花"),(182,"美麗花"),
+    (46,"派拉斯"),(47,"派拉斯特"), (48,"毛球"),(49,"摩魯蛾"),
+    (50,"地鼠"),(51,"三地鼠"), (52,"喵喵"),(53,"貓老大"),
+    (54,"可達鴨"),(55,"哥達鴨"), (56,"猴怪"),(57,"火爆猴"), (58,"卡蒂狗"),(59,"風速狗"),
+    (60,"蚊香蝌蚪"),(61,"蚊香君"),(62,"蚊香泳士"),(186,"蚊香蛙皇"),
+    (63,"凱西"),(64,"勇基拉"),(65,"胡地"), (66,"腕力"),(67,"豪力"),(68,"怪力"),
+    (69,"喇叭芽"),(70,"口呆花"),(71,"大食花"), (72,"瑪瑙水母"),(73,"毒刺水母"),
+    (74,"小拳石"),(75,"隆隆石"),(76,"隆隆岩"), (77,"小火馬"),(78,"烈焰馬"),
+    (79,"呆呆獸"),(80,"呆殼獸"),(199,"呆呆王"), (81,"小磁怪"),(82,"三合一磁怪"),
+    (83,"大蔥鴨"), (84,"嘟嘟"),(85,"嘟嘟利"), (86,"小海獅"),(87,"白海獅"),
+    (88,"臭泥"),(89,"臭臭泥"), (90,"大舌貝"),(91,"刺甲貝"),
+    (92,"鬼斯"),(93,"鬼斯通"),(94,"耿鬼"), (95,"大岩蛇"),(208,"大鋼蛇"),
+    (96,"催眠貘"),(97,"引夢貘人"), (98,"大鉗蟹"),(99,"巨鉗蟹"),
+    (100,"霹靂電球"),(101,"頑皮雷彈"), (102,"蛋蛋"),(103,"椰蛋樹"),
+    (104,"卡拉卡拉"),(105,"嘎啦嘎啦"), (108,"大舌頭"),
+    (109,"瓦斯彈"),(110,"雙彈瓦斯"), (111,"獨角犀牛"),(112,"鑽角犀獸"), (114,"蔓藤怪"),
+    (116,"墨海馬"),(117,"海刺龍"),(230,"刺龍王"), (118,"角金魚"),(119,"金魚王"),
+    (120,"海星星"),(121,"寶石海星"), (127,"凱羅斯"), (128,"肯泰羅"),
+    (129,"鯉魚王"),(130,"暴鯉龍"), (131,"拉普拉斯"), (132,"百變怪"),
+    (133,"伊布"),(134,"水伊布"),(135,"雷伊布"),(136,"火伊布"),(196,"太陽伊布"),(197,"月亮伊布"),
+    (137,"多邊獸"),(233,"多邊獸Ⅱ"), (143,"卡比獸"),
+    (147,"迷你龍"),(148,"哈克龍"),
+    (161,"尾立"),(162,"大尾立"), (163,"咕咕"),(164,"貓頭夜鷹"),
+    (165,"芭瓢蟲"),(166,"安瓢蟲"), (167,"圓絲蛛"),(168,"阿利多斯"),
+    (170,"燈籠魚"),(171,"電燈怪"), (175,"波克比"),(176,"波克基古"),
+    (177,"天然雀"),(178,"天然鳥"), (179,"咩利羊"),(180,"茸茸羊"),(181,"電龍"),
+    (183,"瑪力露"),(184,"瑪力露麗"), (185,"胡說樹"),
+    (187,"毽子草"),(188,"毽子花"),(189,"毽子棉"), (190,"長尾怪手"),
+    (191,"向日種子"),(192,"向日花怪"), (193,"陽々瑪"),
+    (194,"烏波"),(195,"沼王"), (198,"黑暗鴉"), (200,"夢妖"), (202,"果然翁"),
+    (204,"榛果球"),(205,"佛烈托斯"), (206,"土龍弟弟"), (209,"布魯"),(210,"布魯皇"),
+    (213,"壺壺"), (214,"赫拉克羅斯"), (216,"熊寶寶"),(217,"圈圈熊"),
+    (218,"熔岩蟲"),(219,"熔岩蝸牛"), (220,"小山豬"),(221,"長毛豬"),
+    (222,"太陽珊瑚"), (223,"鐵炮魚"),(224,"章魚桶"), (225,"信使鳥"),
+    (228,"戴魯比"),(229,"黑魯加"), (231,"小小象"),(232,"頓甲"),
+    (235,"圖圖犬"), (236,"巴爾郎"),(237,"戰舞郎"), (241,"大奶罐"),
+    (246,"幼基拉斯"),(247,"沙基拉斯")
 ]
 MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in MONSTER_DATA]
 
@@ -113,16 +144,16 @@ def init_system():
 
 init_system()
 
-# --- 英雄成長屬性設定 ---
+# --- 成長屬性設定 ---
 def get_max_hp(level):
     return min(10, 3 + (level // 5)) 
 
 def get_title(level):
-    if level < 3: return "🌱 新手"
-    if level < 7: return "⚔️ 見習勇者"
-    if level < 12: return "🌟 菁英騎士"
-    if level < 20: return "🔥 傳說大師"
-    return "👑 神話英雄"
+    if level < 3: return "🌱 新手訓練家"
+    if level < 7: return "⚔️ 道館挑戰者"
+    if level < 12: return "🌟 菁英訓練家"
+    if level < 20: return "🔥 四天王候補"
+    return "👑 寶可夢大師"
 
 # --- 資料存取 API ---
 def get_admin(): return load_json(ADMIN_FILE, {})
@@ -194,13 +225,19 @@ def generate_options(c_v, f_list):
     random.shuffle(o)
     return o
 
-# --- 網頁設定與自適應 CSS ---
-st.set_page_config(page_title="寶可夢英文大挑戰", page_icon="⚔️", layout="wide")
+# --- 網頁設定與寶可夢主題 CSS ---
+st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 .block-container { max-width: 900px; padding-top: 1rem; padding-bottom: 2rem; }
+
+/* 寶可夢大廳標題特效 */
+.poke-title-box { background-color: #ffcb05; padding: 20px; border-radius: 15px; border: 5px solid #3c5aa6; text-align: center; margin-bottom: 25px; box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
+.poke-title { color: #3c5aa6; margin: 0; font-size: 3.2rem; font-weight: 900; letter-spacing: 2px; text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff, 2px -2px 0px #fff, -2px 2px 0px #fff; }
+.poke-subtitle { color: #e74c3c; font-weight: bold; font-size: 1.2rem; margin-top: 10px; background: white; display: inline-block; padding: 5px 20px; border-radius: 20px; border: 2px solid #e74c3c;}
+
 .status-bar-container { display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; background-color: #f8f9fa; border-radius: 12px; padding: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .status-item { text-align: center; flex: 1 1 15%; min-width: 60px; padding: 5px; }
 .status-label { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 2px; }
@@ -221,6 +258,8 @@ st.markdown("""
 .dex-item img:hover { transform: scale(1.2); }
 .dex-name { font-size: 0.75rem; color: #555; margin-top: 5px; font-weight: bold; }
 @media screen and (max-width: 600px) {
+    .poke-title { font-size: 2rem; }
+    .poke-subtitle { font-size: 0.9rem; }
     .arena-bg { min-height: 160px; padding: 15px 5px; }
     .vs-text { font-size: 1.5rem; }
     .hp-badge { font-size: 0.8rem; padding: 2px 6px; }
@@ -260,11 +299,17 @@ if 'magnifier_active' not in st.session_state: st.session_state.magnifier_active
 
 # ==================== 登入大廳 ====================
 if st.session_state.page == 'login':
-    st.markdown("<h1 style='text-align: center; color: #2c3e50;'>⚔️ 寶可夢英文大挑戰</h1><hr>", unsafe_allow_html=True)
-    t1, t2, t3 = st.tabs(["🎮 小孩遊玩登入", "👨‍👩‍👧 家長控制台", "👑 GM 管理中心"])
+    st.markdown("""
+    <div class="poke-title-box">
+        <h1 class="poke-title">⚡ 寶可夢英文挑戰 ⚡</h1>
+        <div class="poke-subtitle">打怪、進化、抓寶！成為英文大師！</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    t1, t2, t3 = st.tabs(["🎒 訓練家遊玩登入", "👨‍👩‍👧 家長控制台", "👑 GM 管理中心"])
     
     with t1:
-        st.subheader("選擇您的家庭與英雄")
+        st.subheader("選擇您的家庭與訓練家")
         parents = get_parents()
         if not parents:
             st.info("目前還沒有家庭建立帳號喔！請先請家長到「家長控制台」註冊。")
@@ -276,13 +321,13 @@ if st.session_state.page == 'login':
                     family_heroes = {k: v for k, v in users.items() if v.get("parent") == family_input}
                     
                     if not family_heroes:
-                        st.warning("這個家庭還沒有建立英雄，請家長先登入控制台建立喔！")
+                        st.warning("這個家庭還沒有建立訓練家帳號，請家長先登入控制台建立喔！")
                     else:
                         hero_display = {k: v["name"] for k, v in family_heroes.items()}
-                        sel_hero_key = st.selectbox("2️⃣ 選擇你的英雄", list(hero_display.keys()), format_func=lambda x: hero_display[x])
-                        hero_pin = st.text_input("3️⃣ 輸入英雄專屬密碼 (PIN)", type="password", placeholder="預設為 0000")
+                        sel_hero_key = st.selectbox("2️⃣ 選擇你的訓練家", list(hero_display.keys()), format_func=lambda x: hero_display[x])
+                        hero_pin = st.text_input("3️⃣ 輸入專屬密碼 (PIN)", type="password", placeholder="預設為 0000")
                         
-                        if st.button("🚀 進入遊戲", type="primary", use_container_width=True):
+                        if st.button("🚀 出發冒險！", type="primary", use_container_width=True):
                             if hero_pin == users[sel_hero_key].get("pin", "0000"):
                                 init_data = load_user_data(sel_hero_key)
                                 
@@ -301,7 +346,7 @@ if st.session_state.page == 'login':
                                     init_data["last_login_date"] = today_str
                                     init_data["history"].append(f"{datetime.now().strftime('%m-%d %H:%M')} 連續登入 {init_data['login_streak']} 天！獲得 {bonus_gold} G")
                                     save_user_data(sel_hero_key, init_data)
-                                    st.session_state.show_streak = f"🔥 連續登入 {init_data['login_streak']} 天！獲得 {bonus_gold} 枚金幣！"
+                                    st.session_state.show_streak = f"🔥 連續冒險 {init_data['login_streak']} 天！獲得 {bonus_gold} 枚金幣！"
                                 
                                 st.session_state.current_user_key = sel_hero_key
                                 st.session_state.current_parent = family_input
@@ -361,6 +406,7 @@ elif st.session_state.page == 'game':
     parent_id = st.session_state.current_parent
     p_db = get_parents()
     
+    # 登入提示
     if 'show_streak' in st.session_state:
         st.toast(st.session_state.show_streak, icon="🔥")
         del st.session_state.show_streak
@@ -440,7 +486,6 @@ elif st.session_state.page == 'game':
                     u_data['is_boss_fight'] = True
                     u_data['boss_hp'] = 3
             
-            old_level = u_data['level']
             if (u_data['exp'] // 100) + 1 > u_data['level']:
                 u_data['level'] = (u_data['exp'] // 100) + 1
                 u_data['hero_hp'] = get_max_hp(u_data['level']) 
@@ -554,8 +599,8 @@ elif st.session_state.page == 'game':
         st.session_state.magnifier_active = True
         save_user_data(u_key, u_data); st.rerun()
 
-    with st.expander(f"📖 冒險圖鑑 (題庫: {bank_name} | 怪物: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
-        d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 一般怪物"])
+    with st.expander(f"📖 寶可夢圖鑑 (題庫: {bank_name} | 收集: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 傳說: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
+        d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 已收集寶可夢"])
         with d_tab1:
             if u_data.get('trophies'):
                 boss_dict = {b['name']: b['url'] for b in BOSSES}
@@ -571,7 +616,7 @@ elif st.session_state.page == 'game':
                 for m_name in u_data['monster_dex']:
                     if m_name in mon_dict: html_dex += f'<div class="dex-item"><img src="{mon_dict[m_name]}"><div class="dex-name">{m_name}</div></div>'
                 html_dex += '</div>'; st.markdown(html_dex, unsafe_allow_html=True)
-            else: st.write("尚未收集到一般怪物。")
+            else: st.write("尚未收集到寶可夢。")
     
     scale_factor = 1 + min(u_data['medals'] * 0.1, 2.0)
     h_width = int(100 * scale_factor)
@@ -682,8 +727,8 @@ elif st.session_state.page == 'game':
         elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
         elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {10 * diff_multi} EXP、50 G 與 {1 * diff_multi} 枚勳章！")
         elif anim == 'dead': 
-            if st.session_state.get('level_dropped', False): st.error("😭 英雄不支倒地... (扣除 20% EXP，累積倒地 5 次，等級下降 1 級！)")
-            else: st.error(f"😭 英雄不支倒地... (扣除 20% EXP！累積倒地 {u_data.get('death_count', 0)}/5)")
+            if st.session_state.get('level_dropped', False): st.error("😭 夥伴寶可夢不支倒地... (扣除 20% EXP，累積倒地 5 次，等級下降 1 級！)")
+            else: st.error(f"😭 夥伴寶可夢不支倒地... (扣除 20% EXP！累積倒地 {u_data.get('death_count', 0)}/5)")
         time.sleep(1.8)
         
         st.session_state.action_anim = None
@@ -930,7 +975,7 @@ elif st.session_state.page == 'parent':
                 else: st.error("錯誤")
     st.markdown("---")
     
-    t1, t2, t3, t4 = st.tabs(["🦸 我的英雄管理", "🏪 商店與獎勵設定", "📚 自訂專屬單字庫", "🖼️ 遊戲圖鑑展示 (目標)"])
+    t1, t2, t3, t4 = st.tabs(["🎒 我的訓練家管理", "🏪 商店與獎勵設定", "📚 自訂專屬單字庫", "🖼️ 遊戲圖鑑展示 (目標)"])
     
     with t1:
         admin_cfg = get_admin()
@@ -940,19 +985,19 @@ elif st.session_state.page == 'parent':
         users = get_users()
         my_heroes = {k: v for k, v in users.items() if v.get("parent") == p_id}
         
-        st.info(f"🦸 目前已建立英雄：{len(my_heroes)} / {limit}")
+        st.info(f"🎒 目前已建立帳號：{len(my_heroes)} / {limit}")
         
         if len(my_heroes) < limit:
-            with st.expander("➕ 建立新英雄", expanded=False):
-                n_name = st.text_input("英雄名稱 (小孩的名字或暱稱)")
-                n_pin = st.text_input("設定英雄登入密碼 (建議設定 4 位數字)", value="0000")
-                n_char = st.selectbox("選擇守護神", ["火系 (小火龍)", "水系 (傑尼龜)", "草系 (妙蛙種子)", "電系 (皮丘)", "隨機"])
+            with st.expander("➕ 建立新訓練家帳號", expanded=False):
+                n_name = st.text_input("訓練家名稱 (小孩的名字或暱稱)")
+                n_pin = st.text_input("設定登入密碼 (建議設定 4 位數字)", value="0000")
+                n_char = st.selectbox("選擇夥伴寶可夢", ["火系 (小火龍)", "水系 (傑尼龜)", "草系 (妙蛙種子)", "電系 (皮丘)", "隨機"])
                 n_bank = st.selectbox("選擇預設學習題庫", ["國小", "國中", "多益", "家長自訂"])
                 if st.button("確認建立"):
                     if not n_name.strip() or not n_pin.strip(): st.error("名稱與密碼不可為空")
                     else:
                         u_key = f"{p_id}_{n_name}"
-                        if u_key in users: st.error("這個英雄名稱已經存在於您的家庭中了！")
+                        if u_key in users: st.error("這個名稱已經存在於您的家庭中了！")
                         else:
                             c = random.choice(list(CHARACTERS.keys())) if n_char == "隨機" else n_char
                             users[u_key] = {"name": n_name.strip(), "parent": p_id, "character": c, "created_at": str(datetime.now().date()), "pin": n_pin.strip()}
@@ -963,7 +1008,7 @@ elif st.session_state.page == 'parent':
                             save_user_data(u_key, init_data)
                             st.success("✅ 建立成功！"); st.rerun()
         
-        st.markdown("#### 英雄列表")
+        st.markdown("#### 訓練家列表")
         for u_key, u_info in my_heroes.items():
             d = load_user_data(u_key)
             e_log = load_error_log(u_key)
@@ -1004,9 +1049,9 @@ elif st.session_state.page == 'parent':
                     
                 b1, b2 = st.columns(2)
                 with b1:
-                    if st.button(f"🔄 清空英雄學習資料", key=f"rs_{u_key}"): reset_user_data(u_key); st.rerun()
+                    if st.button(f"🔄 清空訓練家學習資料", key=f"rs_{u_key}"): reset_user_data(u_key); st.rerun()
                 with b2:
-                    if st.button(f"🗑️ 永久刪除此英雄", key=f"dl_{u_key}"): delete_user(u_key); st.rerun()
+                    if st.button(f"🗑️ 永久刪除此帳號", key=f"dl_{u_key}"): delete_user(u_key); st.rerun()
 
     with t2:
         st.subheader("🛒 道具販售價格設定")
@@ -1045,7 +1090,7 @@ elif st.session_state.page == 'parent':
                     
     with t3:
         st.subheader("編輯家長自訂單字庫")
-        st.caption("將學校本週進度、測驗單字輸入於此，並在英雄管理將題庫切換為「家長自訂」即可！")
+        st.caption("將學校本週進度、測驗單字輸入於此，並在訓練家管理將題庫切換為「家長自訂」即可！")
         c_file = f"vocab_custom_{p_id}.csv"
         v_df = pd.read_csv(c_file) if os.path.exists(c_file) else pd.DataFrame(columns=["en", "zh", "hint"])
         edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True)
@@ -1054,8 +1099,8 @@ elif st.session_state.page == 'parent':
             edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("您的自訂題庫已更新成功！")
             
     with t4:
-        st.subheader("🌟 英雄進化型態展示")
-        st.info("孩子達到指定等級後，守護神會自動進化喔！可以拿這個當作他們的目標。")
+        st.subheader("🌟 夥伴寶可夢進化路線")
+        st.info("孩子達到指定等級後，夥伴寶可夢就會自動進化！可以拿這個當作他們的目標。")
         for h_k, h_v in CHARACTERS.items():
             st.markdown(f"**{h_k} 家族**")
             h_cols = st.columns(min(len(h_v["stages"]), 5))
@@ -1064,7 +1109,7 @@ elif st.session_state.page == 'parent':
                 h_cols[idx].image(f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{h_id}.gif", caption=f"Lv.{lvl_req} {h_name}")
         
         st.markdown("---")
-        st.subheader(f"🏆 傳說 BOSS 圖鑑 (共 {len(BOSSES)} 種)")
+        st.subheader(f"🏆 傳說 BOSS 挑戰圖鑑 (共 {len(BOSSES)} 隻)")
         html_boss = '<div class="dex-grid">'
         for b in BOSSES:
             html_boss += f'<div class="dex-item"><img src="{b["url"]}"><div class="dex-name">{b["name"]}</div></div>'
@@ -1072,7 +1117,7 @@ elif st.session_state.page == 'parent':
         st.markdown(html_boss, unsafe_allow_html=True)
             
         st.markdown("---")
-        st.subheader(f"👾 一般怪物圖鑑 (共 {len(MONSTERS)} 種)")
+        st.subheader(f"👾 一般野生寶可夢圖鑑 (共 {len(MONSTERS)} 隻)")
         html_monster = '<div class="dex-grid">'
         for m in MONSTERS:
             html_monster += f'<div class="dex-item"><img src="{m["url"]}"><div class="dex-name">{m["name"]}</div></div>'
@@ -1085,7 +1130,7 @@ elif st.session_state.page == 'admin':
     if st.button("⬅️ 登出並返回大廳"): st.session_state.page = 'login'; st.rerun()
     st.markdown("---")
     
-    t1, t2, t3 = st.tabs(["👨‍👩‍👧 租戶 (家長) 與英雄管理", "📚 題庫增訂", "⚙️ 系統設定"])
+    t1, t2, t3 = st.tabs(["👨‍👩‍👧 租戶 (家長) 與訓練家管理", "📚 題庫增訂", "⚙️ 系統設定"])
     
     with t1:
         p_db = get_parents()
@@ -1103,7 +1148,7 @@ elif st.session_state.page == 'admin':
                     placeholder = f"未設定 (預設 {limit_val})"
                 else: placeholder = str(limit_val)
                     
-                new_limit = c2.number_input(f"設定英雄上限 ({placeholder})", min_value=1, value=limit_val, key=f"hlim_{p_id}")
+                new_limit = c2.number_input(f"設定帳號上限 ({placeholder})", min_value=1, value=limit_val, key=f"hlim_{p_id}")
                 
                 if new_pwd != p_info['password'] or new_limit != p_info.get('hero_limit'):
                     p_db[p_id]['password'] = new_pwd
@@ -1111,7 +1156,7 @@ elif st.session_state.page == 'admin':
                     save_parents(p_db); st.rerun()
                 
                 heroes = {k: v for k, v in u_db.items() if v.get("parent") == p_id}
-                st.markdown(f"**旗下英雄 ({len(heroes)})：**")
+                st.markdown(f"**旗下訓練家 ({len(heroes)})：**")
                 for u_key, u_info in heroes.items():
                     d = load_user_data(u_key)
                     cols = st.columns([1, 1, 1, 1, 2])
@@ -1119,11 +1164,11 @@ elif st.session_state.page == 'admin':
                     cols[1].write(f"Lv.{d['level']}")
                     cols[2].write(f"勳章: {d['medals']}")
                     cols[3].write(d['difficulty'])
-                    if cols[4].button("🗑️ 刪除英雄", key=f"gm_d_{u_key}"):
+                    if cols[4].button("🗑️ 刪除", key=f"gm_d_{u_key}"):
                         delete_user(u_key); st.rerun()
                         
                 st.markdown("---")
-                if st.button(f"🚨 刪除此家族 (包含底下所有英雄)", key=f"gm_dp_{p_id}", type="primary"):
+                if st.button(f"🚨 刪除此家族 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
                     for u_key in heroes: delete_user(u_key)
                     del p_db[p_id]
                     save_parents(p_db); st.rerun()
@@ -1143,7 +1188,7 @@ elif st.session_state.page == 'admin':
         admin_cfg = get_admin()
         with st.form("admin_settings"):
             new_a_pwd = st.text_input("GM 密碼", value=admin_cfg.get("password", "1234"), type="password")
-            new_d_limit = st.number_input("全域預設英雄上限", min_value=1, value=admin_cfg.get("default_hero_limit", 3))
+            new_d_limit = st.number_input("全域預設帳號上限", min_value=1, value=admin_cfg.get("default_hero_limit", 3))
             if st.form_submit_button("儲存系統設定"):
                 admin_cfg["password"] = new_a_pwd
                 admin_cfg["default_hero_limit"] = new_d_limit
