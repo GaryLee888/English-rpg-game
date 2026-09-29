@@ -134,7 +134,7 @@ def save_json(f, d):
     with open(f, "w", encoding="utf-8") as file: json.dump(d, file, ensure_ascii=False, indent=2)
 
 def init_system():
-    if not os.path.exists(ADMIN_FILE): save_json(ADMIN_FILE, {"password": "1234", "default_hero_limit": 3, "default_bank_limit": 3})
+    if not os.path.exists(ADMIN_FILE): save_json(ADMIN_FILE, {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3})
     if not os.path.exists(PARENTS_FILE): save_json(PARENTS_FILE, {})
     if not os.path.exists(USERS_FILE): save_json(USERS_FILE, {})
     if not os.path.exists(SHARE_FILE): save_json(SHARE_FILE, {})
@@ -153,7 +153,7 @@ def get_title(level):
     if level < 20: return "🔥 四天王候補"
     return "👑 寶可夢大師"
 
-def get_admin(): return load_json(ADMIN_FILE, {})
+def get_admin(): return load_json(ADMIN_FILE, {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3})
 def save_admin(d): save_json(ADMIN_FILE, d)
 def get_parents(): return load_json(PARENTS_FILE, {})
 def save_parents(d): save_json(PARENTS_FILE, d)
@@ -243,6 +243,8 @@ st.markdown("""
 .hp-badge { font-size: 1.2rem; margin-bottom: 5px; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 2px 10px; display: inline-block; color: #fff; white-space: nowrap; }
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:5px; text-shadow: 1px 1px 2px #000; font-size: 1rem;}
+.item-card { background: #fdfefe; border: 2px solid #bdc3c7; border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;}
+.item-title { font-weight: bold; color: #2c3e50; margin-bottom: 8px; font-size: 1.1rem;}
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
@@ -380,10 +382,12 @@ if st.session_state.page == 'login':
     with t3:
         st.subheader("系統管理員登入")
         admin_db = get_admin()
+        gm_id = st.text_input("管理員帳號 (預設 admin)", key="gm_id")
         gm_pwd = st.text_input("輸入 GM 密碼", type="password", key="gm_pwd")
         if st.button("GM 登入", use_container_width=True):
-            if gm_pwd == admin_db["password"]: st.session_state.page = 'admin'; st.rerun()
-            else: st.error("密碼錯誤！")
+            if gm_id == admin_db.get("admin_id", "admin") and gm_pwd == admin_db.get("password", "1234"): 
+                st.session_state.page = 'admin'; st.rerun()
+            else: st.error("帳號或密碼錯誤！")
 
 # ==================== 遊戲主畫面 ====================
 elif st.session_state.page == 'game':
@@ -548,7 +552,7 @@ elif st.session_state.page == 'game':
     """, unsafe_allow_html=True)
 
     # --- 🏪 道具商店「一鍵買＆用」 ---
-    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊扣除金幣立即發動)</div>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊立刻扣除金幣並發動)</div>", unsafe_allow_html=True)
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
     if c_btn1.button(f"🧪 藥水 ({store_prices['potion']}G)", use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
@@ -944,7 +948,7 @@ elif st.session_state.page == 'game':
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
                 st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", key="text_input_field", autocomplete="off")
                 
-                # --- 📱 電競級原生手機虛擬鍵盤 ---
+                # --- 📱 電競級原生手機虛擬鍵盤 (純 HTML/JS，零延遲打字 + 自動送出同步) ---
                 kb_html = """
                 <style>
                 .kb-container { background-color: #d1d5db; padding: 8px 4px; border-radius: 8px; width: 100%; max-width: 500px; margin: 0 auto; user-select: none; }
