@@ -9,7 +9,7 @@ from datetime import datetime
 import pandas as pd
 import eng_to_ipa as ipa
 
-# --- 自動環境檢查與安裝模組 (已拔除廢棄的 gTTS) ---
+# --- 自動環境檢查與安裝模組 ---
 def setup_environment():
     required_packages = {
         "streamlit": "streamlit",
@@ -216,25 +216,37 @@ if st.session_state.page == 'login':
         if not parents:
             st.info("目前還沒有家庭建立帳號喔！請先請家長到「家長控制台」註冊。")
         else:
-            p_list = list(parents.keys())
-            sel_family = st.selectbox("1️⃣ 選擇家長 (家庭) 帳號", p_list)
+            # SaaS 隱私升級：改為手動輸入家庭帳號，防範其他小孩窺探或亂點
+            family_input = st.text_input("1️⃣ 請輸入您的家長 (家庭) 帳號", placeholder="輸入後按下 Enter 鍵確認...")
             
-            users = get_users()
-            family_heroes = {k: v for k, v in users.items() if v.get("parent") == sel_family}
-            
-            if not family_heroes:
-                st.warning("這個家庭還沒有建立英雄，請家長先登入控制台建立喔！")
-            else:
-                hero_display = {k: v["name"] for k, v in family_heroes.items()}
-                sel_hero_key = st.selectbox("2️⃣ 選擇你的英雄", list(hero_display.keys()), format_func=lambda x: hero_display[x])
-                if st.button("🚀 進入遊戲", type="primary", use_container_width=True):
-                    st.session_state.current_user_key = sel_hero_key
-                    st.session_state.current_parent = sel_family
-                    st.session_state.game_data = load_user_data(sel_hero_key)
-                    st.session_state.error_log = load_error_log(sel_hero_key)
-                    st.session_state.vk_input = ""
-                    st.session_state.play_auto_audio = True
-                    st.session_state.page = 'game'; st.rerun()
+            if family_input:
+                if family_input in parents:
+                    users = get_users()
+                    family_heroes = {k: v for k, v in users.items() if v.get("parent") == family_input}
+                    
+                    if not family_heroes:
+                        st.warning("這個家庭還沒有建立英雄，請家長先登入控制台建立喔！")
+                    else:
+                        hero_display = {k: v["name"] for k, v in family_heroes.items()}
+                        sel_hero_key = st.selectbox("2️⃣ 選擇你的英雄", list(hero_display.keys()), format_func=lambda x: hero_display[x])
+                        
+                        # 英雄 PIN 碼防護
+                        hero_pin = st.text_input("3️⃣ 輸入英雄專屬密碼 (PIN)", type="password", placeholder="預設為 0000")
+                        
+                        if st.button("🚀 進入遊戲", type="primary", use_container_width=True):
+                            # 驗證英雄密碼
+                            if hero_pin == users[sel_hero_key].get("pin", "0000"):
+                                st.session_state.current_user_key = sel_hero_key
+                                st.session_state.current_parent = family_input
+                                st.session_state.game_data = load_user_data(sel_hero_key)
+                                st.session_state.error_log = load_error_log(sel_hero_key)
+                                st.session_state.vk_input = ""
+                                st.session_state.play_auto_audio = True
+                                st.session_state.page = 'game'; st.rerun()
+                            else:
+                                st.error("❌ 密碼錯誤！請確認密碼是否正確。")
+                else:
+                    st.error("找不到這個家庭帳號，請確認輸入是否正確。")
 
     with t2:
         colA, colB = st.columns(2)
@@ -782,16 +794,17 @@ elif st.session_state.page == 'parent':
         if len(my_heroes) < limit:
             with st.expander("➕ 建立新英雄", expanded=False):
                 n_name = st.text_input("英雄名稱 (小孩的名字或暱稱)")
+                n_pin = st.text_input("設定英雄登入密碼 (建議設定 4 位數字)", value="0000")
                 n_char = st.selectbox("選擇守護神", ["火系 (小火龍)", "水系 (傑尼龜)", "草系 (妙蛙種子)", "電系 (皮丘)", "隨機"])
                 n_bank = st.selectbox("選擇預設學習題庫", ["國小", "國中", "多益"])
                 if st.button("確認建立"):
-                    if not n_name.strip(): st.error("無效名稱")
+                    if not n_name.strip() or not n_pin.strip(): st.error("名稱與密碼不可為空")
                     else:
                         u_key = f"{p_id}_{n_name}"
                         if u_key in users: st.error("這個英雄名稱已經存在於您的家庭中了！")
                         else:
                             c = random.choice(list(CHARACTERS.keys())) if n_char == "隨機" else n_char
-                            users[u_key] = {"name": n_name.strip(), "parent": p_id, "character": c, "created_at": str(datetime.now().date())}
+                            users[u_key] = {"name": n_name.strip(), "parent": p_id, "character": c, "created_at": str(datetime.now().date()), "pin": n_pin.strip()}
                             save_users(users)
                             
                             init_data = load_user_data(u_key)
@@ -804,6 +817,7 @@ elif st.session_state.page == 'parent':
             d = load_user_data(u_key)
             e_log = load_error_log(u_key)
             with st.expander(f"👤 {u_info['name']} ({u_info['character']})"):
+                st.markdown("#### 📊 數據調整")
                 cA, cB, cC, cD, cE = st.columns(5)
                 n_lvl = cA.number_input("等級", min_value=1, value=d['level'], key=f"lvl_{u_key}")
                 n_tq = cB.number_input("累積題數", min_value=0, value=d.get('total_questions', 0), key=f"tq_{u_key}")
@@ -811,8 +825,14 @@ elif st.session_state.page == 'parent':
                 n_dc = cD.number_input("倒地次數", min_value=0, max_value=4, value=d.get('death_count', 0), key=f"dc_{u_key}")
                 new_diff = cE.selectbox("難度", ["簡單", "中等", "困難"], index=["簡單", "中等", "困難"].index(d.get("difficulty", "簡單")), key=f"diff_{u_key}")
                 
-                cBnk, _ = st.columns([1, 4])
-                new_bank = cBnk.selectbox("學習題庫", ["國小", "國中", "多益"], index=["國小", "國中", "多益"].index(d.get("vocab_bank", "國小")), key=f"bank_{u_key}")
+                col_r2 = st.columns([1, 1, 3])
+                new_bank = col_r2[0].selectbox("學習題庫", ["國小", "國中", "多益"], index=["國小", "國中", "多益"].index(d.get("vocab_bank", "國小")), key=f"bank_{u_key}")
+                new_pin = col_r2[1].text_input("修改密碼 (PIN)", value=u_info.get("pin", "0000"), key=f"pin_{u_key}")
+                
+                if new_pin != u_info.get("pin", "0000"):
+                    users[u_key]["pin"] = new_pin
+                    save_users(users)
+                    st.success("密碼已更新！")
                 
                 if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != d.get("vocab_bank", "國小"):
                     d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank
