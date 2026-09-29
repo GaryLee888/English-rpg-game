@@ -3,7 +3,7 @@ import sys
 import subprocess
 import random
 import time
-import re  # 新增正則表達式模組，用來過濾單字發音
+import re
 from datetime import datetime
 import pandas as pd
 import eng_to_ipa as ipa
@@ -136,10 +136,13 @@ MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprit
 # ==========================================
 def get_admin(): return db.reference("system/admin").get() or {"admin_id": "admin", "password": "1234", "default_hero_limit": 3, "default_bank_limit": 3}
 def save_admin(d): db.reference("system/admin").set(d)
+
 def get_parents(): return db.reference("parents").get() or {}
 def save_parents(d): db.reference("parents").set(d)
+
 def get_users(): return db.reference("users").get() or {}
 def save_users(d): db.reference("users").set(d)
+
 def get_shares(): return db.reference("shares").get() or {}
 def save_shares(d): db.reference("shares").set(d)
 
@@ -151,7 +154,7 @@ def save_vocab_db(bank_key, df):
     records = df.fillna("").to_dict('records')
     db.reference(f"vocab_banks/{bank_key}").set(records)
 
-# 系統初始預設字庫上傳 (僅執行一次)
+# 系統初始預設字庫上傳
 if not db.reference("vocab_banks/國小").get():
     save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
 if not db.reference("vocab_banks/國中").get():
@@ -772,7 +775,7 @@ elif st.session_state.page == 'game':
                     🔊 準備播放... (若無聲請手動點擊)
                 </button>
             </div>
-            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.02); }} 100% {{ transform: scale(1); }} }}</style>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}</style>
             <script>
                 setTimeout(() => {{
                     const btns = window.parent.document.querySelectorAll('button');
@@ -866,7 +869,6 @@ elif st.session_state.page == 'game':
                 hint_str = " ".join(hint_chars)
                 v_html += f'<h1 style="color:#2980b9; font-size: 1.8rem; margin: 10px 0; font-weight: 800;">{c_w["zh"]}</h1>'
                 
-                # --- 🔤 中困難模式補上音標 ---
                 if ipa_d:
                     v_html += f'<h3 style="color:#e67e22; margin:0 0 5px 0; font-family: monospace; font-size: 1.2rem;">{ipa_d}</h3>'
                     
@@ -875,13 +877,13 @@ elif st.session_state.page == 'game':
             v_html += '</div>'
             st.markdown(v_html, unsafe_allow_html=True)
             
-            auto_script = "setTimeout(() => window.playNormal(false), 500);" if st.session_state.play_auto_audio else ""
+            auto_script = "setTimeout(() => window.playNormal(), 500);" if st.session_state.play_auto_audio else ""
             st.session_state.play_auto_audio = False 
             
-            # --- 🔇 修正語音無限重播 Bug (最多唸3次) ---
+            # --- 🔊 修正：正常出題只自動發音一次，唸完即解鎖作答區 ---
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
-                <button id="normal-tts-btn" onclick="window.playNormal(true)" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
+                <button id="normal-tts-btn" onclick="window.playNormal()" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px; animation: pulse 2s infinite;">
                     🔊 準備出題... (若無聲請點擊解鎖)
                 </button>
             </div>
@@ -893,20 +895,9 @@ elif st.session_state.page == 'game':
                 }}, 100);
 
                 let isSpeaking = false;
-                let loopTimeout = null;
-                let playCount = 0; // 新增計算次數變數
 
-                window.playNormal = function(isManual = false) {{ 
+                window.playNormal = function() {{ 
                     if (isSpeaking) return;
-                    if (isManual) playCount = 0; // 若為手動點擊按鈕，則重置次數
-                    
-                    // 若已唸滿3次，則不再循環，按鈕改為「點擊重聽」
-                    if (playCount >= 3) {{
-                        document.getElementById('normal-tts-btn').innerText = "🔊 點擊重聽單字";
-                        return;
-                    }}
-
-                    clearTimeout(loopTimeout);
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
                     
                     let msg = new SpeechSynthesisUtterance("{tts_word}"); 
@@ -916,24 +907,19 @@ elif st.session_state.page == 'game':
 
                     msg.onstart = function() {{
                         started = true; isSpeaking = true;
-                        document.getElementById('normal-tts-btn').innerText = "🔊 播放中... (" + (playCount + 1) + "/3)";
+                        document.getElementById('normal-tts-btn').innerText = "🔊 播放中...";
                         document.getElementById('normal-tts-btn').style.animation = "none";
                     }};
 
                     msg.onend = function() {{
                         if(ended) return;
                         ended = true; isSpeaking = false;
-                        playCount++;
                         
+                        // 語音結束，立刻解鎖作答區
                         const answerDiv = window.parent.document.getElementById('answer-zone');
                         if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
                         
-                        if (playCount < 3) {{
-                            document.getElementById('normal-tts-btn').innerText = "⏳ 停頓 2 秒... (" + playCount + "/3)";
-                            loopTimeout = setTimeout(() => window.playNormal(false), 2000);
-                        }} else {{
-                            document.getElementById('normal-tts-btn').innerText = "🔊 點擊重聽單字";
-                        }}
+                        document.getElementById('normal-tts-btn').innerText = "🔊 點擊重聽單字";
                     }};
 
                     setTimeout(() => {{
@@ -941,6 +927,10 @@ elif st.session_state.page == 'game':
                             isSpeaking = false;
                             document.getElementById('normal-tts-btn').innerText = "👉 手機限制：請點我聽發音解鎖";
                             document.getElementById('normal-tts-btn').style.animation = "pulse 1.5s infinite";
+                            
+                            // 保險機制：如果瀏覽器徹底阻擋語音，3.5秒後還是強制解鎖作答，避免死當
+                            const answerDiv = window.parent.document.getElementById('answer-zone');
+                            if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
                         }} else if (started && !ended) msg.onend();
                     }}, 3500);
 
@@ -1039,7 +1029,7 @@ elif st.session_state.page == 'parent':
                 n_pin = st.text_input("設定登入密碼 (建議設定 4 位數字)", value="0000")
                 n_char = st.selectbox("選擇夥伴寶可夢", ["火系 (小火龍)", "水系 (傑尼龜)", "草系 (妙蛙種子)", "電系 (皮丘)", "隨機"])
                 n_bank = st.selectbox("選擇預設學習題庫", all_banks, format_func=format_bank)
-                n_diff = st.selectbox("選擇初始難度", ["簡單", "中等", "困難"], index=0) # --- ⚙️ 建立時即可選難度 ---
+                n_diff = st.selectbox("選擇初始難度", ["簡單", "中等", "困難"], index=0)
                 if st.button("確認建立"):
                     if not n_name.strip() or not n_pin.strip(): st.error("名稱與密碼不可為空")
                     else:
