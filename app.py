@@ -309,6 +309,10 @@ if 'page' not in st.session_state: st.session_state.page = 'login'
 if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio = True
 if 'magnifier_active' not in st.session_state: st.session_state.magnifier_active = False
 
+# --- 🎯 初始化拼寫輸入框狀態 ---
+if 'spell_input' not in st.session_state: 
+    st.session_state.spell_input = ""
+
 # ==================== 登入大廳 ====================
 if st.session_state.page == 'login':
     st.markdown("""
@@ -361,6 +365,7 @@ if st.session_state.page == 'login':
                                 st.session_state.game_data = init_data
                                 st.session_state.error_log = load_error_log(sel_hero_key)
                                 st.session_state.play_auto_audio = True
+                                st.session_state.spell_input = ""
                                 st.session_state.page = 'game'; st.rerun()
                             else: st.error("❌ 密碼錯誤！請確認密碼是否正確。")
                 else: st.error("找不到這個家庭帳號，請確認輸入是否正確。")
@@ -455,6 +460,10 @@ elif st.session_state.page == 'game':
     def process_ans(s):
         st.session_state.play_auto_audio = True 
         st.session_state.magnifier_active = False 
+        
+        if "spell_input" in st.session_state:
+            st.session_state.spell_input = "" 
+            
         u_data['total_questions'] += 1 
         word = c_w['en']
         
@@ -535,12 +544,6 @@ elif st.session_state.page == 'game':
                 else: st.session_state.action_anim = 'hurt'
         save_user_data(u_key, u_data)
 
-    def text_input_submit():
-        ans = st.session_state.spell_input
-        if ans:
-            st.session_state.spell_input = "" 
-            process_ans(ans)
-
     # --- 🎛️ 絕美深色儀表板 ---
     hero_title = get_title(u_data['level'])
     st.markdown(f"""
@@ -614,7 +617,7 @@ elif st.session_state.page == 'game':
         with r_cols[1]:
             st.markdown("**📜 我的兌換紀錄**")
             if u_data.get('history'):
-                for item in reversed(u_data['history'][-10:]): # 顯示最近10筆
+                for item in reversed(u_data['history'][-10:]):
                     st.caption(f"• {item}")
             else: st.caption("尚未兌換任何獎勵。")
 
@@ -869,7 +872,7 @@ elif st.session_state.page == 'game':
             auto_script = "setTimeout(() => window.playNormal(false), 500);" if st.session_state.play_auto_audio else ""
             st.session_state.play_auto_audio = False 
             
-            # --- 🔊 終極零延遲與兩秒強制解鎖機制 ---
+            # --- 🔊 終極流暢：強制兩秒解鎖，完全移除畫面鎖定干擾 ---
             btn_html = f"""
             <div style="text-align:center; margin-bottom: 20px;">
                 <button id="normal-tts-btn" onclick="window.playNormal(true)" style="background-color: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 300px;">
@@ -879,17 +882,10 @@ elif st.session_state.page == 'game':
             <script>
                 const btn = document.getElementById('normal-tts-btn');
                 let isSpeaking = false;
+                let forceUnlockTimeout = null;
 
-                // 1. 題目出現時，先稍微變暗並鎖定作答區
-                setTimeout(() => {{
-                    const answerDiv = window.parent.document.getElementById('answer-zone');
-                    if (answerDiv) {{ answerDiv.style.opacity = '0.3'; answerDiv.style.pointerEvents = 'none'; }}
-                }}, 50);
-
-                // 2. 🌟 終極防護：無論手機是否阻擋語音，絕對在 2 秒後準時解鎖作答區！
-                setTimeout(() => {{
-                    const answerDiv = window.parent.document.getElementById('answer-zone');
-                    if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
+                // 🌟 兩秒強制按鈕復原：確保永遠不會卡在「播放中」
+                forceUnlockTimeout = setTimeout(() => {{
                     if (!isSpeaking) btn.innerText = "🔊 點擊聆聽單字";
                 }}, 2000);
 
@@ -908,9 +904,6 @@ elif st.session_state.page == 'game':
                     msg.onend = function() {{
                         isSpeaking = false;
                         btn.innerText = "🔊 點擊重聽單字";
-                        // 語音結束也立刻解鎖
-                        const answerDiv = window.parent.document.getElementById('answer-zone');
-                        if (answerDiv) {{ answerDiv.style.opacity = '1'; answerDiv.style.pointerEvents = 'auto'; }}
                     }};
                     
                     msg.onerror = function() {{
@@ -926,9 +919,14 @@ elif st.session_state.page == 'game':
             """
             st.components.v1.html(btn_html, height=70)
 
-            st.markdown('<div id="answer-zone" style="transition: opacity 0.5s;">', unsafe_allow_html=True)
-            
-            # 答題區 (利用 on_click 達成零延遲送出)
+            # --- ⚡ 終極流暢：移除 st.form，改用 on_change 事件瞬間觸發 ---
+            def handle_spell_submit():
+                ans = st.session_state.get("spell_input", "")
+                if ans.strip():
+                    st.session_state.spell_input = "" # 送出後立刻清空輸入框
+                    process_ans(ans.strip())
+
+            # 答題區 (利用 on_click 或 on_change 達成零延遲送出)
             if diff == '簡單':
                 cA, cB = st.columns(2)
                 with cA:
@@ -943,14 +941,17 @@ elif st.session_state.page == 'game':
                     else: st.button("❌", disabled=True, use_container_width=True, key="ans_d_del")
             else:
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
-                # 使用最穩定的原生 text_input 與 form_submit_button
-                with st.form("spell_form", clear_on_submit=True):
-                    user_ans = st.text_input("✍️ 施展拼寫魔法 (點擊輸入後按鍵盤完成或點擊下方按鈕)：", autocomplete="off")
-                    if st.form_submit_button("⚔️ 送出攻擊", type="primary", use_container_width=True):
-                        if user_ans.strip():
-                            process_ans(user_ans)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                
+                # 直接使用 on_change 綁定，只要按下 Enter / Go / 完成，瞬間發動攻擊！
+                st.text_input(
+                    "✍️ 施展拼寫魔法 (輸入完請直接按鍵盤 Enter，或點擊下方按鈕)：", 
+                    key="spell_input", 
+                    autocomplete="off", 
+                    on_change=handle_spell_submit
+                )
+                
+                # 保留按鈕給習慣點擊的玩家，同樣綁定相同的處理函數
+                st.button("⚔️ 送出攻擊", type="primary", use_container_width=True, on_click=handle_spell_submit)
             
     # 放置返回大廳按鈕於最底部
     st.markdown("---")
