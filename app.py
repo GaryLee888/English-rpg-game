@@ -260,7 +260,7 @@ if 'magnifier_active' not in st.session_state: st.session_state.magnifier_active
 
 # ==================== 登入大廳 ====================
 if st.session_state.page == 'login':
-    st.markdown("<h1 style='text-align: center; color: #2c3e50;'>⚔️ 英文英雄 RPG 大廳</h1><hr>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #2c3e50;'>⚔️ 寶可夢英文大挑戰</h1><hr>", unsafe_allow_html=True)
     t1, t2, t3 = st.tabs(["🎮 小孩遊玩登入", "👨‍👩‍👧 家長控制台", "👑 GM 管理中心"])
     
     with t1:
