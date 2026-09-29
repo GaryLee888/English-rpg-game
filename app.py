@@ -60,16 +60,34 @@ HURT_SOUNDS = [
     {"type": "triangle", "f1": 100, "f2": 20, "len": 0.4}
 ]
 
+# --- 大幅擴充！傳說神獸與反派標誌性寶可夢 (48 隻) ---
 BOSS_DATA = [
-    (144,"急凍鳥"), (145,"閃電鳥"), (146,"火焰鳥"), (150,"超夢"), (248,"班基拉斯"), (249,"洛奇亞"), (250,"鳳王"), 
-    (373,"暴飛龍"), (376,"巨金怪"), (377,"雷吉洛克"), (378,"雷吉艾斯"), (379,"雷吉斯奇魯"), (380,"拉帝亞斯"), (381,"拉帝歐斯"), 
-    (382,"蓋歐卡"), (383,"固拉多"), (384,"烈空坐"), (386,"代歐奇希斯")
+    (144,"急凍鳥"), (145,"閃電鳥"), (146,"火焰鳥"), (149,"快龍"), (150,"超夢"), (151,"夢幻"),
+    (243,"雷公"), (244,"炎帝"), (245,"水君"), (248,"班基拉斯"), (249,"洛奇亞"), (250,"鳳王"), (251,"時拉比"),
+    (373,"暴飛龍"), (376,"巨金怪"), (377,"雷吉洛克"), (378,"雷吉艾斯"), (379,"雷吉斯奇魯"),
+    (380,"拉帝亞斯"), (381,"拉帝歐斯"), (382,"蓋歐卡"), (383,"固拉多"), (384,"烈空坐"),
+    (385,"基拉祈"), (386,"代歐奇希斯"),
+    (445,"烈咬陸鯊"), (480,"由克希"), (481,"艾姆利多"), (482,"亞克諾姆"),
+    (483,"帝牙盧卡"), (484,"帕路奇亞"), (485,"席多藍恩"), (486,"雷吉奇卡斯"),
+    (487,"騎拉帝納"), (488,"克雷色利亞"), (491,"達克萊伊"), (493,"阿爾宙斯"),
+    (494,"比克提尼"), (635,"三首惡龍"), (638,"勾帕路翁"), (639,"代拉基翁"), (640,"畢力吉翁"),
+    (641,"龍捲雲"), (642,"雷電雲"), (643,"萊希拉姆"), (644,"捷克羅姆"), (645,"土地雲"), (646,"酋雷姆")
 ]
 BOSSES = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in BOSS_DATA]
 
+# --- 大幅擴充！經典一般怪物 (115 隻) ---
 MONSTER_DATA = [
-    (10,"綠毛蟲"),(13,"獨角蟲"),(16,"波波"),(19,"小拉達"),(27,"穿山鼠"),(29,"尼多蘭"),(32,"尼多朗"),(35,"皮皮"),(37,"六尾"),(39,"胖丁"),
-    (43,"走路草"),(46,"派拉斯"),(48,"毛球"),(50,"地鼠"),(52,"喵喵"),(54,"可達鴨"),(56,"猴怪"),(58,"卡蒂狗"),(60,"蚊香蝌蚪"),(63,"凱西")
+    (10,"綠毛蟲"),(13,"獨角蟲"),(16,"波波"),(19,"小拉達"),(21,"烈雀"),(23,"阿柏蛇"),(27,"穿山鼠"),(29,"尼多蘭"),(32,"尼多朗"),(35,"皮皮"),(37,"六尾"),(39,"胖丁"),
+    (41,"超音蝠"),(43,"走路草"),(46,"派拉斯"),(48,"毛球"),(50,"地鼠"),(52,"喵喵"),(54,"可達鴨"),(56,"猴怪"),(58,"卡蒂狗"),(60,"蚊香蝌蚪"),(63,"凱西"),
+    (66,"腕力"),(69,"喇叭芽"),(72,"瑪瑙水母"),(74,"小拳石"),(77,"小火馬"),(79,"呆呆獸"),(81,"小磁怪"),(83,"大蔥鴨"),(84,"嘟嘟"),(86,"小海獅"),(88,"臭泥"),
+    (90,"大舌貝"),(92,"鬼斯"),(95,"大岩蛇"),(96,"催眠貘"),(98,"大鉗蟹"),(100,"霹靂電球"),(102,"蛋蛋"),(104,"卡拉卡拉"),(108,"大舌頭"),(109,"瓦斯彈"),
+    (111,"獨角犀牛"),(114,"蔓藤怪"),(116,"墨海馬"),(118,"角金魚"),(120,"海星星"),(127,"凱羅斯"),(128,"肯泰羅"),(129,"鯉魚王"),(132,"百變怪"),(133,"伊布"),
+    (137,"多邊獸"),(143,"卡比獸"),(161,"尾立"),(163,"咕咕"),(165,"芭瓢蟲"),(167,"圓絲蛛"),(170,"燈籠魚"),(173,"皮寶寶"),(174,"寶寶丁"),(175,"波克比"),
+    (177,"天然雀"),(179,"咩利羊"),(183,"瑪力露"),(185,"胡說樹"),(187,"毽子草"),(190,"長尾怪手"),(191,"向日種子"),(193,"陽々瑪"),(194,"烏波"),(198,"黑暗鴉"),
+    (200,"夢妖"),(202,"果然翁"),(203,"麒麟奇"),(204,"榛果球"),(206,"土龍弟弟"),(209,"布魯"),(213,"壺壺"),(214,"赫拉克羅斯"),(216,"熊寶寶"),(218,"熔岩蟲"),
+    (220,"小山豬"),(222,"太陽珊瑚"),(223,"鐵炮魚"),(225,"信使鳥"),(228,"戴魯比"),(231,"小小象"),(234,"驚角鹿"),(235,"圖圖犬"),(236,"巴爾郎"),(238,"迷唇娃"),
+    (239,"電擊怪"),(240,"小鴨嘴龍"),(241,"大奶罐"),(246,"幼基拉斯"),(261,"土狼犬"),(263,"蛇紋熊"),(265,"刺尾蟲"),(270,"蓮葉童子"),(273,"橡實果"),
+    (276,"傲骨燕"),(278,"長翅鷗"),(280,"拉魯拉絲"),(283,"溜溜糖宇"),(285,"蘑蘑菇"),(287,"懶人獺"),(290,"土居忍士"),(293,"咕妞妞"),(296,"幕下力士")
 ]
 MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in MONSTER_DATA]
 
@@ -97,7 +115,7 @@ init_system()
 
 # --- 英雄成長屬性設定 ---
 def get_max_hp(level):
-    return min(10, 3 + (level // 5)) # 每升 5 級增加 1 點最大血量，最高 10 點
+    return min(10, 3 + (level // 5)) 
 
 def get_title(level):
     if level < 3: return "🌱 新手"
@@ -122,7 +140,6 @@ def load_user_data(u_key):
         "inventory": {"potion": 0, "shield": 0, "magnifier": 0}, "shield_active": False,
         "last_login_date": "", "login_streak": 0
     })
-    # 欄位確保機制
     if "vocab_bank" not in d: d["vocab_bank"] = "國小"
     if "word_stats" not in d: d["word_stats"] = {}
     if "gold" not in d: d["gold"] = 0
@@ -199,6 +216,10 @@ st.markdown("""
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 12px; text-align: center; padding: 10px 0; }
+.dex-item img { width: 100%; max-width: 60px; height: auto; transition: transform 0.2s; }
+.dex-item img:hover { transform: scale(1.2); }
+.dex-name { font-size: 0.75rem; color: #555; margin-top: 5px; font-weight: bold; }
 @media screen and (max-width: 600px) {
     .arena-bg { min-height: 160px; padding: 15px 5px; }
     .vs-text { font-size: 1.5rem; }
@@ -208,6 +229,8 @@ st.markdown("""
     .vocab-word { font-size: 2.5rem; }
     .vocab-hint-str { font-size: 1.8rem; letter-spacing: 3px;}
     .status-value { font-size: 1rem; }
+    .dex-grid { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px;}
+    .dex-name { font-size: 0.6rem; }
 }
 @keyframes heroDash { 0% { transform: scaleX(-1) translateX(0px); } 30% { transform: scaleX(-1) translateX(-40px); } 100% { transform: scaleX(-1) translateX(0px); } }
 @keyframes shakeHurt { 0% { transform: translateX(0); filter: brightness(1); } 20% { transform: translateX(-10px); filter: brightness(2.5) drop-shadow(0 0 25px red); } 40% { transform: translateX(10px); } 60% { transform: translateX(-10px); } 80% { transform: translateX(10px); } 100% { transform: translateX(0); filter: brightness(1); } }
@@ -263,7 +286,7 @@ if st.session_state.page == 'login':
                             if hero_pin == users[sel_hero_key].get("pin", "0000"):
                                 init_data = load_user_data(sel_hero_key)
                                 
-                                # --- 登入獎勵與簽到機制 ---
+                                # 登入獎勵與簽到機制
                                 today_str = str(datetime.now().date())
                                 last_date = init_data.get("last_login_date", "")
                                 if last_date != today_str:
@@ -338,7 +361,6 @@ elif st.session_state.page == 'game':
     parent_id = st.session_state.current_parent
     p_db = get_parents()
     
-    # 登入提示
     if 'show_streak' in st.session_state:
         st.toast(st.session_state.show_streak, icon="🔥")
         del st.session_state.show_streak
@@ -385,13 +407,12 @@ elif st.session_state.page == 'game':
         word = c_w['en']
         
         if s == c_w['zh']:
-            # --- 艾賓浩斯：答對升級熟悉度 ---
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
             stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
             
             u_data['combo'] += 1
-            u_data['gold'] += 10 # 答對獲得 10 金幣
+            u_data['gold'] += 10 
             
             if word in st.session_state.error_log:
                 st.session_state.error_log.remove(word)
@@ -403,7 +424,7 @@ elif st.session_state.page == 'game':
                 u_data['exp'] += (10 * diff_multi) 
                 if u_data['boss_hp'] <= 0:
                     u_data['medals'] += (1 * diff_multi) 
-                    u_data['gold'] += 50 # 打贏神獸額外獲得 50 金幣
+                    u_data['gold'] += 50 
                     u_data['is_boss_fight'] = False
                     u_data['combo'] = 0 
                     if st.session_state.current_boss['name'] not in u_data.get('trophies', []): u_data['trophies'].append(st.session_state.current_boss['name'])
@@ -422,9 +443,8 @@ elif st.session_state.page == 'game':
             old_level = u_data['level']
             if (u_data['exp'] // 100) + 1 > u_data['level']:
                 u_data['level'] = (u_data['exp'] // 100) + 1
-                u_data['hero_hp'] = get_max_hp(u_data['level']) # 升級血量全滿
+                u_data['hero_hp'] = get_max_hp(u_data['level']) 
         else:
-            # --- 艾賓浩斯：答錯熟悉度下降 ---
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
             stats["level"] = max(0, stats["level"] - 1)
             stats["next_review"] = time.time()
@@ -434,7 +454,6 @@ elif st.session_state.page == 'game':
                 st.session_state.error_log.append(word)
                 save_error_log(u_key, st.session_state.error_log)
                 
-            # --- 護盾判定 ---
             if u_data.get('shield_active', False):
                 u_data['shield_active'] = False
                 st.session_state.action_anim = 'shield_block'
@@ -535,7 +554,7 @@ elif st.session_state.page == 'game':
         st.session_state.magnifier_active = True
         save_user_data(u_key, u_data); st.rerun()
 
-    with st.expander(f"📖 冒險圖鑑 (目前題庫: {bank_name} | 怪物: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
+    with st.expander(f"📖 冒險圖鑑 (題庫: {bank_name} | 怪物: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
         d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 一般怪物"])
         with d_tab1:
             if u_data.get('trophies'):
@@ -576,7 +595,7 @@ elif st.session_state.page == 'game':
             if(ctx.state === 'suspended') ctx.resume();
             let osc = ctx.createOscillator(); let gain = ctx.createGain();
             osc.type = '{char_d["snd_type"]}'; osc.frequency.setValueAtTime({char_d["snd_freq"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d["snd_drop"]}, ctx.currentTime + {char_d["snd_len"]});
-            gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d["snd_len"]});
+            gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d["snd_len"]});
             osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d["snd_len"]});
         }}
         </script>"""
@@ -590,7 +609,7 @@ elif st.session_state.page == 'game':
             if(ctx.state === 'suspended') ctx.resume();
             let osc = ctx.createOscillator(); let gain = ctx.createGain();
             osc.type = '{h_snd["type"]}'; osc.frequency.setValueAtTime({h_snd["f1"]}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd["f2"]}, ctx.currentTime + {h_snd["len"]});
-            gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd["len"]});
+            gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd["len"]});
             osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd["len"]});
         }}
         </script>"""
@@ -603,7 +622,7 @@ elif st.session_state.page == 'game':
             if(ctx.state === 'suspended') ctx.resume();
             let osc = ctx.createOscillator(); let gain = ctx.createGain();
             osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.3);
-            gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
             osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3);
         }}
         </script>"""
@@ -615,7 +634,7 @@ elif st.session_state.page == 'game':
             if(ctx.state === 'suspended') ctx.resume();
             let osc = ctx.createOscillator(); let gain = ctx.createGain();
             osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5);
-            gain.gain.setValueAtTime({vol} * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+            gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5);
             osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5);
         }}
         </script>"""
@@ -778,7 +797,6 @@ elif st.session_state.page == 'game':
                 word_en = c_w['en']
                 w_len = len(word_en)
                 
-                # 放大鏡道具邏輯
                 if st.session_state.magnifier_active:
                     reveal_count = max(1, int(w_len * 0.8))
                     indices = sorted(random.sample(range(w_len), reveal_count))
@@ -912,7 +930,7 @@ elif st.session_state.page == 'parent':
                 else: st.error("錯誤")
     st.markdown("---")
     
-    t1, t2, t3 = st.tabs(["🦸 我的英雄管理", "🏪 商店與獎勵設定", "📚 自訂專屬單字庫"])
+    t1, t2, t3, t4 = st.tabs(["🦸 我的英雄管理", "🏪 商店與獎勵設定", "📚 自訂專屬單字庫", "🖼️ 遊戲圖鑑展示 (目標)"])
     
     with t1:
         admin_cfg = get_admin()
@@ -1034,6 +1052,32 @@ elif st.session_state.page == 'parent':
         if st.button("💾 儲存自訂單字庫", type="primary"):
             if "sentence" in edited_df.columns: edited_df = edited_df.drop(columns=["sentence"])
             edited_df.to_csv(c_file, index=False, encoding="utf-8-sig"); st.success("您的自訂題庫已更新成功！")
+            
+    with t4:
+        st.subheader("🌟 英雄進化型態展示")
+        st.info("孩子達到指定等級後，守護神會自動進化喔！可以拿這個當作他們的目標。")
+        for h_k, h_v in CHARACTERS.items():
+            st.markdown(f"**{h_k} 家族**")
+            h_cols = st.columns(min(len(h_v["stages"]), 5))
+            for idx, (h_id, h_name) in enumerate(h_v["stages"]):
+                lvl_req = 1 if idx==0 else (5 if idx==1 else 10)
+                h_cols[idx].image(f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{h_id}.gif", caption=f"Lv.{lvl_req} {h_name}")
+        
+        st.markdown("---")
+        st.subheader(f"🏆 傳說 BOSS 圖鑑 (共 {len(BOSSES)} 種)")
+        html_boss = '<div class="dex-grid">'
+        for b in BOSSES:
+            html_boss += f'<div class="dex-item"><img src="{b["url"]}"><div class="dex-name">{b["name"]}</div></div>'
+        html_boss += '</div>'
+        st.markdown(html_boss, unsafe_allow_html=True)
+            
+        st.markdown("---")
+        st.subheader(f"👾 一般怪物圖鑑 (共 {len(MONSTERS)} 種)")
+        html_monster = '<div class="dex-grid">'
+        for m in MONSTERS:
+            html_monster += f'<div class="dex-item"><img src="{m["url"]}"><div class="dex-name">{m["name"]}</div></div>'
+        html_monster += '</div>'
+        st.markdown(html_monster, unsafe_allow_html=True)
 
 # ==================== GM 控制台 ====================
 elif st.session_state.page == 'admin':
