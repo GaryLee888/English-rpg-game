@@ -482,8 +482,20 @@ elif st.session_state.page == 'game':
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
-        b_img = BALL_IMAGES["五獎"]
-        for k, v in BALL_IMAGES.items():
+        
+        # 🌟 核心修復：全面替換為 PGL (Pokemon Global Link) 高清官方圖庫！
+        # 捨棄原本 30x30 的低畫質圖片，改用高畫質大圖，保證放大後絕對滑順、無鋸齒、不模糊！
+        HD_BALL_IMAGES = {
+            "特獎": "https://www.serebii.net/itemdex/sprites/pgl/beastball.png",
+            "一獎": "https://www.serebii.net/itemdex/sprites/pgl/luxuryball.png",
+            "二獎": "https://www.serebii.net/itemdex/sprites/pgl/masterball.png",
+            "三獎": "https://www.serebii.net/itemdex/sprites/pgl/ultraball.png",
+            "四獎": "https://www.serebii.net/itemdex/sprites/pgl/greatball.png",
+            "五獎": "https://www.serebii.net/itemdex/sprites/pgl/pokeball.png"
+        }
+        
+        b_img = HD_BALL_IMAGES["五獎"]
+        for k, v in HD_BALL_IMAGES.items():
             if k in prize['name']: 
                 b_img = v
                 if k == "特獎": b_color = "#f1c40f"
@@ -493,23 +505,33 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 完美三位一體置中排版：拔除 Streamlit 鎖定，絕對居中
+        # 🌟 完美復刻黃金尺寸、光暈與高質感平滑渲染
         st.markdown(f"""
         <style>
-            [data-testid="stHeader"] {{ display: none; }}
-            [data-testid="stAppViewContainer"] {{ background: rgba(30,30,30,0.95) !important; }}
+            /* 隱藏預設標題與邊界，設定深色背景 */
+            [data-testid="stHeader"] {{ display: none !important; }}
+            [data-testid="stAppViewContainer"] {{ background: rgba(40, 40, 40, 0.95) !important; overflow: hidden !important; }}
             
-            /* 將 Streamlit 預設佈局完全隱藏，打造無干擾全螢幕 */
-            .block-container {{ 
-                max-width: 100% !important; 
+            /* 清除所有 Streamlit 預設留白 */
+            .main, .main .block-container {{ 
                 padding: 0 !important; 
                 margin: 0 !important; 
-                display: flex !important; 
-                flex-direction: column !important; 
-                align-items: center !important; 
-                justify-content: center !important; 
-                height: 100vh !important; 
-                overflow: hidden !important; 
+                height: 100vh !important;
+                max-width: 100% !important;
+            }}
+            
+            /* 🎯 絕對置中容器：確保不受其他元素擠壓 */
+            .main .block-container > div {{
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 100% !important;
+                z-index: 9999 !important;
             }}
             
             .result-container {{ 
@@ -518,86 +540,84 @@ elif st.session_state.page == 'game':
                 align-items: center; 
                 justify-content: center; 
                 width: 100%; 
-                max-width: 400px; 
                 position: relative; 
-                z-index: 50; 
-                animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
+                animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
+            /* 🎯 畫質保證：配合高清圖源，使用 140px 黃金比例，展現最高級的圓滑質感 */
             .result-ball {{ 
-                width: 250px !important; 
-                height: 250px !important; 
-                object-fit: contain; 
-                filter: drop-shadow(0 0 30px {b_color}) brightness(1.2); 
-                margin-bottom: -50px; 
-                z-index: 50; 
-                position: relative; 
-                animation: dropAndBounce 1.2s ease-out forwards; 
+                width: 180px !important; 
+                height: 500px !important; 
+                min-width: 140px !important;
+                min-height: 140px !important;
+                object-fit: contain !important; 
+                image-rendering: auto !important; /* 啟動瀏覽器平滑抗鋸齒 */
+                filter: drop-shadow(0 0 20px {b_color}) brightness(1.1) !important; 
+                margin-bottom: -250px !important; /* 精準卡在卡片正上方一半處 (500的一半) */
+                z-index: 50 !important; 
+                position: relative !important; 
+                animation: dropAndBounce 1s cubic-bezier(0.28, 0.84, 0.42, 1) forwards !important; 
             }}
             
+            /* 🎯 中獎卡片：完美還原發光粗邊框與完美比例 */
             .result-card {{ 
-                background: white; 
-                padding: 60px 20px 25px 20px; 
-                border-radius: 20px; 
-                text-align: center; 
-                box-shadow: 0 0 40px {b_color}; 
-                border: 6px solid {b_color}; 
-                width: 90%; 
-                max-width: 350px; 
-                z-index: 10; 
-                position: relative; 
+                background: white !important; 
+                padding: 95px 20px 30px 20px !important; 
+                border-radius: 16px !important; 
+                text-align: center !important; 
+                box-shadow: 0 0 50px {b_color} !important; 
+                border: 4px solid {b_color} !important; 
+                width: 85% !important; 
+                max-width: 320px !important; 
+                z-index: 10 !important; 
+                position: relative !important; 
             }}
             
-            /* 讓收下獎勵按鈕直接跟隨卡片下方，不鎖定在螢幕底部 */
-            div[data-testid="stVerticalBlock"] > div:has(button) {{ 
-                display: flex; 
-                justify-content: center; 
-                width: 100%; 
-                margin-top: 15px; 
-                z-index: 100000; 
-            }}
-            div[data-testid="stButton"] {{ 
-                width: 100%; 
-                max-width: 350px; 
-                display: flex; 
-                justify-content: center; 
-                margin: 0; 
-            }}
-            div[data-testid="stButton"] button {{ 
-                font-size: 1.2rem !important; 
-                font-weight: bold; 
-                padding: 15px !important; 
-                box-shadow: 0 0 20px rgba(255,255,255,0.3); 
-                border: 2px solid white !important; 
-                width: 100% !important; 
-                background-color: #ff4757 !important; 
-                color: white !important; 
-                border-radius: 10px !important; 
-            }}
-            div[data-testid="stButton"] button:hover {{ 
-                border-color: #ff6b81 !important; 
-            }}
-
             @keyframes dropAndBounce {{
-                0% {{ transform: translateY(-400px) scale(0.5); opacity: 0; }}
-                50% {{ transform: translateY(0px) scale(1.2); opacity: 1; }}
-                70% {{ transform: translateY(-40px) scale(1); }}
+                0% {{ transform: translateY(-300px) scale(0.5); opacity: 0; }}
+                50% {{ transform: translateY(0px) scale(1.1); opacity: 1; }}
+                70% {{ transform: translateY(-20px) scale(1); }}
                 85% {{ transform: translateY(0px) scale(1); }}
-                95% {{ transform: translateY(-15px) scale(1); }}
-                100% {{ transform: translateY(0px) scale(1); }}
+                95% {{ transform: translateY(-8px) scale(1); }}
+                100% {{ transform: translateY(0px) scale(1.05); }}
             }}
             @keyframes popIn {{ 
-                0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 
-                60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 
+                0% {{ transform: scale(0.8) translateY(50px); opacity: 0; }} 
                 100% {{ transform: scale(1) translateY(0); opacity: 1; }} 
             }}
+            
+            /* 按鈕容器與樣式：還原漸層與立體懸浮效果 */
+            div[data-testid="stVerticalBlock"] > div:has(button) {{ 
+                display: flex !important; 
+                justify-content: center !important; 
+                width: 100% !important; 
+                margin-top: 25px !important;
+            }}
+            div[data-testid="stButton"] {{ width: 100% !important; max-width: 320px !important; display: flex !important; justify-content: center !important; margin: 0 !important; }}
+            div[data-testid="stButton"] button {{ 
+                font-size: 1.1rem !important; 
+                font-weight: 900 !important; 
+                padding: 12px !important; 
+                background: linear-gradient(180deg, #ff6b6b 0%, #ff4757 100%) !important; 
+                color: white !important; 
+                border-radius: 12px !important; 
+                border: 2px solid white !important;
+                box-shadow: 0 6px 15px rgba(255, 71, 87, 0.4) !important;
+                width: 100% !important; 
+                transition: transform 0.2s, filter 0.2s !important;
+            }}
+            div[data-testid="stButton"] button:hover {{ filter: brightness(1.15) !important; transform: translateY(-2px) !important; }}
         </style>
         
         <div class="result-container">
             <img class="result-ball" src="{b_img}">
             <div class="result-card">
-                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 15px; font-size: 1.8rem;">🎉 恭喜中獎 🎉</h1>
-                <h2 style="color: {b_color}; font-size: 1.5rem; text-shadow: 1px 1px 0px #000; margin: 0; padding: 12px; background: rgba(0,0,0,0.05); border-radius: 10px;">{prize['name'].replace(' (', '<br>(')}</h2>
+                <h1 style="color: #2c3e50; margin-top: 0; margin-bottom: 20px; font-size: 1.6rem; font-weight: 800; letter-spacing: 1px;">🎉 恭喜中獎 🎉</h1>
+                <div style="background: #f4f4f4; border-radius: 12px; padding: 15px 10px; margin: 0;">
+                    <h2 style="color: {b_color}; font-size: 1.35rem; margin: 0; font-weight: 900; text-shadow: 1px 1px 0px rgba(0,0,0,0.15), -1px -1px 0px rgba(255,255,255,0.8); line-height: 1.4;">
+                        {prize['name'].replace(' (', '<br>(')}
+                    </h2>
+                </div>
             </div>
         </div>
         <script>
@@ -605,36 +625,27 @@ elif st.session_state.page == 'game':
                 let ctx = window.parent.gameAudioCtx;
                 if(ctx) {{
                     if(ctx.state === 'suspended') ctx.resume();
-                    
-                    /* 老虎機音效馬上播放 */
                     let osc = ctx.createOscillator(); let gain = ctx.createGain();
-                    osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
                     let now = ctx.currentTime;
-                    for(let i=0; i<10; i++){{osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.05);}}
-                    gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
-                    osc.start(now); osc.stop(now + 0.5);
-
-                    /* 中獎音效等球掉下來後播放 (1.2秒) */
-                    setTimeout(() => {{
-                        let oscW = ctx.createOscillator(); let gainW = ctx.createGain();
-                        oscW.type = 'triangle'; oscW.connect(gainW); gainW.connect(ctx.destination);
-                        let nowW = ctx.currentTime;
-                        oscW.frequency.setValueAtTime(440, nowW); oscW.frequency.setValueAtTime(554, nowW + 0.1);
-                        oscW.frequency.setValueAtTime(659, nowW + 0.2); oscW.frequency.setValueAtTime(880, nowW + 0.3);
-                        gainW.gain.setValueAtTime(0, nowW); gainW.gain.linearRampToValueAtTime(0.5, nowW+0.1);
-                        gainW.gain.exponentialRampToValueAtTime(0.01, nowW + 1.5);
-                        oscW.start(nowW); oscW.stop(nowW + 1.5);
-                    }}, 1200);
+                    osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554, now + 0.1);
+                    osc.frequency.setValueAtTime(659, now + 0.2); osc.frequency.setValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.5, now+0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+                    osc.start(now); osc.stop(now + 1.5);
                 }}
-            }}, 100);
+            }}, 500);
         </script>
         """, unsafe_allow_html=True)
         
+        # 領取按鈕
         if st.button("🎁 點擊收下獎勵", type="primary"):
             st.session_state.show_gacha_result = False
             st.rerun()
         st.stop()
     # ===============================================================
+
+
 
     if 'show_streak' in st.session_state:
         st.toast(st.session_state.show_streak, icon="🔥")
@@ -841,9 +852,16 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣與庫存皆不足！")
 
-    # --- 🎰 經典擬真幸運扭蛋機 (無干擾原生 Streamlit 按鈕) ---
+    # --- 🎰 經典擬真幸運扭蛋機 (完美居中與無干擾按鈕) ---
     with st.expander("🎰 幸運扭蛋機 (花費金幣抽大獎)", expanded=False):
         gacha_html = f"""
+        <html><head><style>
+            body {{ margin: 0; padding: 0; font-family: sans-serif; background: transparent; overflow: hidden; display: flex; justify-content: center; align-items: center; }}
+            .gacha-wrapper {{ display: flex; justify-content: center; align-items: center; padding: 25px 0 10px 0; width: 100%; }}
+            .gacha-machine {{ background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; width: 280px; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative; margin: 0 auto; }}
+            .gacha-glass {{ background-color: #f1f2f6; border: 4px solid #2f3542; border-radius: 15px; height: 160px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }}
+            .gacha-ball {{ position: absolute; width: 45px; height: 45px; background-size: contain; background-repeat: no-repeat; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }}
+        </style></head><body>
         <div class="gacha-wrapper">
             <div class="gacha-machine">
                 <div style="background: #feca57; width: 100px; height: 30px; border: 4px solid #2f3542; border-radius: 20px 20px 0 0; position: absolute; top: -34px; left: 50%; transform: translateX(-50%);">
@@ -860,42 +878,72 @@ elif st.session_state.page == 'game':
                     <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 10px; left:110px; transform: rotate(-40deg);"></div>
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 50%); pointer-events: none;"></div>
                 </div>
-                <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: -15px; z-index: 10; position: relative;">
-                    <div style="width: 50px; height: 50px; background: #1e90ff; border: 4px solid #2f3542; border-radius: 10px 10px 0 0;"></div>
-                    <div style="width: 60px; height: 60px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        <div style="width: 40px; height: 10px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg);"></div>
+                
+                <!-- 🎯 點擊旋鈕發動 -->
+                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 5px;">
+                    <div style="font-weight: bold; color: white; text-shadow: 1px 1px 0px #000; font-size: 1.1rem; text-align: left; line-height: 1.2;">點擊旋轉<br>({gacha_cfg['cost']}G) 👉</div>
+                    <div id="gacha-knob" style="width: 70px; height: 70px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.5s; box-shadow: 0 4px 0 #10ac84, inset 0 2px 5px rgba(255,255,255,0.5);">
+                        <div style="width: 50px; height: 12px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg); border-radius: 5px;"></div>
                     </div>
                 </div>
             </div>
         </div>
+        <script>
+            document.getElementById('gacha-knob').onclick = function() {{
+                this.style.transform = 'rotate(360deg)';
+                let ctx = window.parent.gameAudioCtx;
+                if(ctx) {{
+                    if(ctx.state === 'suspended') ctx.resume();
+                    let osc = ctx.createOscillator(); let gain = ctx.createGain();
+                    osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
+                    let now = ctx.currentTime;
+                    for(let i=0; i<10; i++){{osc.frequency.setValueAtTime(300 + Math.random()*200, now + i*0.05);}}
+                    gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                    osc.start(now); osc.stop(now + 0.5);
+                }}
+                setTimeout(() => {{
+                    // 尋找隱藏的按鈕並點擊發送攻擊指令給 Streamlit 後端
+                    const btns = window.parent.document.querySelectorAll('button');
+                    for (let b of btns) {{
+                        if(b.innerText.includes('🎮隱藏抽獎發動🎮')) {{
+                            b.click();
+                            break;
+                        }}
+                    }}
+                    setTimeout(() => {{ document.getElementById('gacha-knob').style.transform = 'rotate(0deg)'; }}, 500);
+                }}, 600);
+            }};
+        </script>
+        </body></html>
         """
-        st.markdown(gacha_html, unsafe_allow_html=True)
         
-        # 🎯 乾淨俐落的原生 Streamlit 按鈕，顯示即時金額，絕無隱藏機制干擾
-        col1, col2, col3 = st.columns([1, 4, 1])
-        with col2:
-            if st.button(f"🎰 點擊旋轉扭蛋 ({gacha_cfg['cost']}G)", use_container_width=True):
-                if u_data['gold'] >= gacha_cfg['cost']:
-                    u_data['gold'] -= gacha_cfg['cost']
-                    prizes = gacha_cfg['prizes']
-                    weights = [p['prob'] for p in prizes]
-                    prize = random.choices(prizes, weights=weights)[0]
-                    
-                    if prize['type'] == 'medal': u_data['medals'] += prize['val']
-                    elif prize['type'] == 'gold': u_data['gold'] += prize['val']
-                    elif prize['type'] == 'item':
-                        u_data['inventory']['potion'] += prize['val']
-                        u_data['inventory']['shield'] += prize['val']
-                        u_data['inventory']['magnifier'] += prize['val']
-                    
-                    # 扭蛋獎勵不寫入 history，保持版面乾淨
-                    save_user_data(u_key, u_data)
-                    
-                    st.session_state.show_gacha_result = True
-                    st.session_state.gacha_result_prize = prize
-                    st.rerun()
-                else:
-                    st.error("金幣不足！快去打怪賺錢吧！")
+        # 將扭蛋機完全隔離在獨立的 iframe 中，防止破圖與排版偏移
+        st.components.v1.html(gacha_html, height=360)
+        
+        # 徹底隱藏的觸發按鈕，名稱改為「🎮隱藏抽獎發動🎮」以便 JS 攔截
+        if st.button("🎮隱藏抽獎發動🎮"):
+            if u_data['gold'] >= gacha_cfg['cost']:
+                u_data['gold'] -= gacha_cfg['cost']
+                prizes = gacha_cfg['prizes']
+                weights = [p['prob'] for p in prizes]
+                prize = random.choices(prizes, weights=weights)[0]
+                
+                if prize['type'] == 'medal': u_data['medals'] += prize['val']
+                elif prize['type'] == 'gold': u_data['gold'] += prize['val']
+                elif prize['type'] == 'item':
+                    u_data['inventory']['potion'] += prize['val']
+                    u_data['inventory']['shield'] += prize['val']
+                    u_data['inventory']['magnifier'] += prize['val']
+                
+                u_data['history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 扭蛋獲得：{prize['name']}")
+                save_user_data(u_key, u_data)
+                
+                st.session_state.show_gacha_result = True
+                st.session_state.gacha_result_prize = prize
+                st.rerun()
+            else:
+                st.error("金幣不足！快去打怪賺錢吧！")
+
 
     # --- 🎁 家庭獎勵兌換系統 ---
     with st.expander("🎁 家庭獎勵兌換與紀錄 (花費勳章)", expanded=False):
