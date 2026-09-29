@@ -503,7 +503,10 @@ elif st.session_state.page == 'game':
         if ans.lower() == c_w['en'].lower(): process_ans(c_w['zh'])
         else: process_ans("WRONG_ANSWER")
 
-    # --- 側邊欄 (僅保留家族獎勵兌換與返回大廳) ---
+    # --- 隱藏用來接收 JS 提交的按鈕 ---
+    st.button("隱藏送出按鈕", on_click=vk_submit, key="hidden_submit_btn")
+
+    # --- 側邊欄 ---
     with st.sidebar:
         st.subheader("🏪 家族獎勵兌換")
         for r in r_list:
@@ -536,8 +539,8 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 🏪 道具商店「一鍵買＆用」極簡化 ---
-    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊扣除金幣立即使用)</div>", unsafe_allow_html=True)
+    # --- 🏪 道具商店「一鍵買＆用」 ---
+    st.markdown("<hr style='margin: 5px 0;'><div style='text-align:center; font-weight:bold; color:#7f8c8d; margin-bottom:10px;'>🏪 道具商店 (點擊立刻扣除金幣並發動)</div>", unsafe_allow_html=True)
     c_btn1, c_btn2, c_btn3 = st.columns(3)
     
     if c_btn1.button(f"🧪 藥水 ({store_prices['potion']}G)", use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
@@ -560,7 +563,6 @@ elif st.session_state.page == 'game':
             u_data['gold'] -= store_prices['magnifier']
             st.session_state.magnifier_active = True
             if diff == '簡單':
-                # 簡單模式：使用放大鏡立刻刪去兩個錯誤選項
                 correct_ans = c_w['zh']
                 wrong_indices = [i for i, opt in enumerate(st.session_state.current_options) if opt != correct_ans and opt != "❌"]
                 if len(wrong_indices) >= 2:
@@ -829,8 +831,9 @@ elif st.session_state.page == 'game':
                 w_len = len(word_en)
                 
                 if st.session_state.magnifier_active:
-                    reveal_count = 1 # 放大鏡：嚴格只給 1 個隨機字母提示
-                    r = random.Random(word_en) # 使用單字做為隨機種子，確保重整時字母不會亂跳
+                    # 嚴格限制：無論長短，只隨機提示 1 個字母
+                    reveal_count = 1
+                    r = random.Random(word_en)
                     indices = sorted(r.sample(range(w_len), reveal_count))
                 else:
                     if diff == '中等':
@@ -934,21 +937,24 @@ elif st.session_state.page == 'game':
                 st.markdown("<hr style='border: 1px dashed #bdc3c7; margin: 15px 0;'>", unsafe_allow_html=True)
                 st.text_input("✍️ 施展拼寫魔法 (支援實體鍵盤與下方虛擬鍵盤)：", key="text_input_field", autocomplete="off")
                 
-                # --- 📱 電競級原生手機虛擬鍵盤 (純 HTML/JS 實作，零延遲) ---
+                # --- 📱 電競級原生手機虛擬鍵盤 (純 HTML/JS，零延遲打字 + 自動送出同步) ---
                 kb_html = """
                 <style>
-                .kb-container { background-color: #e5e7eb; padding: 10px 5px; border-radius: 10px; max-width: 600px; margin: 0 auto; user-select: none; }
+                .kb-container { background-color: #d1d5db; padding: 8px 4px; border-radius: 8px; width: 100%; max-width: 500px; margin: 0 auto; user-select: none; }
                 .kb-row { display: flex; justify-content: center; margin-bottom: 6px; gap: 4px; }
-                .kb-key { flex: 1; max-width: 45px; height: 48px; background: #ffffff; border-radius: 6px; border: none; font-size: 1.1rem; font-weight: bold; color: #374151; box-shadow: 0 1px 3px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
-                .kb-key:active { background: #d1d5db; transform: translateY(1px); }
-                .kb-key-wide { flex: 1.5; max-width: 65px; font-size: 0.9rem;}
-                .kb-key-space { flex: 4; max-width: 200px; }
+                .kb-key { flex: 1; height: 45px; background: #ffffff; border-radius: 5px; border: none; font-size: 1.2rem; font-weight: bold; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+                .kb-key:active { background: #9ca3af; transform: translateY(1px); }
+                .kb-row-2 { padding: 0 5%; }
+                .kb-key-wide { flex: 1.5; font-size: 1rem;}
+                .kb-key-space { flex: 3; font-size: 1rem; }
+                .kb-submit { background-color: #e74c3c; color: #fff; flex: 3; font-size: 1.1rem; }
+                .kb-submit:active { background-color: #c0392b; }
                 </style>
                 <div class="kb-container">
                     <div class="kb-row">
                         <button class="kb-key" onclick="tk('Q')">Q</button><button class="kb-key" onclick="tk('W')">W</button><button class="kb-key" onclick="tk('E')">E</button><button class="kb-key" onclick="tk('R')">R</button><button class="kb-key" onclick="tk('T')">T</button><button class="kb-key" onclick="tk('Y')">Y</button><button class="kb-key" onclick="tk('U')">U</button><button class="kb-key" onclick="tk('I')">I</button><button class="kb-key" onclick="tk('O')">O</button><button class="kb-key" onclick="tk('P')">P</button>
                     </div>
-                    <div class="kb-row" style="padding: 0 5%;">
+                    <div class="kb-row kb-row-2">
                         <button class="kb-key" onclick="tk('A')">A</button><button class="kb-key" onclick="tk('S')">S</button><button class="kb-key" onclick="tk('D')">D</button><button class="kb-key" onclick="tk('F')">F</button><button class="kb-key" onclick="tk('G')">G</button><button class="kb-key" onclick="tk('H')">H</button><button class="kb-key" onclick="tk('J')">J</button><button class="kb-key" onclick="tk('K')">K</button><button class="kb-key" onclick="tk('L')">L</button>
                     </div>
                     <div class="kb-row">
@@ -956,31 +962,79 @@ elif st.session_state.page == 'game':
                     </div>
                     <div class="kb-row">
                         <button class="kb-key kb-key-space" onclick="tk(' ')">空白 (Space)</button>
+                        <button class="kb-key kb-submit" onclick="sm()">⚔️ 送出攻擊</button>
                     </div>
                 </div>
                 <script>
+                    let p = window.parent.document;
+                    
+                    // 確保隱藏 Python 端的送出按鈕
+                    function hideBtn() {
+                        p.querySelectorAll('button').forEach(b => {
+                            if(b.innerText.includes('隱藏送出按鈕')) {
+                                b.style.display = 'none';
+                                if(b.parentElement) b.parentElement.style.display = 'none';
+                            }
+                        });
+                    }
+                    hideBtn();
+                    setInterval(hideBtn, 500);
+
+                    // 點擊鍵盤輸入
                     function tk(char) {
-                        let p = window.parent.document;
-                        let input = p.querySelector('input[type="text"]');
+                        let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
                         if(input) {
-                            let nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                            nativeInputValueSetter.call(input, input.value + char);
+                            let nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                            nativeSetter.call(input, input.value + char);
                             input.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                     }
+                    
+                    // 刪除
                     function bk() {
-                        let p = window.parent.document;
-                        let input = p.querySelector('input[type="text"]');
-                        if(input) {
-                            let nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                            nativeInputValueSetter.call(input, input.value.slice(0, -1));
+                        let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
+                        if(input && input.value.length > 0) {
+                            let nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                            nativeSetter.call(input, input.value.slice(0, -1));
                             input.dispatchEvent(new Event('input', { bubbles: true }));
                         }
+                    }
+                    
+                    // 神級送出邏輯：強制同步並觸發 Python 端判定
+                    function sm() {
+                        let input = p.querySelector('input[data-testid="stTextInput"] input') || p.querySelector('input[type="text"]');
+                        if(input) {
+                            input.focus();
+                            input.blur(); // 觸發 Streamlit 的狀態更新
+                        }
+                        setTimeout(() => {
+                            p.querySelectorAll('button').forEach(b => {
+                                if(b.innerText.includes('隱藏送出按鈕')) b.click();
+                            });
+                        }, 150);
+                    }
+
+                    // 支援電腦實體鍵盤 Enter 鍵自動送出
+                    if(!window.parent.enterListenerAdded) {
+                        p.addEventListener('keydown', function(e) {
+                            if(e.key === 'Enter') {
+                                let activeEl = p.activeElement;
+                                if(activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'text') {
+                                    e.preventDefault();
+                                    activeEl.blur();
+                                    setTimeout(() => {
+                                        p.querySelectorAll('button').forEach(b => {
+                                            if(b.innerText.includes('隱藏送出按鈕')) b.click();
+                                        });
+                                    }, 150);
+                                }
+                            }
+                        });
+                        window.parent.enterListenerAdded = true;
                     }
                 </script>
                 """
-                st.components.v1.html(kb_html, height=230)
-                st.button("⚔️ 送出攻擊", type="primary", on_click=vk_submit, use_container_width=True)
+                st.components.v1.html(kb_html, height=250)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
