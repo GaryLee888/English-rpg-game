@@ -7,18 +7,14 @@ import random
 import time
 from datetime import datetime
 import pandas as pd
-import base64
-import io
 import eng_to_ipa as ipa
-from gtts import gTTS
 
-# --- 自動環境檢查與安裝模組 ---
+# --- 自動環境檢查與安裝模組 (已拔除廢棄的 gTTS) ---
 def setup_environment():
     required_packages = {
         "streamlit": "streamlit",
         "pandas": "pandas",
-        "eng-to-ipa": "eng_to_ipa",
-        "gTTS": "gtts"
+        "eng-to-ipa": "eng_to_ipa"
     }
     missing = []
     for pip_name, import_name in required_packages.items():
@@ -263,7 +259,7 @@ if st.session_state.page == 'login':
                 else:
                     p_db[r_acc] = {
                         "password": r_pwd,
-                        "hero_limit": None, # Null 則跟隨 GM 預設
+                        "hero_limit": None,
                         "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮"}]
                     }
                     save_parents(p_db)
@@ -309,7 +305,6 @@ elif st.session_state.page == 'game':
     v_file = VOCAB_FILES.get(bank_name, VOCAB_FILES["國小"])
     v_list = load_csv(v_file) or [{"en": "hero", "zh": "英雄", "hint": ""}]
     
-    # 讀取該家長專屬的獎勵
     r_list = p_db.get(parent_id, {}).get("rewards", [])
     vol = 0.8
 
@@ -417,7 +412,7 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander(f"📖 冒險圖鑑 (題庫: {bank_name} | 一般: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
+    with st.expander(f"📖 冒險圖鑑 (目前題庫: {bank_name} | 一般: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 神獸: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
         d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 一般怪物"])
         with d_tab1:
             if u_data.get('trophies'):
@@ -597,7 +592,7 @@ elif st.session_state.page == 'game':
 
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
                     let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
-                    msg.lang = 'en-US'; msg.rate = 0.85; msg.volume = {vol};
+                    msg.lang = 'en-US'; msg.rate = 0.85; msg.volume = 0.8;
 
                     let started = false; let ended = false;
                     msg.onstart = function() {{ started = true; isSpeaking = true; btn.innerText = "🔊 播放中，請跟著唸... (" + (playCount + 1) + "/3)"; btn.style.animation = "none"; }};
@@ -684,7 +679,7 @@ elif st.session_state.page == 'game':
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
                     
                     let msg = new SpeechSynthesisUtterance("{c_w['en']}"); 
-                    msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = {vol}; 
+                    msg.lang = 'en-US'; msg.rate = 0.9; msg.volume = 0.8; 
                     
                     let started = false; let ended = false;
 
