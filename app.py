@@ -460,7 +460,7 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
     
-  # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+ # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
@@ -475,37 +475,35 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 終極絕對置中魔法：直接控制 Streamlit 底層容器
+        # 🌟 終極絕對置中魔法：直接設定 Fixed 綁定螢幕正中央
         st.markdown(f"""
         <style>
-            /* 隱藏頂部標題並套用深色遮罩 */
+            /* 隱藏預設標題與邊界，設定深色背景 */
             [data-testid="stHeader"] {{ display: none !important; }}
-            [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95) !important; }}
+            [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95) !important; overflow: hidden !important; }}
             
-            /* 1. 徹底清除 Streamlit 預設留白，強制高度等於螢幕高度 (100vh) */
-            .main .block-container {{ 
-                max-width: 100% !important; 
-                padding: 0 !important; /* 殺掉把畫面往下推的隱形 padding */
+            /* 清除所有 Streamlit 預設留白 */
+            .main, .main .block-container {{ 
+                padding: 0 !important; 
                 margin: 0 !important; 
-                height: 100vh !important; /* 強制與螢幕等高 */
-                display: flex !important; 
-                flex-direction: column !important; 
-                justify-content: center !important; /* 垂直置中 */
-                align-items: center !important; /* 水平置中 */
+                height: 100vh !important;
+                max-width: 100% !important;
             }}
             
-            /* 2. 讓 Streamlit 包覆內容的容器也變成置中模式 */
-            div[data-testid="stVerticalBlock"] {{
-                width: 100% !important;
-                height: 100% !important;
+            /* 🚨 關鍵破壞：將包含【球+卡片+按鈕】的最外層容器直接釘死在畫面「正中央」 */
+            .main .block-container > div {{
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: center !important; /* 把球、卡片、按鈕三者視為一體，完美垂直置中 */
-                gap: 15px !important; /* 控制卡片與按鈕之間的間距 */
+                justify-content: center !important;
+                width: 100% !important;
+                z-index: 9999 !important;
             }}
             
-            /* 卡片與球的專屬容器 */
             .result-container {{ 
                 display: flex; 
                 flex-direction: column; 
@@ -513,7 +511,6 @@ elif st.session_state.page == 'game':
                 justify-content: center; 
                 width: 100%; 
                 position: relative; 
-                z-index: 50; 
                 animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; 
             }}
             
@@ -553,12 +550,12 @@ elif st.session_state.page == 'game':
             }}
             @keyframes popIn {{ 0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 100% {{ transform: scale(1) translateY(0); opacity: 1; }} }}
             
-            /* 按鈕容器微調：移除額外外距，依賴上方 gap 屬性控制 */
+            /* 按鈕間距設定 */
             div[data-testid="stVerticalBlock"] > div:has(button) {{ 
                 display: flex; 
                 justify-content: center; 
                 width: 100%; 
-                z-index: 100000; 
+                margin-top: 20px !important;
             }}
             div[data-testid="stButton"] {{ width: 100%; max-width: 320px; display: flex; justify-content: center; margin: 0; }}
             div[data-testid="stButton"] button {{ 
