@@ -475,32 +475,34 @@ elif st.session_state.page == 'game':
                 elif k == "四獎": b_color = "#3498db" 
                 break
                 
-        # 🌟 完美置中排版與高度還原截圖設計
+        # 🌟 終極強制垂直/水平置中排版
         st.markdown(f"""
         <style>
+            /* 隱藏頂部標隙並套用深色遮罩 */
             [data-testid="stHeader"] {{ display: none !important; }}
             [data-testid="stAppViewContainer"] {{ background: rgba(35, 35, 35, 0.95) !important; }}
             
-            /* 讓整個畫面強制滿版，並使用 flexbox 將所有內容完美置中 */
+            /* 1. 徹底清除 Streamlit 預設留白，並讓區塊撐滿螢幕高度 */
             .main .block-container {{ 
                 max-width: 100% !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
+                padding-top: 0 !important; 
+                padding-bottom: 0 !important; 
+                min-height: 100vh !important; 
                 display: flex !important; 
                 flex-direction: column !important; 
-                align-items: center !important; 
                 justify-content: center !important; 
-                min-height: 100vh !important; 
+                align-items: center !important; 
             }}
             
-            /* 強制 Streamlit 內部容器也垂直置中，避免整體被往上推 */
+            /* 2. 強制內層的垂直容器 (包含卡片與按鈕) 透過 margin: auto 達成絕對垂直置中 */
             div[data-testid="stVerticalBlock"] {{
                 width: 100% !important;
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
                 justify-content: center !important;
-                flex: 1 !important;
+                margin: auto 0 !important; /* 這是突破 Streamlit 排版，確保上下等距的關鍵 */
+                gap: 15px !important; /* 卡片與按鈕的距離 */
             }}
             
             .result-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; position: relative; z-index: 50; animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }}
@@ -521,8 +523,8 @@ elif st.session_state.page == 'game':
             }}
             @keyframes popIn {{ 0% {{ transform: scale(0.5) translateY(100px); opacity: 0; }} 60% {{ transform: scale(1.05) translateY(0); opacity: 1; }} 100% {{ transform: scale(1) translateY(0); opacity: 1; }} }}
             
-            /* 將按鈕貼齊在卡片正下方一點點 */
-            div[data-testid="stVerticalBlock"] > div:has(button) {{ display: flex; justify-content: center; width: 100%; margin-top: 25px; z-index: 100000; flex: 0 0 auto !important; }}
+            /* 按鈕容器的微調 */
+            div[data-testid="stVerticalBlock"] > div:has(button) {{ display: flex; justify-content: center; width: 100%; z-index: 100000; }}
             div[data-testid="stButton"] {{ width: 100%; max-width: 320px; display: flex; justify-content: center; margin: 0; }}
             div[data-testid="stButton"] button {{ 
                 font-size: 1.1rem !important; 
@@ -534,8 +536,9 @@ elif st.session_state.page == 'game':
                 border: 2px solid white !important;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
                 width: 100%; 
+                transition: transform 0.2s, filter 0.2s;
             }}
-            div[data-testid="stButton"] button:hover {{ filter: brightness(1.1); }}
+            div[data-testid="stButton"] button:hover {{ filter: brightness(1.1); transform: translateY(-2px); }}
         </style>
         
         <div class="result-container">
@@ -563,7 +566,7 @@ elif st.session_state.page == 'game':
         </script>
         """, unsafe_allow_html=True)
         
-        # 領取按鈕 (會被上方 CSS 自動置靠在卡片下方)
+        # 領取按鈕
         if st.button("🎁 點擊收下獎勵", type="primary"):
             st.session_state.show_gacha_result = False
             st.rerun()
