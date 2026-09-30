@@ -1477,18 +1477,65 @@ elif st.session_state.page == 'parent':
         with st.expander("🎰 幸運扭蛋機設定", expanded=True):
             g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 300))
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
-            g_df = pd.DataFrame(gacha.get("prizes", DEFAULT_GACHA["prizes"]))
-            edited_gacha = st.data_editor(g_df, num_rows="fixed", column_config={
-                "name": st.column_config.TextColumn("獎項名稱", required=True),
-                "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True),
-                "type": st.column_config.SelectboxColumn("類型", options=["medal", "gold", "item"], required=True),
-                "val": st.column_config.NumberColumn("數量", min_value=1, required=True)
-            }, hide_index=True)
+            
+            # 系統固定可選獎勵清單 (自動綁定對應的類型與數值)
+            SYSTEM_REWARDS = {
+                "終極大禮包 (5勳章)": {"type": "medal", "val": 5},
+                "榮耀大禮包 (3勳章)": {"type": "medal", "val": 3},
+                "2枚榮耀勳章": {"type": "medal", "val": 2},
+                "1枚榮耀勳章": {"type": "medal", "val": 1},
+                "超豪華道具包 (各x3)": {"type": "item", "val": 3},
+                "豪華道具包 (各x2)": {"type": "item", "val": 2},
+                "實用道具包 (各x1)": {"type": "item", "val": 1},
+                "神級金幣箱 (1000G)": {"type": "gold", "val": 1000},
+                "金幣大暴發 (500G)": {"type": "gold", "val": 500},
+                "安慰小紅包 (100G)": {"type": "gold", "val": 100},
+                "小金幣包 (50G)": {"type": "gold", "val": 50}
+            }
+            
+            current_prizes = gacha.get("prizes", DEFAULT_GACHA["prizes"])
+            display_data = []
+            ranks = ["特獎", "一獎", "二獎", "三獎", "四獎", "五獎"]
+            
+            for i in range(6):
+                p = current_prizes[i] if i < len(current_prizes) else DEFAULT_GACHA["prizes"][i]
+                # 萃取出現有的獎勵名稱，若不合法則給予預設值防呆
+                p_content = p["name"].split("：")[-1] if "：" in p["name"] else list(SYSTEM_REWARDS.keys())[0]
+                if p_content not in SYSTEM_REWARDS: p_content = list(SYSTEM_REWARDS.keys())[0]
+                
+                display_data.append({
+                    "rank": ranks[i],
+                    "content": p_content,
+                    "prob": p["prob"]
+                })
+                
+            display_df = pd.DataFrame(display_data)
+            edited_gacha = st.data_editor(
+                display_df,
+                num_rows="fixed",
+                column_config={
+                    "rank": st.column_config.TextColumn("獎項級別", disabled=True),
+                    "content": st.column_config.SelectboxColumn("獎品內容", options=list(SYSTEM_REWARDS.keys()), required=True),
+                    "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True)
+                },
+                hide_index=True,
+                key="parent_gacha_editor"
+            )
+            
             if st.button("💾 儲存扭蛋機設定"):
                 if round(edited_gacha['prob'].sum()) != 100:
                     st.error(f"❌ 機率總和必須等於 100%！目前為 {edited_gacha['prob'].sum()}%")
                 else:
-                    p_db[p_id]["gacha"] = {"cost": g_cost, "prizes": edited_gacha.to_dict('records')}
+                    final_prizes = []
+                    for _, row in edited_gacha.iterrows():
+                        r_content = row["content"]
+                        final_prizes.append({
+                            "name": f"{row['rank']}：{r_content}",
+                            "prob": row["prob"],
+                            "type": SYSTEM_REWARDS[r_content]["type"],
+                            "val": SYSTEM_REWARDS[r_content]["val"]
+                        })
+                    p_db[p_id]["gacha"] = {"cost": g_cost, "prizes": final_prizes}
                     save_parents(p_db); st.success("扭蛋機設定已儲存！"); st.rerun()
 
     with t3:
@@ -1735,18 +1782,64 @@ elif st.session_state.page == 'admin':
         with st.expander("🎰 扭蛋機預設值", expanded=True):
             g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 300), key="gm_g_cost")
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
-            g_df = pd.DataFrame(gacha.get("prizes", DEFAULT_GACHA["prizes"]))
-            edited_gacha = st.data_editor(g_df, num_rows="fixed", column_config={
-                "name": st.column_config.TextColumn("獎項名稱", required=True),
-                "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True),
-                "type": st.column_config.SelectboxColumn("類型", options=["medal", "gold", "item"], required=True),
-                "val": st.column_config.NumberColumn("數量", min_value=1, required=True)
-            }, hide_index=True, key="gm_gacha_editor")
+            
+            # 系統固定可選獎勵清單 (自動綁定對應的類型與數值)
+            SYSTEM_REWARDS = {
+                "終極大禮包 (5勳章)": {"type": "medal", "val": 5},
+                "榮耀大禮包 (3勳章)": {"type": "medal", "val": 3},
+                "2枚榮耀勳章": {"type": "medal", "val": 2},
+                "1枚榮耀勳章": {"type": "medal", "val": 1},
+                "超豪華道具包 (各x3)": {"type": "item", "val": 3},
+                "豪華道具包 (各x2)": {"type": "item", "val": 2},
+                "實用道具包 (各x1)": {"type": "item", "val": 1},
+                "神級金幣箱 (1000G)": {"type": "gold", "val": 1000},
+                "金幣大暴發 (500G)": {"type": "gold", "val": 500},
+                "安慰小紅包 (100G)": {"type": "gold", "val": 100},
+                "小金幣包 (50G)": {"type": "gold", "val": 50}
+            }
+            
+            current_prizes = gacha.get("prizes", DEFAULT_GACHA["prizes"])
+            display_data = []
+            ranks = ["特獎", "一獎", "二獎", "三獎", "四獎", "五獎"]
+            
+            for i in range(6):
+                p = current_prizes[i] if i < len(current_prizes) else DEFAULT_GACHA["prizes"][i]
+                p_content = p["name"].split("：")[-1] if "：" in p["name"] else list(SYSTEM_REWARDS.keys())[0]
+                if p_content not in SYSTEM_REWARDS: p_content = list(SYSTEM_REWARDS.keys())[0]
+                
+                display_data.append({
+                    "rank": ranks[i],
+                    "content": p_content,
+                    "prob": p["prob"]
+                })
+                
+            display_df = pd.DataFrame(display_data)
+            edited_gacha = st.data_editor(
+                display_df,
+                num_rows="fixed",
+                column_config={
+                    "rank": st.column_config.TextColumn("獎項級別", disabled=True),
+                    "content": st.column_config.SelectboxColumn("獎品內容", options=list(SYSTEM_REWARDS.keys()), required=True),
+                    "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True)
+                },
+                hide_index=True,
+                key="gm_gacha_editor"
+            )
+            
             if st.button("💾 儲存全域扭蛋機設定"):
                 if round(edited_gacha['prob'].sum()) != 100:
                     st.error(f"❌ 機率總和必須等於 100%！目前為 {edited_gacha['prob'].sum()}%")
                 else:
-                    admin_cfg["gacha"] = {"cost": g_cost, "prizes": edited_gacha.to_dict('records')}
+                    final_prizes = []
+                    for _, row in edited_gacha.iterrows():
+                        r_content = row["content"]
+                        final_prizes.append({
+                            "name": f"{row['rank']}：{r_content}",
+                            "prob": row["prob"],
+                            "type": SYSTEM_REWARDS[r_content]["type"],
+                            "val": SYSTEM_REWARDS[r_content]["val"]
+                        })
+                    admin_cfg["gacha"] = {"cost": g_cost, "prizes": final_prizes}
                     save_admin(admin_cfg); st.success("扭蛋機設定已儲存！"); st.rerun()
 
     with t2:
