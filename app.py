@@ -1014,7 +1014,7 @@ elif st.session_state.page == 'game':
 
     anim = st.session_state.action_anim
     h_s = f"width: {h_width}%; max-width: 250px; transform: scaleX(-1); image-rendering: pixelated; transition: width 0.5s;"
-    if u_data.get('shield_active', False): h_s += " filter: drop-shadow(0 0 15px #3498db) brightness(1.2);"
+    if u_data.get('shield_active', False): h_s += " filter: drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 25px #ffd700) brightness(1.3) contrast(1.1);"
     
     m_s = "width: 100%; max-width: 180px; image-rendering: pixelated;"
     fx_html = ""
