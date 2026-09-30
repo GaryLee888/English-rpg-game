@@ -478,8 +478,8 @@ elif st.session_state.page == 'game':
     p_info = p_db.get(parent_id, {})
     
     # --- ⏳ 當日遊玩時間與 7:00 AM 重置邏輯 ---
-    tpe_now = datetime.utcnow() + timedelta(hours=8) # 獲取台灣當地時間
-    logical_date = (tpe_now - timedelta(hours=7)).strftime("%Y-%m-%d") # 每天 7:00 AM 作為分界點
+    tpe_now = datetime.utcnow() + timedelta(hours=8)
+    logical_date = (tpe_now - timedelta(hours=7)).strftime("%Y-%m-%d")
     
     if u_data.get('play_date') != logical_date:
         u_data['play_date'] = logical_date
@@ -491,12 +491,13 @@ elif st.session_state.page == 'game':
     if 'last_tick_time' in st.session_state:
         elapsed = now_ts - st.session_state.last_tick_time
         if elapsed > 0:
-            elapsed = min(elapsed, 900) # 若閒置過久，最多僅扣除 15 分鐘
+            elapsed = min(elapsed, 900)
             u_data['time_played_sec'] = u_data.get('time_played_sec', 0) + elapsed
     st.session_state.last_tick_time = now_ts
     save_user_data(u_key, u_data)
     
-    base_quota_min = p_info.get("daily_play_time_min", admin_cfg.get("default_play_time_min", 30))
+    # 判斷時間額度：小孩專屬設定 > 家庭全域設定 > GM 系統預設
+    base_quota_min = u_data.get("daily_play_time_min", p_info.get("daily_play_time_min", admin_cfg.get("default_play_time_min", 30)))
     total_allowed_sec = (base_quota_min * 60) + u_data.get('extra_time_sec', 0)
     remaining_sec = max(0, total_allowed_sec - u_data['time_played_sec'])
     
@@ -516,7 +517,7 @@ elif st.session_state.page == 'game':
         if st.button("🚪 點我返回登入大廳", use_container_width=True, type="primary"):
             st.session_state.page = 'login'
             st.rerun()
-        st.stop() # 阻斷所有後續程式碼運行，鎖死畫面
+        st.stop()
 
     # --- 儀表板上方：當地時間與倒數計時 ---
     st.markdown(f"""
@@ -557,12 +558,10 @@ elif st.session_state.page == 'game':
     </script>
     """, height=0)
     
-    # 隱藏的時間到觸發按鈕
     if st.button("TimeUpTrigger", key="time_up_trigger_btn"):
         st.rerun()
 
     
-    # 讀取全域與家庭專屬設定
     rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
@@ -790,7 +789,7 @@ elif st.session_state.page == 'game':
             <div class="dash-val val-lvl">Lv.{u_data['level']}</div>
         </div>
         <div class="dash-item">
-            <div class="dash-label">❤️ 生命</div>
+            <div class="dash-label">❤️️ 生命</div>
             <div class="dash-val val-hp">{u_data['hero_hp']}/{max_hp}</div>
         </div>
         <div class="dash-item">
@@ -1064,7 +1063,7 @@ elif st.session_state.page == 'game':
     if anim:
         if anim == 'attack': st.success(f"💥 命中！獲得 {int(rates['normal_exp'] * diff_multi)} EXP 與 {rates['normal_gold']} G！")
         elif anim == 'heal': st.success("🧪 喝下生命藥水，生命值恢復了！")
-        elif anim == 'shield_block': st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
+        elif anim == 'shield_block': st.info("🛡️️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
         elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
         elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'] * diff_multi)} EXP、{rates['boss_gold']} G 與 {int(rates['boss_medal'] * diff_multi)} 枚勳章！")
         elif anim == 'dead': 
@@ -1324,7 +1323,7 @@ elif st.session_state.page == 'parent':
                 
                 time_played_sec = d.get('time_played_sec', 0) if d.get('play_date') == logic_date else 0
                 extra_sec = d.get('extra_time_sec', 0) if d.get('play_date') == logic_date else 0
-                base_quota_min = p_data.get("daily_play_time_min", admin_cfg.get("default_play_time_min", 30))
+                base_quota_min = d.get("daily_play_time_min", p_data.get("daily_play_time_min", admin_cfg.get("default_play_time_min", 30)))
                 total_sec = (base_quota_min * 60) + extra_sec
                 rem_sec = max(0, total_sec - time_played_sec)
                 
@@ -1332,14 +1331,22 @@ elif st.session_state.page == 'parent':
                         f"🕹️ **今日已玩:** {int(time_played_sec//60)} 分 {int(time_played_sec%60)} 秒 | **⏳ 剩餘:** {int(rem_sec//60)} 分 {int(rem_sec%60)} 秒")
                 
                 cT1, cT2 = st.columns(2)
-                add_mins = cT1.number_input("解鎖增加時間 (分鐘)", min_value=1, value=10, key=f"add_t_{u_key}")
-                if cT2.button("➕ 解鎖加時", key=f"btn_add_t_{u_key}", use_container_width=True):
-                    d['play_date'] = logic_date
-                    d['extra_time_sec'] = extra_sec + (add_mins * 60)
-                    if 'time_played_sec' not in d: d['time_played_sec'] = time_played_sec
-                    save_user_data(u_key, d)
-                    st.success(f"✅ 已成功為 {u_info['name']} 增加 {add_mins} 分鐘！")
-                    st.rerun()
+                with cT1:
+                    add_mins = st.number_input("解鎖增加時間 (分鐘)", min_value=1, value=10, key=f"add_t_{u_key}")
+                    if st.button("➕ 解鎖加時", key=f"btn_add_t_{u_key}", use_container_width=True):
+                        d['play_date'] = logic_date
+                        d['extra_time_sec'] = extra_sec + (add_mins * 60)
+                        if 'time_played_sec' not in d: d['time_played_sec'] = time_played_sec
+                        save_user_data(u_key, d)
+                        st.success(f"✅ 已成功為 {u_info['name']} 增加 {add_mins} 分鐘！")
+                        st.rerun()
+                with cT2:
+                    child_base_min = st.number_input("專屬每日預設時間 (分鐘)", min_value=1, value=base_quota_min, key=f"base_t_{u_key}")
+                    if st.button("💾 儲存專屬時間", key=f"btn_save_base_t_{u_key}", use_container_width=True):
+                        d['daily_play_time_min'] = child_base_min
+                        save_user_data(u_key, d)
+                        st.success(f"✅ {u_info['name']} 專屬時間設定成功！")
+                        st.rerun()
 
                 st.markdown("---")
                 st.markdown("#### 📊 數據調整")
