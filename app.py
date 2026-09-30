@@ -1398,16 +1398,58 @@ elif st.session_state.page == 'parent':
 
                 st.write("**🔴 錯題本：**", ", ".join(e_log) if e_log else "無錯題！")
                 
+                # --- 新增：匯出學習紀錄報告 ---
+                st.markdown("**📈 學習紀錄報告**")
+                export_data = []
+                for word, stats in d.get('word_stats', {}).items():
+                    next_time = datetime.fromtimestamp(stats['next_review']).strftime('%Y-%m-%d %H:%M:%S') if stats.get('next_review', 0) > 0 else "尚未排程"
+                    export_data.append({"英文單字": word, "熟悉度等級 (0-6)": stats.get('level', 0), "下次複習時間": next_time})
+                if export_data:
+                    export_df = pd.DataFrame(export_data)
+                    csv = export_df.to_csv(index=False).encode('utf-8-sig') # utf-8-sig 讓 Excel 開啟不亂碼
+                    st.download_button(label="📥 匯出學習紀錄 (CSV)", data=csv, file_name=f"{u_info['name']}_學習紀錄.csv", mime="text/csv", key=f"exp_csv_{u_key}")
+                else:
+                    st.caption("尚未有單字學習資料。")
+
+                # --- 修改：兌換紀錄與核銷/退回功能 ---
                 st.markdown("**🎁 兌換紀錄**")
                 medal_history = [item for item in d.get('history', []) if "扭蛋獲得" not in item]
                 if medal_history:
                     for i, item in enumerate(reversed(d['history'])):
                         if "扭蛋獲得" in item: continue
-                        hA, hB = st.columns([4, 1])
+                        hA, hB, hC = st.columns([3, 1, 1])
                         hA.text(item)
-                        if hB.button("🗑️ 退回", key=f"del_h_{u_key}_{i}"):
+                        
+                        # ✅ 已兌現：清除紀錄，不退還勳章
+                        if hB.button("✅ 已兌現", key=f"ful_h_{u_key}_{i}"):
                             actual_idx = len(d['history']) - 1 - i
-                            d['history'].pop(actual_idx); save_user_data(u_key, d); st.rerun()
+                            d['history'].pop(actual_idx)
+                            save_user_data(u_key, d)
+                            st.success("✅ 已標記為兌現並清除紀錄！")
+                            st.rerun()
+                            
+                        # 🗑️ 退回：清除紀錄，並精準退還勳章與兌換次數
+                        if hC.button("🗑️ 退回", key=f"del_h_{u_key}_{i}"):
+                            actual_idx = len(d['history']) - 1 - i
+                            item_str = d['history'][actual_idx]
+                            
+                            # 自動解析退回的獎勵名稱並比對花費
+                            r_name = item_str.split(" 兌換 ")[-1] if " 兌換 " in item_str else ""
+                            refund_medal = 0
+                            for r in p_data.get("rewards", []):
+                                if r["reward"] == r_name:
+                                    refund_medal = r["cost_medals"]
+                                    break
+                            
+                            # 歸還勳章與次數
+                            d['medals'] += refund_medal
+                            if r_name in d.get("reward_counts", {}) and d["reward_counts"][r_name] > 0:
+                                d["reward_counts"][r_name] -= 1
+                                
+                            d['history'].pop(actual_idx)
+                            save_user_data(u_key, d)
+                            st.success(f"🗑️ 已退回！歸還了 {refund_medal} 枚勳章。")
+                            st.rerun()
                 else: st.caption("無紀錄。")
                     
                 b1, b2 = st.columns(2)
