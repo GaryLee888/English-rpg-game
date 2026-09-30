@@ -732,7 +732,8 @@ elif st.session_state.page == 'game':
             stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
             u_data['combo'] += 1
-            if word in st.session_state.error_log:
+# 只有當單字的熟練度達到 2 (代表至少間隔 60 秒後再次複習依然答對)，才從錯題本中真正消除
+            if word in st.session_state.error_log and stats["level"] >= 2:
                 st.session_state.error_log.remove(word)
                 save_error_log(u_key, st.session_state.error_log)
                 if not st.session_state.error_log: u_data['total_questions'] = 0
