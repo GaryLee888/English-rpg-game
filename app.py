@@ -1092,6 +1092,28 @@ elif st.session_state.page == 'game':
         
         st.session_state.action_anim = None
         st.session_state.level_dropped = False 
+        st.session_state.action_anim = None
+        st.session_state.level_dropped = False 
+
+        # === 🎯 動畫結束後的魔物同步切換邏輯 ===
+        if st.session_state.get('pending_boss_defeat', False):
+            u_data['is_boss_fight'] = False
+            u_data['combo'] = 0 
+            st.session_state.pending_boss_defeat = False
+            if 'current_boss' in st.session_state:
+                del st.session_state.current_boss
+            st.session_state.current_monster = random.choice(MONSTERS)
+        elif st.session_state.get('pending_boss_fight', False):
+            u_data['is_boss_fight'] = True
+            u_data['boss_hp'] = 3
+            st.session_state.current_boss = random.choice(BOSSES)
+            st.session_state.pending_boss_fight = False
+        elif anim == 'attack' and not u_data.get('is_boss_fight', False):
+            st.session_state.current_monster = random.choice(MONSTERS)
+            
+        save_user_data(u_key, u_data) # 儲存更新後的狀態
+
+        if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']:
         if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']: 
             if anim != 'boss_defeat': st.session_state.force_learning = True
             else:
