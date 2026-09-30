@@ -561,6 +561,20 @@ elif st.session_state.page == 'game':
     if st.button("TimeUpTrigger", key="time_up_trigger_btn"):
         st.rerun()
 
+    # --- ✨ 經驗值進度條 ---
+    exp_current = u_data.get('exp', 0) % 100
+    exp_pct = exp_current
+    st.markdown(f"""
+    <div style="margin-bottom: 15px; padding: 0 5px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #7f8c8d; font-weight: bold; margin-bottom: 5px;">
+            <span>✨ 經驗值進度 (EXP)</span>
+            <span>{exp_current} / 100</span>
+        </div>
+        <div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 12px; overflow: hidden; border: 1px solid #cbd5e1;">
+            <div style="width: {exp_pct}%; background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; border-radius: 10px; transition: width 0.5s ease-in-out;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
