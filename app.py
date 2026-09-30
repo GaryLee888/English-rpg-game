@@ -1335,7 +1335,11 @@ elif st.session_state.page == 'parent':
                     add_mins = st.number_input("解鎖增加時間 (分鐘)", min_value=1, value=10, key=f"add_t_{u_key}")
                     if st.button("➕ 解鎖加時", key=f"btn_add_t_{u_key}", use_container_width=True):
                         d['play_date'] = logic_date
-                        d['extra_time_sec'] = extra_sec + (add_mins * 60)
+                        
+                        # 修正：計算超支的時間（如果有），並在加時中將其補平，確保實拿完整分鐘數
+                        overdrawn_sec = max(0, time_played_sec - total_sec)
+                        d['extra_time_sec'] = extra_sec + (add_mins * 60) + overdrawn_sec
+                        
                         if 'time_played_sec' not in d: d['time_played_sec'] = time_played_sec
                         save_user_data(u_key, d)
                         st.success(f"✅ 已成功為 {u_info['name']} 增加 {add_mins} 分鐘！")
