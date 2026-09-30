@@ -1080,7 +1080,7 @@ elif st.session_state.page == 'game':
     if anim:
         if anim == 'attack': st.success(f"💥 命中！獲得 {int(rates['normal_exp'] * diff_multi)} EXP 與 {rates['normal_gold']} G！")
         elif anim == 'heal': st.success("🧪 喝下生命藥水，生命值恢復了！")
-        elif anim == 'shield_block': st.info("🛡️️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
+        elif anim == 'shield_block': st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
         elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
         elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'] * diff_multi)} EXP、{rates['boss_gold']} G 與 {int(rates['boss_medal'] * diff_multi)} 枚勳章！")
         elif anim == 'dead': 
@@ -1090,8 +1090,6 @@ elif st.session_state.page == 'game':
         st.info("⚔️ 結算中，請稍候...")
         time.sleep(1.8)
         
-        st.session_state.action_anim = None
-        st.session_state.level_dropped = False 
         st.session_state.action_anim = None
         st.session_state.level_dropped = False 
 
@@ -1113,7 +1111,7 @@ elif st.session_state.page == 'game':
             
         save_user_data(u_key, u_data) # 儲存更新後的狀態
 
-        if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']:
+        # --- 處理學習題目更新 ---
         if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']: 
             if anim != 'boss_defeat': st.session_state.force_learning = True
             else:
@@ -1125,6 +1123,8 @@ elif st.session_state.page == 'game':
             st.session_state.play_auto_audio = True
             st.session_state.magnifier_active = False 
         st.rerun()
+
+    else:
 
     else:
         opts = st.session_state.current_options
