@@ -1076,16 +1076,24 @@ elif st.session_state.page == 'game':
     st.markdown(arena_html, unsafe_allow_html=True)
     if audio_js: st.components.v1.html(audio_js, height=0)
 
-    # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
+   # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
     if anim:
-        if anim == 'attack': st.success(f"💥 命中！獲得 {int(rates['normal_exp'] * diff_multi)} EXP 與 {rates['normal_gold']} G！")
-        elif anim == 'heal': st.success("🧪 喝下生命藥水，生命值恢復了！")
-        elif anim == 'shield_block': st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
-        elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
-        elif anim == 'boss_defeat': st.balloons(); st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'] * diff_multi)} EXP、{rates['boss_gold']} G 與 {int(rates['boss_medal'] * diff_multi)} 枚勳章！")
+        if anim == 'attack':
+            st.success(f"💥 命中！獲得 {int(rates['normal_exp'] * diff_multi)} EXP 與 {rates['normal_gold']} G！")
+        elif anim == 'heal':
+            st.success("🧪 喝下生命藥水，生命值恢復了！")
+        elif anim == 'shield_block':
+            st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
+        elif anim == 'hurt':
+            st.error("🩸 遭受攻擊！連擊中斷！")
+        elif anim == 'boss_defeat':
+            st.balloons()
+            st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'] * diff_multi)} EXP、{rates['boss_gold']} G 與 {int(rates['boss_medal'] * diff_multi)} 枚勳章！")
         elif anim == 'dead': 
-            if st.session_state.get('level_dropped', False): st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
-            else: st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
+            if st.session_state.get('level_dropped', False):
+                st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
+            else:
+                st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
         
         st.info("⚔️ 結算中，請稍候...")
         time.sleep(1.8)
@@ -1113,7 +1121,8 @@ elif st.session_state.page == 'game':
 
         # --- 處理學習題目更新 ---
         if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']: 
-            if anim != 'boss_defeat': st.session_state.force_learning = True
+            if anim != 'boss_defeat':
+                st.session_state.force_learning = True
             else:
                 st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
                 st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
@@ -1122,9 +1131,8 @@ elif st.session_state.page == 'game':
             st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
             st.session_state.play_auto_audio = True
             st.session_state.magnifier_active = False 
+            
         st.rerun()
-
-    else:
 
     else:
         opts = st.session_state.current_options
@@ -1134,8 +1142,6 @@ elif st.session_state.page == 'game':
         ipa_txt = ipa.convert(clean_en)
         ipa_d = f"[{ipa_txt}]" if ipa_txt and '*' not in ipa_txt else ""
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
-        
-        # --- 答錯模式 ---
         if st.session_state.force_learning:
             v_html = (
                 f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
