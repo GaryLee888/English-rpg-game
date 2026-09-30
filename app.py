@@ -1412,20 +1412,46 @@ elif st.session_state.page == 'parent':
 
                 st.write("**🔴 錯題本：**", ", ".join(e_log) if e_log else "無錯題！")
                 
-                # --- 新增：匯出學習紀錄報告 ---
-                st.markdown("**📈 學習紀錄報告**")
+                # --- 📈 學習統整報告 ---
+                st.markdown("#### 📈 學習統整報告")
+                
+                # 自動計算題庫字數、學習字數與精熟度
+                bank_id = d.get('vocab_bank', '國小')
+                if bank_id == "家長自訂": bank_id = "custom_1"
+                if bank_id.startswith("custom_"):
+                    cb_id = bank_id.split("_")[1]
+                    v_list = load_vocab_db(f"custom_{p_id}_{cb_id}")
+                else:
+                    v_list = load_vocab_db(bank_id)
+                total_words = len(v_list) if v_list else 1
+                
+                word_stats = d.get('word_stats', {})
+                learned_words = len(word_stats)
+                mastered_words = sum(1 for stats in word_stats.values() if stats.get('level', 0) >= 3)
+                error_count = len(e_log)
+                
+                prog_pct = min(100, int((learned_words / total_words) * 100))
+                mast_pct = min(100, int((mastered_words / max(1, learned_words)) * 100)) if learned_words > 0 else 0
+                
+                mc1, mc2, mc3 = st.columns(3)
+                mc1.metric("📚 題庫學習進度", f"{learned_words} / {total_words}", f"{prog_pct}% 完成度")
+                mc2.metric("✨ 精熟度 (Lv3以上)", f"{mastered_words} 字", f"佔已學 {mast_pct}%")
+                mc3.metric("⚠️ 待補強 (錯題數)", f"{error_count} 字", "錯題本累積" if error_count > 0 else "完美無瑕")
+                
                 export_data = []
-                for word, stats in d.get('word_stats', {}).items():
+                for word, stats in word_stats.items():
                     next_time = datetime.fromtimestamp(stats['next_review']).strftime('%Y-%m-%d %H:%M:%S') if stats.get('next_review', 0) > 0 else "尚未排程"
                     export_data.append({"英文單字": word, "熟悉度等級 (0-6)": stats.get('level', 0), "下次複習時間": next_time})
                 if export_data:
                     export_df = pd.DataFrame(export_data)
-                    csv = export_df.to_csv(index=False).encode('utf-8-sig') # utf-8-sig 讓 Excel 開啟不亂碼
-                    st.download_button(label="📥 匯出學習紀錄 (CSV)", data=csv, file_name=f"{u_info['name']}_學習紀錄.csv", mime="text/csv", key=f"exp_csv_{u_key}")
+                    csv = export_df.to_csv(index=False).encode('utf-8-sig')
+                    st.download_button(label="📥 匯出完整學習明細 (CSV)", data=csv, file_name=f"{u_info['name']}_學習紀錄.csv", mime="text/csv", key=f"exp_csv_{u_key}")
                 else:
                     st.caption("尚未有單字學習資料。")
 
+                st.markdown("---")
                 # --- 修改：兌換紀錄與核銷/退回功能 ---
+                
                 st.markdown("**🎁 兌換紀錄**")
                 medal_history = [item for item in d.get('history', []) if "扭蛋獲得" not in item]
                 if medal_history:
