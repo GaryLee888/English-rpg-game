@@ -135,8 +135,9 @@ MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprit
 # ☁️ 核心 API (Firebase Realtime DB) 與預設數值
 # ==========================================
 DEFAULT_RATES = {
-    "normal_exp": 5, "normal_gold": 10,
-    "boss_exp": 10, "boss_gold": 50, "boss_medal": 1
+    "簡單": {"normal_exp": 5, "normal_gold": 10, "boss_exp": 10, "boss_gold": 50, "boss_medal": 1},
+    "中等": {"normal_exp": 10, "normal_gold": 20, "boss_exp": 20, "boss_gold": 100, "boss_medal": 2},
+    "困難": {"normal_exp": 15, "normal_gold": 30, "boss_exp": 30, "boss_gold": 150, "boss_medal": 3}
 }
 DEFAULT_GACHA = {
     "cost": 300,
@@ -169,7 +170,7 @@ def get_admin():
         "default_hero_limit": cfg.get("default_hero_limit", 3), 
         "default_bank_limit": cfg.get("default_bank_limit", 3),
         "default_reward_limit": cfg.get("default_reward_limit", 99),
-        "default_play_time_min": cfg.get("default_play_time_min", 30), # 新增全域預設時間
+        "default_play_time_min": cfg.get("default_play_time_min", 30),
         "game_rates": cfg.get("game_rates", DEFAULT_RATES),
         "store_prices": cfg.get("store_prices", DEFAULT_STORE),
         "gacha": cfg.get("gacha", DEFAULT_GACHA)
@@ -413,7 +414,11 @@ if st.session_state.page == 'login':
                                     
                                     admin_cfg = get_admin()
                                     rates = parents[family_input].get('game_rates', admin_cfg.get('game_rates', DEFAULT_RATES))
-                                    bonus_gold = min(rates.get('normal_gold', 10) * 5, init_data["login_streak"] * rates.get('normal_gold', 10))
+                                    # 兼容舊格式防呆
+                                    if "簡單" not in rates: rates = {"簡單": rates}
+                                    
+                                    base_gold = rates["簡單"].get('normal_gold', 10)
+                                    bonus_gold = min(base_gold * 5, init_data["login_streak"] * base_gold)
                                     init_data["gold"] = init_data.get("gold", 0) + bonus_gold
                                     init_data["last_login_date"] = today_str
                                     save_user_data(sel_hero_key, init_data)
@@ -496,7 +501,7 @@ elif st.session_state.page == 'game':
     st.session_state.last_tick_time = now_ts
     save_user_data(u_key, u_data)
     
-    # 判斷時間額度：小孩專屬設定 > 家庭全域設定 > GM 系統預設
+    # 判斷時間額度
     base_quota_min = u_data.get("daily_play_time_min", p_info.get("daily_play_time_min", admin_cfg.get("default_play_time_min", 30)))
     total_allowed_sec = (base_quota_min * 60) + u_data.get('extra_time_sec', 0)
     remaining_sec = max(0, total_allowed_sec - u_data['time_played_sec'])
@@ -519,68 +524,7 @@ elif st.session_state.page == 'game':
             st.rerun()
         st.stop()
 
-    # --- 儀表板上方：當地時間與倒數計時 ---
-    st.markdown(f"""
-    <div style="display:flex; justify-content:space-between; align-items:center; background: linear-gradient(135deg, #1e293b, #0f172a); color:white; padding:12px 20px; border-radius:12px; margin-bottom:15px; box-shadow: 0 6px 12px rgba(0,0,0,0.2); border: 2px solid #38bdf8;">
-        <div id="local-clock" style="font-size:1.2rem; font-weight:bold; letter-spacing: 1px; color:#a78bfa;">⏰ 時間讀取中...</div>
-        <div id="countdown-timer" style="font-size:1.3rem; font-weight:900; color:#facc15; text-shadow: 1px 1px 2px black;">⏳ 剩餘時間: {int(remaining_sec//60)}分 {int(remaining_sec%60)}秒</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.components.v1.html(f"""
-    <script>
-        if (window.parent.timerInterval) clearInterval(window.parent.timerInterval);
-        let remain = {remaining_sec};
-        window.parent.timerInterval = setInterval(() => {{
-            const clockEl = window.parent.document.getElementById('local-clock');
-            if(clockEl) clockEl.innerText = "⏰ 當地時間: " + new Date().toLocaleTimeString('zh-TW', {{ timeZone: 'Asia/Taipei', hour12: false }});
-            
-            if(remain > 0) {{
-                remain -= 1;
-                let m = Math.floor(remain / 60);
-                let s = Math.floor(remain % 60);
-                const timerEl = window.parent.document.getElementById('countdown-timer');
-                if(timerEl) timerEl.innerText = "⏳ 剩餘時間: " + m + "分 " + s + "秒";
-            }} else {{
-                const btns = window.parent.document.querySelectorAll('button');
-                for(let b of btns) {{
-                    if(b.innerText.includes('TimeUpTrigger')) {{ b.click(); break; }}
-                }}
-            }}
-        }}, 1000);
-        
-        setTimeout(() => {{
-            const btns = window.parent.document.querySelectorAll('button');
-            for(let b of btns) {{
-                if(b.innerText.includes('TimeUpTrigger')) {{ b.style.display = 'none'; }}
-            }}
-        }}, 50);
-    </script>
-    """, height=0)
-    
-    if st.button("TimeUpTrigger", key="time_up_trigger_btn"):
-        st.rerun()
-
-    # --- ✨ 經驗值進度條 ---
-    exp_current = u_data.get('exp', 0) % 100
-    exp_pct = exp_current
-    st.markdown(f"""
-    <div style="margin-bottom: 15px; padding: 0 5px;">
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #7f8c8d; font-weight: bold; margin-bottom: 5px;">
-            <span>✨ 經驗值進度 (EXP)</span>
-            <span>{exp_current} / 100</span>
-        </div>
-        <div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 12px; overflow: hidden; border: 1px solid #cbd5e1;">
-            <div style="width: {exp_pct}%; background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; border-radius: 10px; transition: width 0.5s ease-in-out;"></div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
-    store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
-    gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
-    
-    # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
+    # ==================== 🎁 全螢幕扭蛋巨球結果視窗 (移至上方以擋住EXP進度條) ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
@@ -671,12 +615,77 @@ elif st.session_state.page == 'game':
         st.stop()
 
 
+    # --- 儀表板上方：當地時間與倒數計時 ---
+    st.markdown(f"""
+    <div style="display:flex; justify-content:space-between; align-items:center; background: linear-gradient(135deg, #1e293b, #0f172a); color:white; padding:12px 20px; border-radius:12px; margin-bottom:15px; box-shadow: 0 6px 12px rgba(0,0,0,0.2); border: 2px solid #38bdf8;">
+        <div id="local-clock" style="font-size:1.2rem; font-weight:bold; letter-spacing: 1px; color:#a78bfa;">⏰ 時間讀取中...</div>
+        <div id="countdown-timer" style="font-size:1.3rem; font-weight:900; color:#facc15; text-shadow: 1px 1px 2px black;">⏳ 剩餘時間: {int(remaining_sec//60)}分 {int(remaining_sec%60)}秒</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.components.v1.html(f"""
+    <script>
+        if (window.parent.timerInterval) clearInterval(window.parent.timerInterval);
+        let remain = {remaining_sec};
+        window.parent.timerInterval = setInterval(() => {{
+            const clockEl = window.parent.document.getElementById('local-clock');
+            if(clockEl) clockEl.innerText = "⏰ 當地時間: " + new Date().toLocaleTimeString('zh-TW', {{ timeZone: 'Asia/Taipei', hour12: false }});
+            
+            if(remain > 0) {{
+                remain -= 1;
+                let m = Math.floor(remain / 60);
+                let s = Math.floor(remain % 60);
+                const timerEl = window.parent.document.getElementById('countdown-timer');
+                if(timerEl) timerEl.innerText = "⏳ 剩餘時間: " + m + "分 " + s + "秒";
+            }} else {{
+                const btns = window.parent.document.querySelectorAll('button');
+                for(let b of btns) {{
+                    if(b.innerText.includes('TimeUpTrigger')) {{ b.click(); break; }}
+                }}
+            }}
+        }}, 1000);
+        
+        setTimeout(() => {{
+            const btns = window.parent.document.querySelectorAll('button');
+            for(let b of btns) {{
+                if(b.innerText.includes('TimeUpTrigger')) {{ b.style.display = 'none'; }}
+            }}
+        }}, 50);
+    </script>
+    """, height=0)
+    
+    if st.button("TimeUpTrigger", key="time_up_trigger_btn"):
+        st.rerun()
+
+    # --- ✨ 經驗值進度條 ---
+    exp_current = u_data.get('exp', 0) % 100
+    exp_pct = exp_current
+    st.markdown(f"""
+    <div style="margin-bottom: 15px; padding: 0 5px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #7f8c8d; font-weight: bold; margin-bottom: 5px;">
+            <span>✨ 經驗值進度 (EXP)</span>
+            <span>{exp_current} / 100</span>
+        </div>
+        <div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 12px; overflow: hidden; border: 1px solid #cbd5e1;">
+            <div style="width: {exp_pct}%; background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; border-radius: 10px; transition: width 0.5s ease-in-out;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 處理最新的掉落設定結構轉換
+    raw_rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
+    if "簡單" not in raw_rates: # 兼容舊版設定轉成新格式
+        raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
+        
+    diff = u_data.get('difficulty', "簡單")
+    rates = raw_rates.get(diff, raw_rates["簡單"]) # 取得精準的當前難度掉落設定
+    
+    store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
+    gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
+
     if 'show_streak' in st.session_state:
         st.toast(st.session_state.show_streak, icon="🔥")
         del st.session_state.show_streak
-    
-    diff = u_data.get('difficulty', "簡單")
-    diff_multi = {"簡單": 1, "中等": 2, "困難": 3}.get(diff, 1)
 
     users = get_users()
     hero_name = users[u_key]["name"]
@@ -729,9 +738,9 @@ elif st.session_state.page == 'game':
                     
             if u_data.get('is_boss_fight', False):
                 u_data['boss_hp'] -= 1
-                u_data['exp'] += int(rates['boss_exp'] * diff_multi)
+                u_data['exp'] += int(rates['boss_exp'])
                 if u_data['boss_hp'] <= 0:
-                    u_data['medals'] += int(rates['boss_medal'] * diff_multi)
+                    u_data['medals'] += int(rates['boss_medal'])
                     u_data['gold'] += int(rates['boss_gold'])
                     
                     if 'current_boss' in st.session_state:
@@ -744,7 +753,7 @@ elif st.session_state.page == 'game':
                     st.session_state.action_anim = 'boss_defeat'
                 else: st.session_state.action_anim = 'attack'
             else:
-                u_data['exp'] += int(rates['normal_exp'] * diff_multi) 
+                u_data['exp'] += int(rates['normal_exp']) 
                 u_data['gold'] += int(rates['normal_gold'])
                 
                 if 'current_monster' in st.session_state:
@@ -754,7 +763,6 @@ elif st.session_state.page == 'game':
                         if m_name not in u_data['monster_dex']: u_data['monster_dex'].append(m_name)
                         
                 st.session_state.action_anim = 'attack'
-                # ★ 移除原本在這裡的切換怪物邏輯，改到動畫結束後執行
                 
                 if u_data['combo'] >= 10 and not u_data.get('is_boss_fight', False):
                     # 延遲進入 Boss 戰，先讓第10下的攻擊動畫在小怪身上播完
@@ -806,7 +814,7 @@ elif st.session_state.page == 'game':
             <div class="dash-val val-lvl">Lv.{u_data['level']}</div>
         </div>
         <div class="dash-item">
-            <div class="dash-label">❤️️ 生命</div>
+            <div class="dash-label">❤ 生命</div>
             <div class="dash-val val-hp">{u_data['hero_hp']}/{max_hp}</div>
         </div>
         <div class="dash-item">
@@ -1079,7 +1087,7 @@ elif st.session_state.page == 'game':
    # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
     if anim:
         if anim == 'attack':
-            st.success(f"💥 命中！獲得 {int(rates['normal_exp'] * diff_multi)} EXP 與 {rates['normal_gold']} G！")
+            st.success(f"💥 命中！獲得 {int(rates['normal_exp'])} EXP 與 {int(rates['normal_gold'])} G！")
         elif anim == 'heal':
             st.success("🧪 喝下生命藥水，生命值恢復了！")
         elif anim == 'shield_block':
@@ -1088,7 +1096,7 @@ elif st.session_state.page == 'game':
             st.error("🩸 遭受攻擊！連擊中斷！")
         elif anim == 'boss_defeat':
             st.balloons()
-            st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'] * diff_multi)} EXP、{rates['boss_gold']} G 與 {int(rates['boss_medal'] * diff_multi)} 枚勳章！")
+            st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'])} EXP、{int(rates['boss_gold'])} G 與 {int(rates['boss_medal'])} 枚勳章！")
         elif anim == 'dead': 
             if st.session_state.get('level_dropped', False):
                 st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
@@ -1301,7 +1309,7 @@ elif st.session_state.page == 'parent':
     st.markdown("<h1 style='text-align: center; color:#e67e22;'>👨‍👩‍👧 家庭專區</h1><hr>", unsafe_allow_html=True)
     c_top1, c_top2 = st.columns([1, 1])
     with c_top1:
-        if st.button("⬅️ 登出並返回大廳", use_container_width=True): st.session_state.page = 'login'; st.rerun()
+        if st.button("⬅️️ 登出並返回大廳", use_container_width=True): st.session_state.page = 'login'; st.rerun()
     with c_top2:
         with st.expander("🔐 更改密碼"):
             o_pw = st.text_input("舊密碼", type="password")
@@ -1556,7 +1564,6 @@ elif st.session_state.page == 'parent':
 
     with t6:
         st.subheader("⚙️ 家庭專屬遊戲參數 (覆寫系統預設)")
-        rates = p_data.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
         gacha = p_data.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
         
         with st.expander("⏳ 家庭專屬每日遊玩時間預設值", expanded=True):
@@ -1566,14 +1573,26 @@ elif st.session_state.page == 'parent':
                 save_parents(p_db); st.success("儲存成功！"); st.rerun()
                 
         with st.expander("⚔️ 戰鬥掉落率設定", expanded=True):
-            r1, r2 = st.columns(2)
-            n_exp = r1.number_input("一般怪 EXP", min_value=1, value=rates.get("normal_exp", 5))
-            n_gld = r2.number_input("一般怪 金幣", min_value=1, value=rates.get("normal_gold", 10))
-            b_exp = r1.number_input("Boss EXP", min_value=1, value=rates.get("boss_exp", 10))
-            b_gld = r2.number_input("Boss 金幣", min_value=1, value=rates.get("boss_gold", 50))
-            b_mdl = r1.number_input("Boss 勳章", min_value=0, value=rates.get("boss_medal", 1))
+            raw_rates = p_data.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
+            if "簡單" not in raw_rates:
+                raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
+            
+            diff_tabs = st.tabs(["🟢 簡單", "🟡 中等", "🔴 困難"])
+            diff_keys = ["簡單", "中等", "困難"]
+            new_rates = {}
+            for i, d_key in enumerate(diff_keys):
+                with diff_tabs[i]:
+                    r1, r2 = st.columns(2)
+                    cur = raw_rates[d_key]
+                    new_rates[d_key] = {
+                        "normal_exp": r1.number_input(f"一般怪 EXP ({d_key})", min_value=1, value=cur.get("normal_exp", 5), key=f"p_n_exp_{d_key}"),
+                        "normal_gold": r2.number_input(f"一般怪 金幣 ({d_key})", min_value=1, value=cur.get("normal_gold", 10), key=f"p_n_gld_{d_key}"),
+                        "boss_exp": r1.number_input(f"Boss EXP ({d_key})", min_value=1, value=cur.get("boss_exp", 10), key=f"p_b_exp_{d_key}"),
+                        "boss_gold": r2.number_input(f"Boss 金幣 ({d_key})", min_value=1, value=cur.get("boss_gold", 50), key=f"p_b_gld_{d_key}"),
+                        "boss_medal": r1.number_input(f"Boss 勳章 ({d_key})", min_value=0, value=cur.get("boss_medal", 1), key=f"p_b_mdl_{d_key}")
+                    }
             if st.button("💾 儲存戰鬥掉落率"):
-                p_db[p_id]["game_rates"] = {"normal_exp": n_exp, "normal_gold": n_gld, "boss_exp": b_exp, "boss_gold": b_gld, "boss_medal": b_mdl}
+                p_db[p_id]["game_rates"] = new_rates
                 save_parents(p_db); st.success("儲存成功！"); st.rerun()
 
         with st.expander("🎰 幸運扭蛋機設定", expanded=True):
@@ -1851,7 +1870,6 @@ elif st.session_state.page == 'admin':
 
     with t5:
         st.subheader("⚙️ 系統全域遊戲參數預設值")
-        rates = admin_cfg.get("game_rates", DEFAULT_RATES)
         store = admin_cfg.get("store_prices", DEFAULT_STORE)
         gacha = admin_cfg.get("gacha", DEFAULT_GACHA)
         
@@ -1862,14 +1880,26 @@ elif st.session_state.page == 'admin':
                 save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
                 
         with st.expander("⚔️ 戰鬥掉落率預設值", expanded=True):
-            r1, r2 = st.columns(2)
-            n_exp = r1.number_input("一般怪 EXP", min_value=1, value=rates.get("normal_exp", 5), key="gm_n_exp")
-            n_gld = r2.number_input("一般怪 金幣", min_value=1, value=rates.get("normal_gold", 10), key="gm_n_gld")
-            b_exp = r1.number_input("Boss EXP", min_value=1, value=rates.get("boss_exp", 10), key="gm_b_exp")
-            b_gld = r2.number_input("Boss 金幣", min_value=1, value=rates.get("boss_gold", 50), key="gm_b_gld")
-            b_mdl = r1.number_input("Boss 勳章", min_value=0, value=rates.get("boss_medal", 1), key="gm_b_mdl")
+            raw_rates = admin_cfg.get("game_rates", DEFAULT_RATES)
+            if "簡單" not in raw_rates:
+                raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
+            
+            diff_tabs = st.tabs(["🟢 簡單", "🟡 中等", "🔴 困難"])
+            diff_keys = ["簡單", "中等", "困難"]
+            new_rates = {}
+            for i, d_key in enumerate(diff_keys):
+                with diff_tabs[i]:
+                    r1, r2 = st.columns(2)
+                    cur = raw_rates[d_key]
+                    new_rates[d_key] = {
+                        "normal_exp": r1.number_input(f"一般怪 EXP ({d_key})", min_value=1, value=cur.get("normal_exp", 5), key=f"gm_n_exp_{d_key}"),
+                        "normal_gold": r2.number_input(f"一般怪 金幣 ({d_key})", min_value=1, value=cur.get("normal_gold", 10), key=f"gm_n_gld_{d_key}"),
+                        "boss_exp": r1.number_input(f"Boss EXP ({d_key})", min_value=1, value=cur.get("boss_exp", 10), key=f"gm_b_exp_{d_key}"),
+                        "boss_gold": r2.number_input(f"Boss 金幣 ({d_key})", min_value=1, value=cur.get("boss_gold", 50), key=f"gm_b_gld_{d_key}"),
+                        "boss_medal": r1.number_input(f"Boss 勳章 ({d_key})", min_value=0, value=cur.get("boss_medal", 1), key=f"gm_b_mdl_{d_key}")
+                    }
             if st.button("💾 儲存全域戰鬥掉落率"):
-                admin_cfg["game_rates"] = {"normal_exp": n_exp, "normal_gold": n_gld, "boss_exp": b_exp, "boss_gold": b_gld, "boss_medal": b_mdl}
+                admin_cfg["game_rates"] = new_rates
                 save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
                 
         with st.expander("🏪 商店物價預設值", expanded=True):
