@@ -193,6 +193,7 @@ def save_vocab_db(bank_key, df):
 
 if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
 if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+if not db.reference("vocab_banks/高中").get(): save_vocab_db("高中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
 if not db.reference("vocab_banks/多益").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
 
 def load_user_data(u_key): 
@@ -1329,7 +1330,7 @@ elif st.session_state.page == 'parent':
         users = get_users()
         my_heroes = {k: v for k, v in users.items() if v.get("parent") == p_id}
         
-        global_banks = ["國小", "國中", "多益"]
+        global_banks = ["國小", "國中", "高中", "多益"]
         custom_bank_options = [f"custom_{b['id']}" for b in p_data["custom_banks"]]
         all_banks = global_banks + custom_bank_options
         def format_bank(b):
@@ -1801,7 +1802,7 @@ elif st.session_state.page == 'parent':
         st.subheader("📝 官方字庫糾錯回饋")
         st.info("若您發現官方字庫 (國小/國中/多益) 中有翻譯不精準或錯誤的地方，請填寫此表單。審核通過後，該單字將會全球同步更新！")
         with st.form("feedback_form"):
-            fb_bank = st.selectbox("回報目標字庫", ["國小", "國中", "多益"])
+            fb_bank = st.selectbox("回報目標字庫", ["國小", "國中", "高中", "多益"])
             fb_en = st.text_input("英文單字 (En)")
             fb_zh = st.text_input("正確中文 (Zh)")
             fb_hint = st.text_input("正確提示 (Hint)")
@@ -2014,7 +2015,7 @@ elif st.session_state.page == 'admin':
 
     with t3:
         st.subheader("編輯全域單字庫")
-        edit_bank = st.radio("選擇要編輯的題庫", ["國小", "國中", "多益"], horizontal=True)
+        edit_bank = st.radio("選擇要編輯的題庫", ["國小", "國中", "高中", "多益"], horizontal=True)
         v_data = load_vocab_db(edit_bank)
         v_df = pd.DataFrame(v_data) if v_data else pd.DataFrame(columns=["en", "zh", "hint"])
         
