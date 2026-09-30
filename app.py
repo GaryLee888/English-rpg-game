@@ -561,20 +561,6 @@ elif st.session_state.page == 'game':
     if st.button("TimeUpTrigger", key="time_up_trigger_btn"):
         st.rerun()
 
-    # --- ✨ 經驗值進度條 ---
-    exp_current = u_data.get('exp', 0) % 100
-    exp_pct = exp_current
-    st.markdown(f"""
-    <div style="margin-bottom: 15px; padding: 0 5px;">
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #7f8c8d; font-weight: bold; margin-bottom: 5px;">
-            <span>✨ 經驗值進度 (EXP)</span>
-            <span>{exp_current} / 100</span>
-        </div>
-        <div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 12px; overflow: hidden; border: 1px solid #cbd5e1;">
-            <div style="width: {exp_pct}%; background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; border-radius: 10px; transition: width 0.5s ease-in-out;"></div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
     
     rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
@@ -733,32 +719,29 @@ elif st.session_state.page == 'game':
                 if u_data['boss_hp'] <= 0:
                     u_data['medals'] += int(rates['boss_medal'] * diff_multi)
                     u_data['gold'] += int(rates['boss_gold'])
-                    
+                    u_data['is_boss_fight'] = False
+                    u_data['combo'] = 0 
                     if 'current_boss' in st.session_state:
                         b_name = st.session_state.current_boss.get('name')
                         if b_name:
                             if 'trophies' not in u_data: u_data['trophies'] = []
                             if b_name not in u_data['trophies']: u_data['trophies'].append(b_name)
-                    # 延遲清理 Boss，讓死亡動畫播完再換
-                    st.session_state.pending_boss_defeat = True
+                        del st.session_state.current_boss
                     st.session_state.action_anim = 'boss_defeat'
                 else: st.session_state.action_anim = 'attack'
             else:
                 u_data['exp'] += int(rates['normal_exp'] * diff_multi) 
                 u_data['gold'] += int(rates['normal_gold'])
-                
                 if 'current_monster' in st.session_state:
                     m_name = st.session_state.current_monster.get('name')
                     if m_name:
                         if 'monster_dex' not in u_data: u_data['monster_dex'] = []
                         if m_name not in u_data['monster_dex']: u_data['monster_dex'].append(m_name)
-                        
                 st.session_state.action_anim = 'attack'
-                # ★ 移除原本在這裡的切換怪物邏輯，改到動畫結束後執行
-                
+                st.session_state.current_monster = random.choice(MONSTERS)
                 if u_data['combo'] >= 10 and not u_data.get('is_boss_fight', False):
-                    # 延遲進入 Boss 戰，先讓第10下的攻擊動畫在小怪身上播完
-                    st.session_state.pending_boss_fight = True
+                    u_data['is_boss_fight'] = True
+                    u_data['boss_hp'] = 3
             
             if (u_data['exp'] // 100) + 1 > u_data['level']:
                 u_data['level'] = (u_data['exp'] // 100) + 1
@@ -1092,28 +1075,6 @@ elif st.session_state.page == 'game':
         
         st.session_state.action_anim = None
         st.session_state.level_dropped = False 
-        st.session_state.action_anim = None
-        st.session_state.level_dropped = False 
-
-        # === 🎯 動畫結束後的魔物同步切換邏輯 ===
-        if st.session_state.get('pending_boss_defeat', False):
-            u_data['is_boss_fight'] = False
-            u_data['combo'] = 0 
-            st.session_state.pending_boss_defeat = False
-            if 'current_boss' in st.session_state:
-                del st.session_state.current_boss
-            st.session_state.current_monster = random.choice(MONSTERS)
-        elif st.session_state.get('pending_boss_fight', False):
-            u_data['is_boss_fight'] = True
-            u_data['boss_hp'] = 3
-            st.session_state.current_boss = random.choice(BOSSES)
-            st.session_state.pending_boss_fight = False
-        elif anim == 'attack' and not u_data.get('is_boss_fight', False):
-            st.session_state.current_monster = random.choice(MONSTERS)
-            
-        save_user_data(u_key, u_data) # 儲存更新後的狀態
-
-        if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']:
         if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']: 
             if anim != 'boss_defeat': st.session_state.force_learning = True
             else:
