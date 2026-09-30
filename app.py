@@ -1330,13 +1330,30 @@ elif st.session_state.page == 'parent':
                 st.info(f"📍 **基礎額度:** {base_quota_min} 分鐘 | **今日已解鎖加時:** {extra_sec//60} 分鐘\n\n"
                         f"🕹️ **今日已玩:** {int(time_played_sec//60)} 分 {int(time_played_sec%60)} 秒 | **⏳ 剩餘:** {int(rem_sec//60)} 分 {int(rem_sec%60)} 秒")
                 
+                st.markdown("**🎯 快速指派剩餘時間**")
+                c_rem1, c_rem2, c_rem3 = st.columns([1, 1, 1.5])
+                with c_rem1:
+                    new_rem_m = st.number_input("剩餘(分)", min_value=0, value=int(rem_sec//60), key=f"nrm_{u_key}")
+                with c_rem2:
+                    new_rem_s = st.number_input("剩餘(秒)", min_value=0, max_value=59, value=int(rem_sec%60), key=f"nrs_{u_key}")
+                with c_rem3:
+                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                    if st.button("💾 覆寫剩餘時間", key=f"btn_set_rem_{u_key}", use_container_width=True):
+                        target_sec = (new_rem_m * 60) + new_rem_s
+                        d['play_date'] = logic_date
+                        # 逆向推算：要達到目標剩餘時間，調整額外的緩衝秒數
+                        d['extra_time_sec'] = target_sec + time_played_sec - (base_quota_min * 60)
+                        if 'time_played_sec' not in d: d['time_played_sec'] = time_played_sec
+                        save_user_data(u_key, d)
+                        st.success(f"✅ 已將剩餘時間精準調整為 {new_rem_m} 分 {new_rem_s} 秒！")
+                        st.rerun()
+
+                st.markdown("**⚙️ 常規時間設定**")
                 cT1, cT2 = st.columns(2)
                 with cT1:
                     add_mins = st.number_input("解鎖增加時間 (分鐘)", min_value=1, value=10, key=f"add_t_{u_key}")
                     if st.button("➕ 解鎖加時", key=f"btn_add_t_{u_key}", use_container_width=True):
                         d['play_date'] = logic_date
-                        
-                        # 修正：計算超支的時間（如果有），並在加時中將其補平，確保實拿完整分鐘數
                         overdrawn_sec = max(0, time_played_sec - total_sec)
                         d['extra_time_sec'] = extra_sec + (add_mins * 60) + overdrawn_sec
                         
