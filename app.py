@@ -1800,7 +1800,7 @@ elif st.session_state.page == 'parent':
 
     with t5:
         st.subheader("📝 官方字庫糾錯回饋")
-        st.info("若您發現官方字庫 (國小/國中/多益) 中有翻譯不精準或錯誤的地方，請填寫此表單。審核通過後，該單字將會全球同步更新！")
+        st.info("若您發現官方字庫 (國小/國中/高中/多益) 中有翻譯不精準或錯誤的地方，請填寫此表單。審核通過後，該單字將會全球同步更新！")
         with st.form("feedback_form"):
             fb_bank = st.selectbox("回報目標字庫", ["國小", "國中", "高中", "多益"])
             fb_en = st.text_input("英文單字 (En)")
