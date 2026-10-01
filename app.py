@@ -162,6 +162,7 @@ BALL_IMAGES = {
     "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"    
 }
 
+@st.cache_data(ttl=300) # 快取 5 分鐘，大幅減少遊玩時的流量消耗
 def get_admin(): 
     cfg = db.reference("system/admin").get() or {}
     return {
@@ -175,14 +176,29 @@ def get_admin():
         "store_prices": cfg.get("store_prices", DEFAULT_STORE),
         "gacha": cfg.get("gacha", DEFAULT_GACHA)
     }
-def save_admin(d): db.reference("system/admin").set(d)
-def get_parents(): return db.reference("parents").get() or {}
-def save_parents(d): db.reference("parents").set(d)
-def get_users(): return db.reference("users").get() or {}
-def save_users(d): db.reference("users").set(d)
-def get_shares(): return db.reference("shares").get() or {}
-def save_shares(d): db.reference("shares").set(d)
+def save_admin(d): 
+    db.reference("system/admin").set(d)
+    get_admin.clear() # 儲存時自動清除快取
 
+@st.cache_data(ttl=300)
+def get_parents(): return db.reference("parents").get() or {}
+def save_parents(d): 
+    db.reference("parents").set(d)
+    get_parents.clear()
+
+@st.cache_data(ttl=300)
+def get_users(): return db.reference("users").get() or {}
+def save_users(d): 
+    db.reference("users").set(d)
+    get_users.clear()
+
+@st.cache_data(ttl=300)
+def get_shares(): return db.reference("shares").get() or {}
+def save_shares(d): 
+    db.reference("shares").set(d)
+    get_shares.clear()
+
+@st.cache_data(ttl=3600) # 題庫極少變動，快取 1 小時 (3600秒)，這是省下 90% 流量的關鍵
 def load_vocab_db(bank_key):
     data = db.reference(f"vocab_banks/{bank_key}").get()
     return data if data else []
@@ -190,6 +206,7 @@ def load_vocab_db(bank_key):
 def save_vocab_db(bank_key, df):
     records = df.fillna("").to_dict('records')
     db.reference(f"vocab_banks/{bank_key}").set(records)
+    load_vocab_db.clear()
 
 if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
 if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
