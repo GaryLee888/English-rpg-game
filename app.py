@@ -536,8 +536,8 @@ elif st.session_state.page == 'game':
     if 'last_db_sync' not in st.session_state:
         st.session_state.last_db_sync = now_ts
         
-    # 如果距離上次同步超過 30 秒，就從雲端抓取家長剛修改的最新數值
-    if now_ts - st.session_state.last_db_sync > 30:
+    # 如果距離上次同步超過 60 秒，就從雲端抓取家長剛修改的最新數值
+    if now_ts - st.session_state.last_db_sync > 60:
         latest_db_data = load_user_data(u_key)
         # 只同步「家長可能會改的數值」，不動血量或連擊數，避免戰鬥衝突
         u_data['gold'] = latest_db_data.get('gold', u_data['gold'])
