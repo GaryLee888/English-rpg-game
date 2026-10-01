@@ -531,7 +531,23 @@ elif st.session_state.page == 'game':
     
     p_info = get_parent_info(parent_id)
     admin_cfg = get_admin()
-    
+
+    now_ts = time.time()
+    if 'last_db_sync' not in st.session_state:
+        st.session_state.last_db_sync = now_ts
+        
+    # 如果距離上次同步超過 60 秒，就從雲端抓取家長剛修改的最新數值
+    if now_ts - st.session_state.last_db_sync > 60:
+        latest_db_data = load_user_data(u_key)
+        # 只同步「家長可能會改的數值」，不動血量或連擊數，避免戰鬥衝突
+        u_data['gold'] = latest_db_data.get('gold', u_data['gold'])
+        u_data['medals'] = latest_db_data.get('medals', u_data['medals'])
+        u_data['extra_time_sec'] = latest_db_data.get('extra_time_sec', u_data.get('extra_time_sec', 0))
+        u_data['daily_play_time_min'] = latest_db_data.get('daily_play_time_min', u_data.get('daily_play_time_min', 30))
+        u_data['level'] = latest_db_data.get('level', u_data['level'])
+        
+        st.session_state.last_db_sync = now_ts
+        
     # --- ⏳ 當日遊玩時間與 7:00 AM 重置邏輯 ---
     tpe_now = datetime.utcnow() + timedelta(hours=8)
     logical_date = (tpe_now - timedelta(hours=7)).strftime("%Y-%m-%d")
