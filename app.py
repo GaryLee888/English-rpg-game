@@ -1521,11 +1521,11 @@ elif st.session_state.page == 'parent':
 
                 st.markdown("---")
                 st.markdown("#### 📊 數據調整")
-                cA, cB, cC, cD, cE = st.columns(5)
+                # 🌟 修復 1：移除倒地次數，將原本的 5 欄改為 4 欄
+                cA, cB, cC, cE = st.columns(4)
                 n_lvl = cA.number_input("等級", min_value=1, value=d['level'], key=f"lvl_{u_key}")
                 n_tq = cB.number_input("累積題數", min_value=0, value=d.get('total_questions', 0), key=f"tq_{u_key}")
                 n_mdl = cC.number_input("勳章", min_value=0, value=d['medals'], key=f"mdl_{u_key}")
-                n_dc = cD.number_input("倒地次數", min_value=0, max_value=4, value=d.get('death_count', 0), key=f"dc_{u_key}")
                 new_diff = cE.selectbox("難度", ["簡單", "中等", "困難"], index=["簡單", "中等", "困難"].index(d.get("difficulty", "簡單")), key=f"diff_{u_key}")
                 
                 col_r2 = st.columns([1, 1, 1, 2])
@@ -1542,9 +1542,17 @@ elif st.session_state.page == 'parent':
                     save_user_meta(u_key, u_info)
                     st.success("密碼已更新！")
                 
-                if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != curr_bank or n_gld != d.get('gold', 0):
-                    d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank; d['gold'] = n_gld
-                    save_user_data(u_key, d); st.rerun()
+                # 🌟 修復 2：取消「數值不相等就自動儲存覆蓋」，改為使用明確的「按鈕觸發儲存」
+                if st.button("💾 儲存數據調整", key=f"save_data_{u_key}", type="primary"):
+                    d['level'] = n_lvl
+                    d['total_questions'] = n_tq
+                    d['medals'] = n_mdl
+                    d['difficulty'] = new_diff
+                    d['vocab_bank'] = new_bank
+                    d['gold'] = n_gld
+                    save_user_data(u_key, d)
+                    st.success("✅ 數據已成功更新！")
+                    st.rerun()
 
                 # 💡 修正 1-C：雙軌錯題顯示機制
                 # 1. 遊戲中的短期復仇佇列
