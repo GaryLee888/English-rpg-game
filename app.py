@@ -214,10 +214,16 @@ def save_vocab_db(bank_key, df):
     db.reference(f"vocab_banks/{bank_key}").set(records)
     load_vocab_db.clear()
 
-if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
-if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
-if not db.reference("vocab_banks/高中").get(): save_vocab_db("高中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
-if not db.reference("vocab_banks/多益").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
+@st.cache_resource
+def init_default_vocabs():
+    # 加上 /0 檢查第一筆，避免每次都下載整個龐大字庫，且透過 cache 確保只執行一次
+    if not db.reference("vocab_banks/國小/0").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
+    if not db.reference("vocab_banks/國中/0").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+    if not db.reference("vocab_banks/高中/0").get(): save_vocab_db("高中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+    if not db.reference("vocab_banks/多益/0").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
+    return True
+
+init_default_vocabs()
 
 def load_user_data(u_key): 
     d = db.reference(f"user_data/{u_key}").get()
