@@ -1634,34 +1634,26 @@ elif st.session_state.page == 'parent':
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
             
             # 系統固定可選獎勵清單 (自動綁定對應的類型與數值)
-            SYSTEM_REWARDS = {
-                "終極大禮包 (5勳章)": {"type": "medal", "val": 5},
-                "榮耀大禮包 (3勳章)": {"type": "medal", "val": 3},
-                "2枚榮耀勳章": {"type": "medal", "val": 2},
-                "1枚榮耀勳章": {"type": "medal", "val": 1},
-                "超豪華道具包 (各x3)": {"type": "item", "val": 3},
-                "豪華道具包 (各x2)": {"type": "item", "val": 2},
-                "實用道具包 (各x1)": {"type": "item", "val": 1},
-                "神級金幣箱 (1000G)": {"type": "gold", "val": 1000},
-                "金幣大暴發 (500G)": {"type": "gold", "val": 500},
-                "安慰小紅包 (100G)": {"type": "gold", "val": 100},
-                "小金幣包 (50G)": {"type": "gold", "val": 50}
-            }
+            st.caption("您可以自由設定獎品名稱、發放的類型(勳章/金幣/道具包)、給予的數量，以及中獎機率。")
             
             current_prizes = gacha.get("prizes", DEFAULT_GACHA["prizes"])
             display_data = []
             ranks = ["特獎", "一獎", "二獎", "三獎", "四獎", "五獎"]
+            type_map_ui = {"medal": "勳章", "gold": "金幣", "item": "道具包"}
+            type_map_db = {"勳章": "medal", "金幣": "gold", "道具包": "item"}
             
             for i in range(6):
                 p = current_prizes[i] if i < len(current_prizes) else DEFAULT_GACHA["prizes"][i]
-                # 萃取出現有的獎勵名稱，若不合法則給予預設值防呆
-                p_content = p["name"].split("：")[-1] if "：" in p["name"] else list(SYSTEM_REWARDS.keys())[0]
-                if p_content not in SYSTEM_REWARDS: p_content = list(SYSTEM_REWARDS.keys())[0]
+                # 取得乾淨的顯示名稱 (去除前面的級別)
+                raw_name = p.get("name", "")
+                clean_name = raw_name.split("：")[-1] if "：" in raw_name else raw_name
                 
                 display_data.append({
                     "rank": ranks[i],
-                    "content": p_content,
-                    "prob": p["prob"]
+                    "display_name": clean_name,
+                    "reward_type": type_map_ui.get(p.get("type", "gold"), "金幣"),
+                    "val": p.get("val", 100),
+                    "prob": p.get("prob", 0)
                 })
                 
             display_df = pd.DataFrame(display_data)
@@ -1670,7 +1662,9 @@ elif st.session_state.page == 'parent':
                 num_rows="fixed",
                 column_config={
                     "rank": st.column_config.TextColumn("獎項級別", disabled=True),
-                    "content": st.column_config.SelectboxColumn("獎品內容", options=list(SYSTEM_REWARDS.keys()), required=True),
+                    "display_name": st.column_config.TextColumn("顯示名稱 (自由輸入)", required=True),
+                    "reward_type": st.column_config.SelectboxColumn("獎勵類型", options=["勳章", "金幣", "道具包"], required=True),
+                    "val": st.column_config.NumberColumn("數量", min_value=1, required=True),
                     "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True)
                 },
                 hide_index=True,
@@ -1683,12 +1677,11 @@ elif st.session_state.page == 'parent':
                 else:
                     final_prizes = []
                     for _, row in edited_gacha.iterrows():
-                        r_content = row["content"]
                         final_prizes.append({
-                            "name": f"{row['rank']}：{r_content}",
+                            "name": f"{row['rank']}：{row['display_name']}",
                             "prob": row["prob"],
-                            "type": SYSTEM_REWARDS[r_content]["type"],
-                            "val": SYSTEM_REWARDS[r_content]["val"]
+                            "type": type_map_db[row["reward_type"]],
+                            "val": row["val"]
                         })
                     p_db[p_id]["gacha"] = {"cost": g_cost, "prizes": final_prizes}
                     save_parents(p_db); st.success("扭蛋機設定已儲存！"); st.rerun()
@@ -1949,34 +1942,26 @@ elif st.session_state.page == 'admin':
             g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 300), key="gm_g_cost")
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
             
-            # 系統固定可選獎勵清單 (自動綁定對應的類型與數值)
-            SYSTEM_REWARDS = {
-                "終極大禮包 (5勳章)": {"type": "medal", "val": 5},
-                "榮耀大禮包 (3勳章)": {"type": "medal", "val": 3},
-                "2枚榮耀勳章": {"type": "medal", "val": 2},
-                "1枚榮耀勳章": {"type": "medal", "val": 1},
-                "超豪華道具包 (各x3)": {"type": "item", "val": 3},
-                "豪華道具包 (各x2)": {"type": "item", "val": 2},
-                "實用道具包 (各x1)": {"type": "item", "val": 1},
-                "神級金幣箱 (1000G)": {"type": "gold", "val": 1000},
-                "金幣大暴發 (500G)": {"type": "gold", "val": 500},
-                "安慰小紅包 (100G)": {"type": "gold", "val": 100},
-                "小金幣包 (50G)": {"type": "gold", "val": 50}
-            }
+            st.caption("您可以自由設定獎品名稱、發放的類型(勳章/金幣/道具包)、給予的數量，以及中獎機率。")
             
             current_prizes = gacha.get("prizes", DEFAULT_GACHA["prizes"])
             display_data = []
             ranks = ["特獎", "一獎", "二獎", "三獎", "四獎", "五獎"]
+            type_map_ui = {"medal": "勳章", "gold": "金幣", "item": "道具包"}
+            type_map_db = {"勳章": "medal", "金幣": "gold", "道具包": "item"}
             
             for i in range(6):
                 p = current_prizes[i] if i < len(current_prizes) else DEFAULT_GACHA["prizes"][i]
-                p_content = p["name"].split("：")[-1] if "：" in p["name"] else list(SYSTEM_REWARDS.keys())[0]
-                if p_content not in SYSTEM_REWARDS: p_content = list(SYSTEM_REWARDS.keys())[0]
+                # 取得乾淨的顯示名稱 (去除前面的級別)
+                raw_name = p.get("name", "")
+                clean_name = raw_name.split("：")[-1] if "：" in raw_name else raw_name
                 
                 display_data.append({
                     "rank": ranks[i],
-                    "content": p_content,
-                    "prob": p["prob"]
+                    "display_name": clean_name,
+                    "reward_type": type_map_ui.get(p.get("type", "gold"), "金幣"),
+                    "val": p.get("val", 100),
+                    "prob": p.get("prob", 0)
                 })
                 
             display_df = pd.DataFrame(display_data)
@@ -1985,7 +1970,9 @@ elif st.session_state.page == 'admin':
                 num_rows="fixed",
                 column_config={
                     "rank": st.column_config.TextColumn("獎項級別", disabled=True),
-                    "content": st.column_config.SelectboxColumn("獎品內容", options=list(SYSTEM_REWARDS.keys()), required=True),
+                    "display_name": st.column_config.TextColumn("顯示名稱 (自由輸入)", required=True),
+                    "reward_type": st.column_config.SelectboxColumn("獎勵類型", options=["勳章", "金幣", "道具包"], required=True),
+                    "val": st.column_config.NumberColumn("數量", min_value=1, required=True),
                     "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True)
                 },
                 hide_index=True,
@@ -1998,12 +1985,11 @@ elif st.session_state.page == 'admin':
                 else:
                     final_prizes = []
                     for _, row in edited_gacha.iterrows():
-                        r_content = row["content"]
                         final_prizes.append({
-                            "name": f"{row['rank']}：{r_content}",
+                            "name": f"{row['rank']}：{row['display_name']}",
                             "prob": row["prob"],
-                            "type": SYSTEM_REWARDS[r_content]["type"],
-                            "val": SYSTEM_REWARDS[r_content]["val"]
+                            "type": type_map_db[row["reward_type"]],
+                            "val": row["val"]
                         })
                     admin_cfg["gacha"] = {"cost": g_cost, "prizes": final_prizes}
                     save_admin(admin_cfg); st.success("扭蛋機設定已儲存！"); st.rerun()
