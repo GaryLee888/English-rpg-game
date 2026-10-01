@@ -446,6 +446,9 @@ if st.session_state.page == 'login':
                                 st.session_state.current_parent = family_input
                                 st.session_state.game_data = init_data
                                 st.session_state.error_log = load_error_log(sel_hero_key)
+                                # ✅ 新增：將角色資訊存入 session，避免遊戲中頻繁讀取 users
+                                st.session_state.hero_name = users[sel_hero_key]["name"]
+                                st.session_state.hero_char = users[sel_hero_key]['character']
                                 st.session_state.play_auto_audio = True
                                 st.session_state.spell_input = ""
                                 st.session_state.page = 'game'; st.rerun()
