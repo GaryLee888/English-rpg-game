@@ -707,10 +707,9 @@ elif st.session_state.page == 'game':
     if 'show_streak' in st.session_state:
         st.toast(st.session_state.show_streak, icon="🔥")
         del st.session_state.show_streak
-
-    users = get_users()
-    hero_name = users[u_key]["name"]
-    char_d = CHARACTERS[users[u_key]['character']]
+        
+    hero_name = st.session_state.hero_name
+    char_d = CHARACTERS[st.session_state.hero_char]  
     
     stage_idx = 0 if u_data['level'] < 5 else (1 if u_data['level'] < 10 else 2)
     hero_img_id, hero_img_name = char_d["stages"][stage_idx]
