@@ -214,16 +214,10 @@ def save_vocab_db(bank_key, df):
     db.reference(f"vocab_banks/{bank_key}").set(records)
     load_vocab_db.clear()
 
-@st.cache_resource
-def init_default_vocabs():
-    # 加上 /0 檢查第一筆，避免每次都下載整個龐大字庫，且透過 cache 確保只執行一次
-    if not db.reference("vocab_banks/國小/0").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
-    if not db.reference("vocab_banks/國中/0").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
-    if not db.reference("vocab_banks/高中/0").get(): save_vocab_db("高中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
-    if not db.reference("vocab_banks/多益/0").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
-    return True
-
-init_default_vocabs()
+if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
+if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+if not db.reference("vocab_banks/高中").get(): save_vocab_db("高中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+if not db.reference("vocab_banks/多益").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
 
 def load_user_data(u_key): 
     d = db.reference(f"user_data/{u_key}").get()
@@ -809,11 +803,11 @@ elif st.session_state.page == 'game':
         word = c_w['en']
         
         if s.strip().lower() == c_w['zh'].strip().lower() or s.strip().lower() == word.strip().lower():
-            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0, "mistakes": 0})
+            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
             stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
             u_data['combo'] += 1
-            if word in st.session_state.error_log and stats["level"] >= 4:
+            if word in st.session_state.error_log and stats["level"] >= 2:
                 st.session_state.error_log.remove(word)
                 save_error_log(u_key, st.session_state.error_log)
                 if not st.session_state.error_log: u_data['total_questions'] = 0
@@ -854,9 +848,8 @@ elif st.session_state.page == 'game':
                 st.session_state.level_up_flag = True
                 
         else:
-            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0, "mistakes": 0})
+            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
             stats["level"] = max(0, stats["level"] - 1)
-            stats["mistakes"] = stats.get("mistakes", 0) + 1  # 🌟 永久記錄這個單字錯了幾次
             stats["next_review"] = time.time()
             u_data['combo'] = 0 
             if word not in st.session_state.error_log:
@@ -1530,25 +1523,7 @@ elif st.session_state.page == 'parent':
                     d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank; d['gold'] = n_gld
                     save_user_data(u_key, d); st.rerun()
 
-                if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != curr_bank or n_gld != d.get('gold', 0):
-            d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank; d['gold'] = n_gld
-            save_user_data(u_key, d); st.rerun()
-
-        # --- 新版：錯題數據分析 ---
-        # 1. 遊戲中的短期復仇佇列
-        st.write("**🔥 復仇特訓中：**", ", ".join(e_log) if e_log else "目前無待復仇單字！")
-
-        # 2. 從 word_stats 抓出所有曾經錯過的單字，並依照錯誤次數(mistakes)由高到低排序
-        real_errors = [(w, s.get('mistakes', 0)) for w, s in d.get('word_stats', {}).items() if s.get('mistakes', 0) > 0]
-        real_errors.sort(key=lambda x: x[1], reverse=True)
-
-        # 只顯示前 20 名最常錯的單字
-        error_display = ", ".join([f"{w} (錯{c}次)" for w, c in real_errors[:20]])
-        st.write("**🔴 歷史高頻錯題 (由高到低)：**", error_display if error_display else "太棒了！無任何錯題紀錄！")
-        # ------------------------
-        
-        # --- 📈 學習統整報告 ---
-        st.markdown("#### 📈 學習統整報告")
+                st.write("**🔴 錯題本：**", ", ".join(e_log) if e_log else "無錯題！")
                 
                 # --- 📈 學習統整報告 ---
                 st.markdown("#### 📈 學習統整報告")
