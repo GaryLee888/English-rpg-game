@@ -645,10 +645,8 @@ elif st.session_state.page == 'game':
     
     st.components.v1.html(f"""
     <script>
-<script>
         if (window.parent.timerInterval) clearInterval(window.parent.timerInterval);
-        // ✅ 新增：標記是否已經觸發過時間到
-        window.parent.hasTriggeredTimeUp = false; 
+        window.parent.hasTriggeredTimeUp = false; // ✅ 避免計時器變成無限瘋狂連點
         
         let remain = {remaining_sec};
         window.parent.timerInterval = setInterval(() => {{
@@ -661,10 +659,9 @@ elif st.session_state.page == 'game':
                 let s = Math.floor(remain % 60);
                 const timerEl = window.parent.document.getElementById('countdown-timer');
                 if(timerEl) timerEl.innerText = "⏳ 剩餘時間: " + m + "分 " + s + "秒";
-            }} else if (!window.parent.hasTriggeredTimeUp) {{ 
-                // ✅ 修改：只有在還沒觸發過時才執行
-                window.parent.hasTriggeredTimeUp = true; // 標記已觸發
-                clearInterval(window.parent.timerInterval); // 停止計時器
+            }} else if (!window.parent.hasTriggeredTimeUp) {{
+                window.parent.hasTriggeredTimeUp = true;
+                clearInterval(window.parent.timerInterval);
                 
                 const btns = window.parent.document.querySelectorAll('button');
                 for(let b of btns) {{
@@ -673,12 +670,21 @@ elif st.session_state.page == 'game':
             }}
         }}, 1000);
         
-        setTimeout(() => {{
+        // ✅ 確保按鈕與外框被徹底隱藏 (持續監控直到畫面渲染完成)
+        let hideAttempts = 0;
+        let hideInterval = setInterval(() => {{
             const btns = window.parent.document.querySelectorAll('button');
             for(let b of btns) {{
-                if(b.innerText.includes('TimeUpTrigger')) {{ b.style.display = 'none'; }}
+                if(b.innerText.includes('TimeUpTrigger')) {{ 
+                    b.style.display = 'none'; 
+                    let parentBtn = b.closest('div[data-testid="stButton"]');
+                    if (parentBtn) parentBtn.style.display = 'none'; // 連外框一起拔掉
+                    clearInterval(hideInterval); 
+                }}
             }}
-        }}, 50);
+            hideAttempts++;
+            if(hideAttempts > 20) clearInterval(hideInterval); // 2秒後自動停止監控
+        }}, 100);
     </script>
     """, height=0)
     
