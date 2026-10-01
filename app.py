@@ -162,7 +162,7 @@ BALL_IMAGES = {
     "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"    
 }
 
-@st.cache_data(ttl=300) # 快取 5 分鐘，大幅減少遊玩時的流量消耗
+@st.cache_data(ttl=300) 
 def get_admin(): 
     cfg = db.reference("system/admin").get() or {}
     return {
@@ -176,21 +176,27 @@ def get_admin():
         "store_prices": cfg.get("store_prices", DEFAULT_STORE),
         "gacha": cfg.get("gacha", DEFAULT_GACHA)
     }
+
 def save_admin(d): 
     db.reference("system/admin").set(d)
-    get_admin.clear() # 儲存時自動清除快取
+    get_admin.clear()
 
+# 🎯 最佳化：只抓取單一家長，不再做全表掃描
 @st.cache_data(ttl=300)
-def get_parents(): return db.reference("parents").get() or {}
-def save_parents(d): 
-    db.reference("parents").set(d)
-    get_parents.clear()
+def get_parent_info(parent_id):
+    return db.reference(f"parents/{parent_id}").get() or {}
 
-@st.cache_data(ttl=300)
-def get_users(): return db.reference("users").get() or {}
-def save_users(d): 
-    db.reference("users").set(d)
-    get_users.clear()
+def save_parent_info(parent_id, d): 
+    db.reference(f"parents/{parent_id}").set(d)
+    get_parent_info.clear()
+
+# 🎯 最佳化：利用 Firebase index 搜尋該家庭下的英雄
+def get_family_heroes(parent_id):
+    heroes = db.reference("users").order_by_child("parent").equal_to(parent_id).get()
+    return heroes if heroes else {}
+
+def save_user_meta(u_key, d):
+    db.reference(f"users/{u_key}").set(d)
 
 @st.cache_data(ttl=300)
 def get_shares(): return db.reference("shares").get() or {}
@@ -198,7 +204,7 @@ def save_shares(d):
     db.reference("shares").set(d)
     get_shares.clear()
 
-@st.cache_data(ttl=3600) # 題庫極少變動，快取 1 小時 (3600秒)，這是省下 90% 流量的關鍵
+@st.cache_data(ttl=3600) 
 def load_vocab_db(bank_key):
     data = db.reference(f"vocab_banks/{bank_key}").get()
     return data if data else []
@@ -244,10 +250,12 @@ def load_user_data(u_key):
 def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
 def load_error_log(u_key): return db.reference(f"error_log/{u_key}").get() or []
 def save_error_log(u_key, l): db.reference(f"error_log/{u_key}").set(l)
+
+# 🎯 最佳化：直接刪除該使用者的參考節點，不下載大檔案
 def delete_user(u_key):
-    db.reference(f"user_data/{u_key}").delete(); db.reference(f"error_log/{u_key}").delete()
-    users = get_users()
-    if u_key in users: del users[u_key]; save_users(users)
+    db.reference(f"user_data/{u_key}").delete()
+    db.reference(f"error_log/{u_key}").delete()
+    db.reference(f"users/{u_key}").delete()
 
 def reset_user_data(u_key):
     d = load_user_data(u_key)
@@ -403,57 +411,54 @@ if st.session_state.page == 'login':
     
     with t1:
         st.subheader("選擇您的家庭與訓練家")
-        parents = get_parents()
-        if not parents: st.info("目前還沒有家庭建立帳號喔！請先請家長到「家庭控制台」註冊。")
-        else:
-            family_input = st.text_input("1️⃣ 請輸入您的家庭帳號", placeholder="輸入後按下 Enter 鍵確認...")
-            if family_input:
-                if family_input in parents:
-                    users = get_users()
-                    family_heroes = {k: v for k, v in users.items() if v.get("parent") == family_input}
+        family_input = st.text_input("1️⃣ 請輸入您的家庭帳號", placeholder="輸入後按下 Enter 鍵確認...")
+        if family_input:
+            parent_data = get_parent_info(family_input)
+            if parent_data:
+                family_heroes = get_family_heroes(family_input)
+                
+                if not family_heroes: st.warning("這個家庭還沒有建立訓練家帳號，請家長先登入控制台建立喔！")
+                else:
+                    hero_display = {k: v["name"] for k, v in family_heroes.items()}
+                    sel_hero_key = st.selectbox("2️⃣ 選擇你的訓練家", list(hero_display.keys()), format_func=lambda x: hero_display[x])
+                    hero_pin = st.text_input("3️⃣ 輸入專屬密碼 (PIN)", type="password", placeholder="預設為 0000")
                     
-                    if not family_heroes: st.warning("這個家庭還沒有建立訓練家帳號，請家長先登入控制台建立喔！")
-                    else:
-                        hero_display = {k: v["name"] for k, v in family_heroes.items()}
-                        sel_hero_key = st.selectbox("2️⃣ 選擇你的訓練家", list(hero_display.keys()), format_func=lambda x: hero_display[x])
-                        hero_pin = st.text_input("3️⃣ 輸入專屬密碼 (PIN)", type="password", placeholder="預設為 0000")
-                        
-                        if st.button("🚀 出發冒險！", type="primary", use_container_width=True):
-                            if hero_pin == users[sel_hero_key].get("pin", "0000"):
-                                init_data = load_user_data(sel_hero_key)
-                                today_str = str(datetime.now().date())
-                                last_date = init_data.get("last_login_date", "")
-                                if last_date != today_str:
-                                    try:
-                                        delta = (datetime.strptime(today_str, "%Y-%m-%d") - datetime.strptime(last_date, "%Y-%m-%d")).days
-                                        if delta == 1: init_data["login_streak"] = init_data.get("login_streak", 0) + 1
-                                        else: init_data["login_streak"] = 1
-                                    except: init_data["login_streak"] = 1
-                                    
-                                    admin_cfg = get_admin()
-                                    rates = parents[family_input].get('game_rates', admin_cfg.get('game_rates', DEFAULT_RATES))
-                                    # 兼容舊格式防呆
-                                    if "簡單" not in rates: rates = {"簡單": rates}
-                                    
-                                    base_gold = rates["簡單"].get('normal_gold', 10)
-                                    bonus_gold = min(base_gold * 5, init_data["login_streak"] * base_gold)
-                                    init_data["gold"] = init_data.get("gold", 0) + bonus_gold
-                                    init_data["last_login_date"] = today_str
-                                    save_user_data(sel_hero_key, init_data)
-                                    st.session_state.show_streak = f"🔥 連續冒險 {init_data['login_streak']} 天！獲得 {bonus_gold} 枚金幣！"
+                    if st.button("🚀 出發冒險！", type="primary", use_container_width=True):
+                        if hero_pin == family_heroes[sel_hero_key].get("pin", "0000"):
+                            init_data = load_user_data(sel_hero_key)
+                            today_str = str(datetime.now().date())
+                            last_date = init_data.get("last_login_date", "")
+                            if last_date != today_str:
+                                try:
+                                    delta = (datetime.strptime(today_str, "%Y-%m-%d") - datetime.strptime(last_date, "%Y-%m-%d")).days
+                                    if delta == 1: init_data["login_streak"] = init_data.get("login_streak", 0) + 1
+                                    else: init_data["login_streak"] = 1
+                                except: init_data["login_streak"] = 1
                                 
-                                st.session_state.current_user_key = sel_hero_key
-                                st.session_state.current_parent = family_input
-                                st.session_state.game_data = init_data
-                                st.session_state.error_log = load_error_log(sel_hero_key)
-                                # ✅ 新增：將角色資訊存入 session，避免遊戲中頻繁讀取 users
-                                st.session_state.hero_name = users[sel_hero_key]["name"]
-                                st.session_state.hero_char = users[sel_hero_key]['character']
-                                st.session_state.play_auto_audio = True
-                                st.session_state.spell_input = ""
-                                st.session_state.page = 'game'; st.rerun()
-                            else: st.error("❌ 密碼錯誤！請確認密碼是否正確。")
-                else: st.error("找不到這個家庭帳號，請確認輸入是否正確。")
+                                admin_cfg = get_admin()
+                                rates = parent_data.get('game_rates', admin_cfg.get('game_rates', DEFAULT_RATES))
+                                # 兼容舊格式防呆
+                                if "簡單" not in rates: rates = {"簡單": rates}
+                                
+                                base_gold = rates["簡單"].get('normal_gold', 10)
+                                bonus_gold = min(base_gold * 5, init_data["login_streak"] * base_gold)
+                                init_data["gold"] = init_data.get("gold", 0) + bonus_gold
+                                init_data["last_login_date"] = today_str
+                                save_user_data(sel_hero_key, init_data)
+                                st.session_state.show_streak = f"🔥 連續冒險 {init_data['login_streak']} 天！獲得 {bonus_gold} 枚金幣！"
+                            
+                            st.session_state.current_user_key = sel_hero_key
+                            st.session_state.current_parent = family_input
+                            st.session_state.game_data = init_data
+                            st.session_state.error_log = load_error_log(sel_hero_key)
+                            
+                            st.session_state.hero_name = family_heroes[sel_hero_key]["name"]
+                            st.session_state.hero_char = family_heroes[sel_hero_key]['character']
+                            st.session_state.play_auto_audio = True
+                            st.session_state.spell_input = ""
+                            st.session_state.page = 'game'; st.rerun()
+                        else: st.error("❌ 密碼錯誤！請確認密碼是否正確。")
+            else: st.error("找不到這個家庭帳號，請確認輸入是否正確。")
 
     with t2:
         colA, colB = st.columns(2)
@@ -462,8 +467,8 @@ if st.session_state.page == 'login':
             l_acc = st.text_input("家庭帳號", key="l_acc")
             l_pwd = st.text_input("密碼", type="password", key="l_pwd")
             if st.button("登入", use_container_width=True):
-                p_db = get_parents()
-                if l_acc in p_db and p_db[l_acc]["password"] == l_pwd:
+                p_data = get_parent_info(l_acc)
+                if p_data and p_data.get("password") == l_pwd:
                     st.session_state.current_parent = l_acc
                     st.session_state.page = 'parent'; st.rerun()
                 else: st.error("帳號或密碼錯誤！")
@@ -472,16 +477,15 @@ if st.session_state.page == 'login':
             r_acc = st.text_input("設定帳號 (不可更改)", key="r_acc")
             r_pwd = st.text_input("設定密碼", type="password", key="r_pwd")
             if st.button("註冊", use_container_width=True):
-                p_db = get_parents()
                 if not r_acc.strip() or not r_pwd.strip(): st.error("帳號密碼不能為空！")
-                elif r_acc in p_db: st.error("帳號已存在！")
+                elif db.reference(f"parents/{r_acc}").get(): st.error("帳號已存在！")
                 else:
-                    p_db[r_acc] = {
+                    new_p = {
                         "password": r_pwd, "hero_limit": None, "bank_limit": None,
                         "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮", "limit": 99}],
                         "custom_banks": [{"id": "1", "name": "預設自建字庫"}]
                     }
-                    save_parents(p_db)
+                    save_parent_info(r_acc, new_p)
                     st.success("註冊成功！請由左側登入。")
 
     with t3:
@@ -499,9 +503,9 @@ elif st.session_state.page == 'game':
     u_key = st.session_state.current_user_key
     u_data = st.session_state.game_data
     parent_id = st.session_state.current_parent
-    p_db = get_parents()
+    
+    p_info = get_parent_info(parent_id)
     admin_cfg = get_admin()
-    p_info = p_db.get(parent_id, {})
     
     # --- ⏳ 當日遊玩時間與 7:00 AM 重置邏輯 ---
     tpe_now = datetime.utcnow() + timedelta(hours=8)
@@ -646,7 +650,7 @@ elif st.session_state.page == 'game':
     st.components.v1.html(f"""
     <script>
         if (window.parent.timerInterval) clearInterval(window.parent.timerInterval);
-        window.parent.hasTriggeredTimeUp = false; // ✅ 避免計時器變成無限瘋狂連點
+        window.parent.hasTriggeredTimeUp = false; 
         
         let remain = {remaining_sec};
         window.parent.timerInterval = setInterval(() => {{
@@ -670,7 +674,6 @@ elif st.session_state.page == 'game':
             }}
         }}, 1000);
         
-        // ✅ 確保按鈕與外框被徹底隱藏 (持續監控直到畫面渲染完成)
         let hideAttempts = 0;
         let hideInterval = setInterval(() => {{
             const btns = window.parent.document.querySelectorAll('button');
@@ -678,12 +681,12 @@ elif st.session_state.page == 'game':
                 if(b.innerText.includes('TimeUpTrigger')) {{ 
                     b.style.display = 'none'; 
                     let parentBtn = b.closest('div[data-testid="stButton"]');
-                    if (parentBtn) parentBtn.style.display = 'none'; // 連外框一起拔掉
+                    if (parentBtn) parentBtn.style.display = 'none';
                     clearInterval(hideInterval); 
                 }}
             }}
             hideAttempts++;
-            if(hideAttempts > 20) clearInterval(hideInterval); // 2秒後自動停止監控
+            if(hideAttempts > 20) clearInterval(hideInterval);
         }}, 100);
     </script>
     """, height=0)
@@ -706,13 +709,12 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
     
-    # 處理最新的掉落設定結構轉換
     raw_rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
-    if "簡單" not in raw_rates: # 兼容舊版設定轉成新格式
+    if "簡單" not in raw_rates: 
         raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
         
     diff = u_data.get('difficulty', "簡單")
-    rates = raw_rates.get(diff, raw_rates["簡單"]) # 取得精準的當前難度掉落設定
+    rates = raw_rates.get(diff, raw_rates["簡單"])
     
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
@@ -764,7 +766,6 @@ elif st.session_state.page == 'game':
             stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
             u_data['combo'] += 1
-# 只有當單字的熟練度達到 2 (代表至少間隔 60 秒後再次複習依然答對)，才從錯題本中真正消除
             if word in st.session_state.error_log and stats["level"] >= 2:
                 st.session_state.error_log.remove(word)
                 save_error_log(u_key, st.session_state.error_log)
@@ -782,7 +783,6 @@ elif st.session_state.page == 'game':
                         if b_name:
                             if 'trophies' not in u_data: u_data['trophies'] = []
                             if b_name not in u_data['trophies']: u_data['trophies'].append(b_name)
-                    # 延遲清理 Boss，讓死亡動畫播完再換
                     st.session_state.pending_boss_defeat = True
                     st.session_state.action_anim = 'boss_defeat'
                 else: st.session_state.action_anim = 'attack'
@@ -799,7 +799,6 @@ elif st.session_state.page == 'game':
                 st.session_state.action_anim = 'attack'
                 
                 if u_data['combo'] >= 10 and not u_data.get('is_boss_fight', False):
-                    # 延遲進入 Boss 戰，先讓第10下的攻擊動畫在小怪身上播完
                     st.session_state.pending_boss_fight = True
             
             if (u_data['exp'] // 100) + 1 > u_data['level']:
@@ -1137,7 +1136,7 @@ elif st.session_state.page == 'game':
             else:
                 st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
         
-        st.info("⚔️ 結算中，請稍候...")
+        st.info("⚔️️ 結算中，請稍候...")
         time.sleep(1.8)
         
         st.session_state.action_anim = None
@@ -1159,7 +1158,7 @@ elif st.session_state.page == 'game':
         elif anim == 'attack' and not u_data.get('is_boss_fight', False):
             st.session_state.current_monster = random.choice(MONSTERS)
             
-        save_user_data(u_key, u_data) # 儲存更新後的狀態
+        save_user_data(u_key, u_data) 
 
         # --- 處理學習題目更新 ---
         if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']: 
@@ -1330,27 +1329,28 @@ elif st.session_state.page == 'game':
 # ==================== 家庭控制台 ====================
 elif st.session_state.page == 'parent':
     p_id = st.session_state.current_parent
-    p_db = get_parents()
-    p_data = p_db[p_id]
+    p_data = get_parent_info(p_id)
     admin_cfg = get_admin()
     
     if "custom_banks" not in p_data:
         p_data["custom_banks"] = [{"id": "1", "name": "預設自建字庫"}]
-        save_parents(p_db)
+        save_parent_info(p_id, p_data)
         old_file = f"vocab_custom_{p_id}.csv"
         if os.path.exists(old_file): os.rename(old_file, f"vocab_custom_{p_id}_1.csv")
 
     st.markdown("<h1 style='text-align: center; color:#e67e22;'>👨‍👩‍👧 家庭專區</h1><hr>", unsafe_allow_html=True)
     c_top1, c_top2 = st.columns([1, 1])
     with c_top1:
-        if st.button("⬅️️ 登出並返回大廳", use_container_width=True): st.session_state.page = 'login'; st.rerun()
+        if st.button("⬅ 登出並返回大廳", use_container_width=True): st.session_state.page = 'login'; st.rerun()
     with c_top2:
         with st.expander("🔐 更改密碼"):
             o_pw = st.text_input("舊密碼", type="password")
             n_pw = st.text_input("新密碼", type="password")
             if st.button("確認修改"):
                 if o_pw == p_data["password"] and n_pw.strip():
-                    p_db[p_id]["password"] = n_pw.strip(); save_parents(p_db); st.success("✅ 成功！")
+                    p_data["password"] = n_pw.strip()
+                    save_parent_info(p_id, p_data)
+                    st.success("✅ 成功！")
                 else: st.error("錯誤")
     st.markdown("---")
     
@@ -1360,8 +1360,7 @@ elif st.session_state.page == 'parent':
         limit = p_data.get("hero_limit")
         if limit is None: limit = admin_cfg.get("default_hero_limit", 3)
         
-        users = get_users()
-        my_heroes = {k: v for k, v in users.items() if v.get("parent") == p_id}
+        my_heroes = get_family_heroes(p_id)
         
         global_banks = ["國小", "國中", "高中", "多益"]
         custom_bank_options = [f"custom_{b['id']}" for b in p_data["custom_banks"]]
@@ -1385,11 +1384,11 @@ elif st.session_state.page == 'parent':
                     if not n_name.strip() or not n_pin.strip(): st.error("名稱與密碼不可為空")
                     else:
                         u_key = f"{p_id}_{n_name}"
-                        if u_key in users: st.error("這個名稱已經存在於您的家庭中了！")
+                        if db.reference(f"users/{u_key}").get(): st.error("這個名稱已經存在於您的家庭中了！")
                         else:
                             c = random.choice(list(CHARACTERS.keys())) if n_char == "隨機" else n_char
-                            users[u_key] = {"name": n_name.strip(), "parent": p_id, "character": c, "created_at": str(datetime.now().date()), "pin": n_pin.strip()}
-                            save_users(users)
+                            new_hero = {"name": n_name.strip(), "parent": p_id, "character": c, "created_at": str(datetime.now().date()), "pin": n_pin.strip()}
+                            save_user_meta(u_key, new_hero)
                             
                             init_data = load_user_data(u_key)
                             init_data["vocab_bank"] = n_bank
@@ -1475,8 +1474,8 @@ elif st.session_state.page == 'parent':
                 n_gld = col_r2[2].number_input("金幣", min_value=0, value=d.get('gold', 0), key=f"gld_{u_key}")
                 
                 if new_pin != u_info.get("pin", "0000"):
-                    users[u_key]["pin"] = new_pin
-                    save_users(users)
+                    u_info["pin"] = new_pin
+                    save_user_meta(u_key, u_info)
                     st.success("密碼已更新！")
                 
                 if n_lvl != d['level'] or n_tq != d.get('total_questions', 0) or n_mdl != d['medals'] or n_dc != d.get('death_count', 0) or new_diff != d.get("difficulty", "簡單") or new_bank != curr_bank or n_gld != d.get('gold', 0):
@@ -1512,7 +1511,6 @@ elif st.session_state.page == 'parent':
                 mc3.metric("⚠️ 待補強 (錯題數)", f"{error_count} 字", "錯題本累積" if error_count > 0 else "完美無瑕")
                 
                 st.markdown("---")
-                # --- 修改：兌換紀錄與核銷/退回功能 ---
                 
                 st.markdown("**🎁 兌換紀錄**")
                 medal_history = [item for item in d.get('history', []) if "扭蛋獲得" not in item]
@@ -1568,8 +1566,8 @@ elif st.session_state.page == 'parent':
         new_s = c2.number_input("🛡️ 護盾價格 (G)", min_value=1, value=prices["shield"])
         new_m = c3.number_input("🔍 放大鏡價格 (G)", min_value=1, value=prices["magnifier"])
         if st.button("💾 儲存道具價格", type="primary"):
-            p_db[p_id]["store_prices"] = {"potion": new_p, "shield": new_s, "magnifier": new_m}
-            save_parents(p_db)
+            p_data["store_prices"] = {"potion": new_p, "shield": new_s, "magnifier": new_m}
+            save_parent_info(p_id, p_data)
             st.success("✅ 道具物價已更新！")
             
         st.markdown("---")
@@ -1581,20 +1579,20 @@ elif st.session_state.page == 'parent':
             n_i = st.selectbox("圖示", EMOJI_LIST)
             if st.form_submit_button("➕ 新增獎勵"):
                 if n_r.strip():
-                    if "rewards" not in p_db[p_id]: p_db[p_id]["rewards"] = []
-                    p_db[p_id]["rewards"].append({"reward": n_r, "cost_medals": n_c, "icon": n_i, "limit": n_limit})
-                    save_parents(p_db); st.success("✅ 成功！"); st.rerun()
+                    if "rewards" not in p_data: p_data["rewards"] = []
+                    p_data["rewards"].append({"reward": n_r, "cost_medals": n_c, "icon": n_i, "limit": n_limit})
+                    save_parent_info(p_id, p_data); st.success("✅ 成功！"); st.rerun()
         
         st.subheader("目前可兌換清單")
-        r_list = p_db.get(p_id, {}).get("rewards", [])
+        r_list = p_data.get("rewards", [])
         if not r_list: st.info("目前沒有設定任何獎勵。")
         for idx, r in enumerate(r_list):
             cA, cB = st.columns([4, 1])
             with cA: st.info(f"{r['icon']} {r['reward']} (需 {r['cost_medals']} 勳章 | 上限: {r.get('limit', admin_cfg.get('default_reward_limit', 99))}次)")
             with cB:
                 if st.button("🗑️", key=f"d_r_{idx}"):
-                    p_db[p_id]["rewards"].pop(idx)
-                    save_parents(p_db); st.rerun()
+                    p_data["rewards"].pop(idx)
+                    save_parent_info(p_id, p_data); st.rerun()
 
     with t6:
         st.subheader("⚙️ 家庭專屬遊戲參數 (覆寫系統預設)")
@@ -1603,8 +1601,8 @@ elif st.session_state.page == 'parent':
         with st.expander("⏳ 家庭專屬每日遊玩時間預設值", expanded=True):
             p_play_time = st.number_input("每日預設遊玩時間 (分鐘)", min_value=1, value=p_data.get("daily_play_time_min", admin_cfg.get("default_play_time_min", 30)))
             if st.button("💾 儲存遊玩時間預設值"):
-                p_db[p_id]["daily_play_time_min"] = p_play_time
-                save_parents(p_db); st.success("儲存成功！"); st.rerun()
+                p_data["daily_play_time_min"] = p_play_time
+                save_parent_info(p_id, p_data); st.success("儲存成功！"); st.rerun()
                 
         with st.expander("⚔️ 戰鬥掉落率設定", expanded=True):
             raw_rates = p_data.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
@@ -1626,14 +1624,13 @@ elif st.session_state.page == 'parent':
                         "boss_medal": r1.number_input(f"Boss 勳章 ({d_key})", min_value=0, value=cur.get("boss_medal", 1), key=f"p_b_mdl_{d_key}")
                     }
             if st.button("💾 儲存戰鬥掉落率"):
-                p_db[p_id]["game_rates"] = new_rates
-                save_parents(p_db); st.success("儲存成功！"); st.rerun()
+                p_data["game_rates"] = new_rates
+                save_parent_info(p_id, p_data); st.success("儲存成功！"); st.rerun()
 
         with st.expander("🎰 幸運扭蛋機設定", expanded=True):
             g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 300))
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
             
-            # 系統固定可選獎勵清單 (自動綁定對應的類型與數值)
             st.caption("您可以自由設定獎品名稱、發放的類型(勳章/金幣/道具包)、給予的數量，以及中獎機率。")
             
             current_prizes = gacha.get("prizes", DEFAULT_GACHA["prizes"])
@@ -1644,7 +1641,6 @@ elif st.session_state.page == 'parent':
             
             for i in range(6):
                 p = current_prizes[i] if i < len(current_prizes) else DEFAULT_GACHA["prizes"][i]
-                # 取得乾淨的顯示名稱 (去除前面的級別)
                 raw_name = p.get("name", "")
                 clean_name = raw_name.split("：")[-1] if "：" in raw_name else raw_name
                 
@@ -1683,8 +1679,8 @@ elif st.session_state.page == 'parent':
                             "type": type_map_db[row["reward_type"]],
                             "val": row["val"]
                         })
-                    p_db[p_id]["gacha"] = {"cost": g_cost, "prizes": final_prizes}
-                    save_parents(p_db); st.success("扭蛋機設定已儲存！"); st.rerun()
+                    p_data["gacha"] = {"cost": g_cost, "prizes": final_prizes}
+                    save_parent_info(p_id, p_data); st.success("扭蛋機設定已儲存！"); st.rerun()
 
     with t3:
         bank_limit = p_data.get("bank_limit")
@@ -1699,7 +1695,7 @@ elif st.session_state.page == 'parent':
                     if n_bank_name.strip():
                         new_id = str(int(time.time()))
                         p_data['custom_banks'].append({"id": new_id, "name": n_bank_name.strip()})
-                        save_parents(p_db)
+                        save_parent_info(p_id, p_data)
                         st.success("✅ 字庫建立成功！"); st.rerun()
                     else: st.error("名稱不可為空")
 
@@ -1718,7 +1714,7 @@ elif st.session_state.page == 'parent':
                         for b in p_data["custom_banks"]:
                             if b["id"] == sel_bank_id:
                                 b["name"] = new_name.strip()
-                        save_parents(p_db)
+                        save_parent_info(p_id, p_data)
                         st.success("✅ 名稱已更新！")
                         st.rerun()
                     else: st.error("名稱不能為空！")
@@ -1854,8 +1850,10 @@ elif st.session_state.page == 'admin':
     admin_cfg = get_admin()
     
     with t1:
-        p_db = get_parents()
-        u_db = get_users()
+        # GM 專屬：直接抓取整個庫，不使用快取以確保資料最新且不影響客戶端
+        p_db = db.reference("parents").get() or {}
+        u_db = db.reference("users").get() or {}
+        
         if not p_db: st.info("目前沒有任何家庭註冊。")
         for p_id, p_info in p_db.items():
             with st.expander(f"🏠 家庭帳號：{p_id}"):
@@ -1872,10 +1870,10 @@ elif st.session_state.page == 'admin':
                 new_b_limit = c3.number_input("設定字庫上限", min_value=1, value=b_limit_val, key=f"blim_{p_id}")
                 
                 if new_pwd != p_info['password'] or new_h_limit != p_info.get('hero_limit') or new_b_limit != p_info.get('bank_limit'):
-                    p_db[p_id]['password'] = new_pwd
-                    p_db[p_id]['hero_limit'] = new_h_limit
-                    p_db[p_id]['bank_limit'] = new_b_limit
-                    save_parents(p_db); st.rerun()
+                    p_info['password'] = new_pwd
+                    p_info['hero_limit'] = new_h_limit
+                    p_info['bank_limit'] = new_b_limit
+                    save_parent_info(p_id, p_info); st.rerun()
                 
                 heroes = {k: v for k, v in u_db.items() if v.get("parent") == p_id}
                 st.markdown(f"**旗下訓練家 ({len(heroes)})：**")
@@ -1892,8 +1890,9 @@ elif st.session_state.page == 'admin':
                 st.markdown("---")
                 if st.button(f"🚨 刪除此家庭 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
                     for u_key in heroes: delete_user(u_key)
-                    del p_db[p_id]
-                    save_parents(p_db); st.rerun()
+                    db.reference(f"parents/{p_id}").delete()
+                    get_parent_info.clear() # 清除相關快取
+                    st.rerun()
 
     with t5:
         st.subheader("⚙️ 系統全域遊戲參數預設值")
@@ -1906,7 +1905,7 @@ elif st.session_state.page == 'admin':
                 admin_cfg["default_play_time_min"] = new_play_time
                 save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
                 
-        with st.expander("⚔️ 戰鬥掉落率預設值", expanded=True):
+        with st.expander("⚔️️ 戰鬥掉落率預設值", expanded=True):
             raw_rates = admin_cfg.get("game_rates", DEFAULT_RATES)
             if "簡單" not in raw_rates:
                 raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
@@ -1952,7 +1951,6 @@ elif st.session_state.page == 'admin':
             
             for i in range(6):
                 p = current_prizes[i] if i < len(current_prizes) else DEFAULT_GACHA["prizes"][i]
-                # 取得乾淨的顯示名稱 (去除前面的級別)
                 raw_name = p.get("name", "")
                 clean_name = raw_name.split("：")[-1] if "：" in raw_name else raw_name
                 
