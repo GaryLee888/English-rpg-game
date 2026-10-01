@@ -701,13 +701,10 @@ elif st.session_state.page == 'game':
     store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
 
-    if 'show_streak' in st.session_state:
-        st.toast(st.session_state.show_streak, icon="🔥")
-        del st.session_state.show_streak
-
-    users = get_users()
-    hero_name = users[u_key]["name"]
-    char_d = CHARACTERS[users[u_key]['character']]
+    st.session_state.current_user_key = sel_hero_key
+                                st.session_state.current_parent = family_input
+                                st.session_state.game_data = init_data
+                                st.session_state.error_log = load_error_log(sel_hero_key)
     
     stage_idx = 0 if u_data['level'] < 5 else (1 if u_data['level'] < 10 else 2)
     hero_img_id, hero_img_name = char_d["stages"][stage_idx]
