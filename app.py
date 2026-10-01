@@ -1592,6 +1592,23 @@ elif st.session_state.page == 'parent':
                 mc2.metric("✨ 精熟度 (Lv3以上)", f"{mastered_words} 字", f"佔已學 {mast_pct}%")
                 mc3.metric("⚠️ 待補強 (錯題數)", f"{error_count} 字", "錯題本累積" if error_count > 0 else "完美無瑕")
                 
+                # 🌟 新增：將歷史錯題打包並提供一鍵匯出 CSV
+                if real_errors:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    # 轉換為 pandas DataFrame
+                    df_errors = pd.DataFrame(real_errors, columns=["英文單字", "歷史總錯誤次數"])
+                    # 使用 utf-8-sig 編碼，確保微軟 Excel 打開不會中文亂碼
+                    csv_data = df_errors.to_csv(index=False).encode('utf-8-sig')
+                    
+                    st.download_button(
+                        label="📥 一鍵匯出歷史錯題分析 (CSV 報表)",
+                        data=csv_data,
+                        file_name=f"{u_info['name']}_錯題分析報表_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv",
+                        key=f"dl_csv_{u_key}",
+                        use_container_width=True
+                    )
+                
                 st.markdown("---")
                 
                 st.markdown("**🎁 兌換紀錄**")
