@@ -520,7 +520,6 @@ elif st.session_state.page == 'game':
             elapsed = min(elapsed, 900)
             u_data['time_played_sec'] = u_data.get('time_played_sec', 0) + elapsed
     st.session_state.last_tick_time = now_ts
-    save_user_data(u_key, u_data)
     
     # 判斷時間額度
     base_quota_min = u_data.get("daily_play_time_min", p_info.get("daily_play_time_min", admin_cfg.get("default_play_time_min", 30)))
