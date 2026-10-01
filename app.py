@@ -646,7 +646,11 @@ elif st.session_state.page == 'game':
     
     st.components.v1.html(f"""
     <script>
+<script>
         if (window.parent.timerInterval) clearInterval(window.parent.timerInterval);
+        // ✅ 新增：標記是否已經觸發過時間到
+        window.parent.hasTriggeredTimeUp = false; 
+        
         let remain = {remaining_sec};
         window.parent.timerInterval = setInterval(() => {{
             const clockEl = window.parent.document.getElementById('local-clock');
@@ -658,7 +662,11 @@ elif st.session_state.page == 'game':
                 let s = Math.floor(remain % 60);
                 const timerEl = window.parent.document.getElementById('countdown-timer');
                 if(timerEl) timerEl.innerText = "⏳ 剩餘時間: " + m + "分 " + s + "秒";
-            }} else {{
+            }} else if (!window.parent.hasTriggeredTimeUp) {{ 
+                // ✅ 修改：只有在還沒觸發過時才執行
+                window.parent.hasTriggeredTimeUp = true; // 標記已觸發
+                clearInterval(window.parent.timerInterval); // 停止計時器
+                
                 const btns = window.parent.document.querySelectorAll('button');
                 for(let b of btns) {{
                     if(b.innerText.includes('TimeUpTrigger')) {{ b.click(); break; }}
