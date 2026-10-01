@@ -413,7 +413,7 @@ if st.session_state.page == 'login':
     
     if family_input:
         # 🤫 彩蛋觸發：隱藏入口跳轉
-        if family_input == "#parent":
+        if family_input == "#GY好帥":
             st.session_state.page = 'parent_login'
             st.rerun()
         elif family_input == "#gmadmin":
