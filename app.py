@@ -407,96 +407,121 @@ if st.session_state.page == 'login':
     </div>
     """, unsafe_allow_html=True)
     
-    t1, t2, t3 = st.tabs(["🎒 訓練家遊玩登入", "👨‍👩‍👧 家庭控制台", "👑 GM 管理中心"])
+    # ❌ 刪除了原本的 Tabs 分頁，畫面只留下單純的輸入框
+    st.subheader("🎒 選擇您的家庭與訓練家")
+    family_input = st.text_input("1️⃣ 請輸入您的家庭帳號", placeholder="輸入後按下 Enter 鍵確認...")
     
-    with t1:
-        st.subheader("選擇您的家庭與訓練家")
-        family_input = st.text_input("1️⃣ 請輸入您的家庭帳號", placeholder="輸入後按下 Enter 鍵確認...")
-        if family_input:
-            parent_data = get_parent_info(family_input)
-            if parent_data:
-                family_heroes = get_family_heroes(family_input)
+    if family_input:
+        # 🤫 彩蛋觸發：隱藏入口跳轉
+        if family_input == "#parent":
+            st.session_state.page = 'parent_login'
+            st.rerun()
+        elif family_input == "#gmadmin":
+            st.session_state.page = 'admin_login'
+            st.rerun()
+            
+        # --- 以下為正常的訓練家登入邏輯 ---
+        parent_data = get_parent_info(family_input)
+        if parent_data:
+            family_heroes = get_family_heroes(family_input)
+            
+            if not family_heroes: st.warning("這個家庭還沒有建立訓練家帳號，請家長先登入控制台建立喔！")
+            else:
+                hero_display = {k: v["name"] for k, v in family_heroes.items()}
+                sel_hero_key = st.selectbox("2️⃣ 選擇你的訓練家", list(hero_display.keys()), format_func=lambda x: hero_display[x])
+                hero_pin = st.text_input("3️⃣ 輸入專屬密碼 (PIN)", type="password", placeholder="預設為 0000")
                 
-                if not family_heroes: st.warning("這個家庭還沒有建立訓練家帳號，請家長先登入控制台建立喔！")
-                else:
-                    hero_display = {k: v["name"] for k, v in family_heroes.items()}
-                    sel_hero_key = st.selectbox("2️⃣ 選擇你的訓練家", list(hero_display.keys()), format_func=lambda x: hero_display[x])
-                    hero_pin = st.text_input("3️⃣ 輸入專屬密碼 (PIN)", type="password", placeholder="預設為 0000")
-                    
-                    if st.button("🚀 出發冒險！", type="primary", use_container_width=True):
-                        if hero_pin == family_heroes[sel_hero_key].get("pin", "0000"):
-                            init_data = load_user_data(sel_hero_key)
-                            today_str = str(datetime.now().date())
-                            last_date = init_data.get("last_login_date", "")
-                            if last_date != today_str:
-                                try:
-                                    delta = (datetime.strptime(today_str, "%Y-%m-%d") - datetime.strptime(last_date, "%Y-%m-%d")).days
-                                    if delta == 1: init_data["login_streak"] = init_data.get("login_streak", 0) + 1
-                                    else: init_data["login_streak"] = 1
-                                except: init_data["login_streak"] = 1
-                                
-                                admin_cfg = get_admin()
-                                rates = parent_data.get('game_rates', admin_cfg.get('game_rates', DEFAULT_RATES))
-                                # 兼容舊格式防呆
-                                if "簡單" not in rates: rates = {"簡單": rates}
-                                
-                                base_gold = rates["簡單"].get('normal_gold', 10)
-                                bonus_gold = min(base_gold * 5, init_data["login_streak"] * base_gold)
-                                init_data["gold"] = init_data.get("gold", 0) + bonus_gold
-                                init_data["last_login_date"] = today_str
-                                save_user_data(sel_hero_key, init_data)
-                                st.session_state.show_streak = f"🔥 連續冒險 {init_data['login_streak']} 天！獲得 {bonus_gold} 枚金幣！"
+                if st.button("🚀 出發冒險！", type="primary", use_container_width=True):
+                    if hero_pin == family_heroes[sel_hero_key].get("pin", "0000"):
+                        init_data = load_user_data(sel_hero_key)
+                        today_str = str(datetime.now().date())
+                        last_date = init_data.get("last_login_date", "")
+                        if last_date != today_str:
+                            try:
+                                delta = (datetime.strptime(today_str, "%Y-%m-%d") - datetime.strptime(last_date, "%Y-%m-%d")).days
+                                if delta == 1: init_data["login_streak"] = init_data.get("login_streak", 0) + 1
+                                else: init_data["login_streak"] = 1
+                            except: init_data["login_streak"] = 1
                             
-                            st.session_state.current_user_key = sel_hero_key
-                            st.session_state.current_parent = family_input
-                            st.session_state.game_data = init_data
-                            st.session_state.error_log = load_error_log(sel_hero_key)
+                            admin_cfg = get_admin()
+                            rates = parent_data.get('game_rates', admin_cfg.get('game_rates', DEFAULT_RATES))
+                            if "簡單" not in rates: rates = {"簡單": rates}
                             
-                            st.session_state.hero_name = family_heroes[sel_hero_key]["name"]
-                            st.session_state.hero_char = family_heroes[sel_hero_key]['character']
-                            st.session_state.play_auto_audio = True
-                            st.session_state.spell_input = ""
-                            st.session_state.page = 'game'; st.rerun()
-                        else: st.error("❌ 密碼錯誤！請確認密碼是否正確。")
-            else: st.error("找不到這個家庭帳號，請確認輸入是否正確。")
+                            base_gold = rates["簡單"].get('normal_gold', 10)
+                            bonus_gold = min(base_gold * 5, init_data["login_streak"] * base_gold)
+                            init_data["gold"] = init_data.get("gold", 0) + bonus_gold
+                            init_data["last_login_date"] = today_str
+                            save_user_data(sel_hero_key, init_data)
+                            st.session_state.show_streak = f"🔥 連續冒險 {init_data['login_streak']} 天！獲得 {bonus_gold} 枚金幣！"
+                        
+                        st.session_state.current_user_key = sel_hero_key
+                        st.session_state.current_parent = family_input
+                        st.session_state.game_data = init_data
+                        st.session_state.error_log = load_error_log(sel_hero_key)
+                        
+                        st.session_state.hero_name = family_heroes[sel_hero_key]["name"]
+                        st.session_state.hero_char = family_heroes[sel_hero_key]['character']
+                        st.session_state.play_auto_audio = True
+                        st.session_state.spell_input = ""
+                        st.session_state.page = 'game'; st.rerun()
+                    else: st.error("❌ 密碼錯誤！請確認密碼是否正確。")
+        else: st.error("找不到這個家庭帳號，請確認輸入是否正確。")
 
-    with t2:
-        colA, colB = st.columns(2)
-        with colA:
-            st.subheader("家長登入")
-            l_acc = st.text_input("家庭帳號", key="l_acc")
-            l_pwd = st.text_input("密碼", type="password", key="l_pwd")
-            if st.button("登入", use_container_width=True):
-                p_data = get_parent_info(l_acc)
-                if p_data and p_data.get("password") == l_pwd:
-                    st.session_state.current_parent = l_acc
-                    st.session_state.page = 'parent'; st.rerun()
-                else: st.error("帳號或密碼錯誤！")
-        with colB:
-            st.subheader("註冊新家庭帳號")
-            r_acc = st.text_input("設定帳號 (不可更改)", key="r_acc")
-            r_pwd = st.text_input("設定密碼", type="password", key="r_pwd")
-            if st.button("註冊", use_container_width=True):
-                if not r_acc.strip() or not r_pwd.strip(): st.error("帳號密碼不能為空！")
-                elif db.reference(f"parents/{r_acc}").get(): st.error("帳號已存在！")
-                else:
-                    new_p = {
-                        "password": r_pwd, "hero_limit": None, "bank_limit": None,
-                        "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮", "limit": 99}],
-                        "custom_banks": [{"id": "1", "name": "預設自建字庫"}]
-                    }
-                    save_parent_info(r_acc, new_p)
-                    st.success("註冊成功！請由左側登入。")
+# ==================== 隱藏入口：家長登入與註冊 ====================
+elif st.session_state.page == 'parent_login':
+    st.markdown("<h1 style='text-align: center; color:#e67e22;'>👨‍👩‍👧 家庭控制台入口</h1><hr>", unsafe_allow_html=True)
+    
+    colA, colB = st.columns(2)
+    with colA:
+        st.subheader("家長登入")
+        l_acc = st.text_input("家庭帳號", key="l_acc")
+        l_pwd = st.text_input("密碼", type="password", key="l_pwd")
+        if st.button("確認登入", use_container_width=True, type="primary"):
+            p_data = get_parent_info(l_acc)
+            if p_data and p_data.get("password") == l_pwd:
+                st.session_state.current_parent = l_acc
+                st.session_state.page = 'parent'; st.rerun()
+            else: st.error("帳號或密碼錯誤！")
+            
+    with colB:
+        st.subheader("註冊新家庭帳號")
+        r_acc = st.text_input("設定帳號 (不可更改)", key="r_acc")
+        r_pwd = st.text_input("設定密碼", type="password", key="r_pwd")
+        if st.button("註冊", use_container_width=True):
+            if not r_acc.strip() or not r_pwd.strip(): st.error("帳號密碼不能為空！")
+            elif get_parent_info(r_acc): st.error("帳號已存在！")
+            else:
+                new_p = {
+                    "password": r_pwd, "hero_limit": None, "bank_limit": None,
+                    "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮", "limit": 99}],
+                    "custom_banks": [{"id": "1", "name": "預設自建字庫"}]
+                }
+                save_parent_info(r_acc, new_p)
+                st.success("註冊成功！請由左側登入。")
+                
+    st.markdown("---")
+    if st.button("🚪 返回遊戲大廳", use_container_width=True):
+        st.session_state.page = 'login'
+        st.rerun()
 
-    with t3:
-        st.subheader("系統管理員登入")
-        admin_db = get_admin()
-        gm_id = st.text_input("管理員帳號 (預設 admin)", key="gm_id")
+# ==================== 隱藏入口：GM 登入 ====================
+elif st.session_state.page == 'admin_login':
+    st.markdown("<h1 style='text-align: center; color:#c0392b;'>👑 系統管理員驗證</h1><hr>", unsafe_allow_html=True)
+    admin_db = get_admin()
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        gm_id = st.text_input("管理員帳號", key="gm_id")
         gm_pwd = st.text_input("輸入 GM 密碼", type="password", key="gm_pwd")
-        if st.button("GM 登入", use_container_width=True):
+        if st.button("GM 登入", use_container_width=True, type="primary"):
             if gm_id == admin_db.get("admin_id", "admin") and gm_pwd == admin_db.get("password", "1234"): 
                 st.session_state.page = 'admin'; st.rerun()
             else: st.error("帳號或密碼錯誤！")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🚪 返回遊戲大廳", use_container_width=True):
+            st.session_state.page = 'login'
+            st.rerun()
 
 # ==================== 遊戲主畫面 ====================
 elif st.session_state.page == 'game':
