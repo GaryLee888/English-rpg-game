@@ -181,7 +181,6 @@ def save_admin(d):
     db.reference("system/admin").set(d)
     get_admin.clear()
 
-# 🎯 最佳化：只抓取單一家長，不再做全表掃描
 @st.cache_data(ttl=300)
 def get_parent_info(parent_id):
     return db.reference(f"parents/{parent_id}").get() or {}
@@ -190,7 +189,6 @@ def save_parent_info(parent_id, d):
     db.reference(f"parents/{parent_id}").set(d)
     get_parent_info.clear()
 
-# 🎯 最佳化：利用 Firebase index 搜尋該家庭下的英雄
 def get_family_heroes(parent_id):
     heroes = db.reference("users").order_by_child("parent").equal_to(parent_id).get()
     return heroes if heroes else {}
@@ -214,10 +212,16 @@ def save_vocab_db(bank_key, df):
     db.reference(f"vocab_banks/{bank_key}").set(records)
     load_vocab_db.clear()
 
-if not db.reference("vocab_banks/國小").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
-if not db.reference("vocab_banks/國中").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
-if not db.reference("vocab_banks/高中").get(): save_vocab_db("高中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
-if not db.reference("vocab_banks/多益").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
+# 🎯 解決方案 2：利用 st.cache_resource 避免每次點擊都耗用 Firebase 流量去檢查
+@st.cache_resource
+def init_default_vocabs():
+    if not db.reference("vocab_banks/國小/0").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
+    if not db.reference("vocab_banks/國中/0").get(): save_vocab_db("國中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+    if not db.reference("vocab_banks/高中/0").get(): save_vocab_db("高中", pd.DataFrame({"en": ["environment", "develop"], "zh": ["環境", "發展"], "hint": ["大自然", "進步"]}))
+    if not db.reference("vocab_banks/多益/0").get(): save_vocab_db("多益", pd.DataFrame({"en": ["implement", "revenue"], "zh": ["實施", "收入"], "hint": ["執行", "金錢"]}))
+    return True
+
+init_default_vocabs()
 
 def load_user_data(u_key): 
     d = db.reference(f"user_data/{u_key}").get()
@@ -251,7 +255,6 @@ def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
 def load_error_log(u_key): return db.reference(f"error_log/{u_key}").get() or []
 def save_error_log(u_key, l): db.reference(f"error_log/{u_key}").set(l)
 
-# 🎯 最佳化：直接刪除該使用者的參考節點，不下載大檔案
 def delete_user(u_key):
     db.reference(f"user_data/{u_key}").delete()
     db.reference(f"error_log/{u_key}").delete()
@@ -407,7 +410,6 @@ if st.session_state.page == 'login':
     </div>
     """, unsafe_allow_html=True)
     
-    # ❌ 刪除了原本的 Tabs 分頁，畫面只留下單純的輸入框
     st.subheader("🎒 選擇您的家庭與訓練家")
     family_input = st.text_input("1️⃣ 請輸入您的家庭帳號", placeholder="輸入後按下 Enter 鍵確認...")
     
@@ -589,7 +591,7 @@ elif st.session_state.page == 'game':
             st.rerun()
         st.stop()
 
-    # ==================== 🎁 全螢幕扭蛋巨球結果視窗 (移至上方以擋住EXP進度條) ====================
+    # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
@@ -803,11 +805,12 @@ elif st.session_state.page == 'game':
         word = c_w['en']
         
         if s.strip().lower() == c_w['zh'].strip().lower() or s.strip().lower() == word.strip().lower():
-            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
+            # 💡 修正 1-A：記錄錯誤次數 mistakes，並把移出錯題本門檻調高為 >= 4
+            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0, "mistakes": 0})
             stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
             u_data['combo'] += 1
-            if word in st.session_state.error_log and stats["level"] >= 2:
+            if word in st.session_state.error_log and stats["level"] >= 4:
                 st.session_state.error_log.remove(word)
                 save_error_log(u_key, st.session_state.error_log)
                 if not st.session_state.error_log: u_data['total_questions'] = 0
@@ -848,8 +851,10 @@ elif st.session_state.page == 'game':
                 st.session_state.level_up_flag = True
                 
         else:
-            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0})
+            # 💡 修正 1-B：答錯時，增加 mistakes 計數，永久記錄這是個易錯字
+            stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0, "mistakes": 0})
             stats["level"] = max(0, stats["level"] - 1)
+            stats["mistakes"] = stats.get("mistakes", 0) + 1
             stats["next_review"] = time.time()
             u_data['combo'] = 0 
             if word not in st.session_state.error_log:
@@ -1165,7 +1170,7 @@ elif st.session_state.page == 'game':
         elif anim == 'heal':
             st.success("🧪 喝下生命藥水，生命值恢復了！")
         elif anim == 'shield_block':
-            st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
+            st.info("🛡️️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
         elif anim == 'hurt':
             st.error("🩸 遭受攻擊！連擊中斷！")
         elif anim == 'boss_defeat':
@@ -1177,7 +1182,7 @@ elif st.session_state.page == 'game':
             else:
                 st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
         
-        st.info("⚔️️ 結算中，請稍候...")
+        st.info("⚔ 結算中，請稍候...")
         time.sleep(1.8)
         
         st.session_state.action_anim = None
@@ -1523,7 +1528,17 @@ elif st.session_state.page == 'parent':
                     d['level'] = n_lvl; d['total_questions'] = n_tq; d['medals'] = n_mdl; d['death_count'] = n_dc; d['difficulty'] = new_diff; d['vocab_bank'] = new_bank; d['gold'] = n_gld
                     save_user_data(u_key, d); st.rerun()
 
-                st.write("**🔴 錯題本：**", ", ".join(e_log) if e_log else "無錯題！")
+                # 💡 修正 1-C：雙軌錯題顯示機制
+                # 1. 遊戲中的短期復仇佇列
+                st.write("**🔥 復仇特訓中：**", ", ".join(e_log) if e_log else "目前無待復仇單字！")
+
+                # 2. 從 word_stats 抓出所有曾經錯過的單字，並依照錯誤次數(mistakes)由高到低排序
+                real_errors = [(w, s.get('mistakes', 0)) for w, s in d.get('word_stats', {}).items() if s.get('mistakes', 0) > 0]
+                real_errors.sort(key=lambda x: x[1], reverse=True)
+
+                # 只顯示前 20 名最常錯的單字
+                error_display = ", ".join([f"{w} (錯{c}次)" for w, c in real_errors[:20]])
+                st.write("**🔴 歷史高頻錯題 (由高到低)：**", error_display if error_display else "太棒了！無任何錯題紀錄！")
                 
                 # --- 📈 學習統整報告 ---
                 st.markdown("#### 📈 學習統整報告")
@@ -1887,7 +1902,7 @@ elif st.session_state.page == 'admin':
     if st.button("⬅️ 登出並返回大廳"): st.session_state.page = 'login'; st.rerun()
     st.markdown("---")
     
-    t1, t5, t2, t3, t4 = st.tabs(["👨‍👩‍👧 租戶管理", "⚙️ 全域數值設定", "📋 回饋審核", "📚 題庫增訂", "⚙ 系統設定"])
+    t1, t5, t2, t3, t4 = st.tabs(["👨‍👩‍‍👧 租戶管理", "⚙️ 全域數值設定", "📋 回饋審核", "📚 題庫增訂", "⚙ 系統設定"])
     admin_cfg = get_admin()
     
     with t1:
@@ -1932,7 +1947,7 @@ elif st.session_state.page == 'admin':
                 if st.button(f"🚨 刪除此家庭 (包含底下所有帳號)", key=f"gm_dp_{p_id}", type="primary"):
                     for u_key in heroes: delete_user(u_key)
                     db.reference(f"parents/{p_id}").delete()
-                    get_parent_info.clear() # 清除相關快取
+                    get_parent_info.clear() 
                     st.rerun()
 
     with t5:
@@ -1946,7 +1961,7 @@ elif st.session_state.page == 'admin':
                 admin_cfg["default_play_time_min"] = new_play_time
                 save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
                 
-        with st.expander("⚔️️ 戰鬥掉落率預設值", expanded=True):
+        with st.expander("⚔ 戰鬥掉落率預設值", expanded=True):
             raw_rates = admin_cfg.get("game_rates", DEFAULT_RATES)
             if "簡單" not in raw_rates:
                 raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
