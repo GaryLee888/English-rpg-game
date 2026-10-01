@@ -538,15 +538,19 @@ elif st.session_state.page == 'game':
     if 'last_db_sync' not in st.session_state:
         st.session_state.last_db_sync = now_ts
         
-    # 如果距離上次同步超過 60 秒，就從雲端抓取家長剛修改的最新數值
-    if now_ts - st.session_state.last_db_sync > 60:
+    # 將同步間隔縮短為 10 秒，即時抓取家長剛修改的最新數值
+    if now_ts - st.session_state.last_db_sync > 10:
         latest_db_data = load_user_data(u_key)
-        # 只同步「家長可能會改的數值」，不動血量或連擊數，避免戰鬥衝突
+        # 同步「家長可能會改的數值」，不動血量或連擊數，避免戰鬥衝突
         u_data['gold'] = latest_db_data.get('gold', u_data['gold'])
         u_data['medals'] = latest_db_data.get('medals', u_data['medals'])
         u_data['extra_time_sec'] = latest_db_data.get('extra_time_sec', u_data.get('extra_time_sec', 0))
         u_data['daily_play_time_min'] = latest_db_data.get('daily_play_time_min', u_data.get('daily_play_time_min', 30))
         u_data['level'] = latest_db_data.get('level', u_data['level'])
+        
+        # 👇 關鍵修復：把家長處理過的「歷史紀錄」與「兌換次數」同步給小孩，避免小孩的舊資料反向覆蓋雲端！
+        u_data['history'] = latest_db_data.get('history', u_data.get('history', []))
+        u_data['reward_counts'] = latest_db_data.get('reward_counts', u_data.get('reward_counts', {}))
         
         st.session_state.last_db_sync = now_ts
         
