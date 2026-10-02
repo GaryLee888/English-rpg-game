@@ -1074,11 +1074,11 @@ elif st.session_state.page == 'game':
         h_s += " animation: heroDash 0.7s ease-in-out 0.6s;"
         m_s += " animation: shakeHurt 0.7s ease-in-out 0.8s;"
         
-        # 👇 將特效初始透明度設為 0，並完美延遲 0.8 秒後才華麗爆發 👇
+        # 將特效初始透明度設為 0，並完美延遲 0.8 秒後才華麗爆發
         fx_html = f'<style>@keyframes fxHit {{ 0% {{opacity:0; transform:scale(0);}} 20% {{opacity:1; transform:scale(1.5);}} 80% {{opacity:1; transform:scale(1);}} 100% {{opacity:0; transform:scale(2);}} }}</style><div class="m-fx" style="opacity:0; animation: fxHit 0.5s forwards 0.8s;">{char_d["fx"]}</div>'
         
-        # 音效透過 setTimeout 延遲 600 毫秒發動
-        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; ... (略)
+        # 音效透過 setTimeout 延遲 600 毫秒發動 (完整的程式碼)
+        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{char_d['snd_type']}'; osc.frequency.setValueAtTime({char_d['snd_freq']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d['snd_drop']}, ctx.currentTime + {char_d['snd_len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d['snd_len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d['snd_len']}); }} }}, 600);</script>"
     elif anim == 'hurt':
         m_s += " animation: monsterDash 0.7s ease-in-out 0.6s;"
         h_s += " animation: heroHurt 0.7s ease-in-out 0.8s;"
