@@ -1128,7 +1128,25 @@ elif st.session_state.page == 'game':
     )
     
     st.markdown(arena_html, unsafe_allow_html=True)
-    st.components.v1.html(audio_js if audio_js else " ", height=0)
+    
+    # 👇 新增這段：當發生戰鬥動畫時，強制手機畫面平滑滾動到戰鬥區塊 👇
+    scroll_js = ""
+    if anim:
+        scroll_js = """
+        <script>
+            setTimeout(() => {
+                const arena = window.parent.document.querySelector('.arena-bg');
+                if (arena) {
+                    arena.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    window.parent.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, 100);
+        </script>
+        """
+        
+    combined_js = (audio_js if audio_js else "") + scroll_js
+    st.components.v1.html(combined_js if combined_js else " ", height=0)
 
    # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
     if anim:
