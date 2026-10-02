@@ -944,6 +944,7 @@ elif st.session_state.page == 'game':
                     <div style="background: #feca57; width: 100px; height: 30px; border: 4px solid #2f3542; border-radius: 20px 20px 0 0; position: absolute; top: -34px; left: 50%; transform: translateX(-50%);">
                         <div style="background: #ff6b6b; width: 14px; height: 14px; border-radius: 50%; margin: 4px auto; border: 2px solid #2f3542;"></div>
                     </div>
+                    
                     <div class="gacha-glass">
                         <!-- 第一層 (底層)：平穩排列 -->
                         <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 2px; left: 5px; transform: rotate(-15deg);"></div>
@@ -971,12 +972,22 @@ elif st.session_state.page == 'game':
                         <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 105px; left: 110px; transform: rotate(-15deg);"></div>
                         <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 108px; left: 155px; transform: rotate(10deg);"></div>
                         
-                        <!-- 光澤遮罩 (請保留這行讓玻璃有反光感) -->
+                        <!-- 光澤遮罩 -->
                         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 50%); pointer-events: none;"></div>
                     </div>
+                    
+                    <!-- 👇 被刪掉的旋轉鈕補回來了 👇 -->
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 5px;">
+                        <div style="font-weight: bold; color: white; text-shadow: 1px 1px 0px #000; font-size: 1.1rem; text-align: left; line-height: 1.2;">點擊旋轉<br>({gacha_cfg['cost']}G) 👉</div>
+                        <div id="gacha-knob" style="width: 70px; height: 70px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.5s; box-shadow: 0 4px 0 #10ac84, inset 0 2px 5px rgba(255,255,255,0.5);">
+                            <div style="width: 50px; height: 12px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg); border-radius: 5px;"></div>
+                        </div>
                     </div>
+                    <!-- 👆 旋轉鈕結束 👆 -->
+                    
                 </div>
             </div>
+            """
             <script>
                 document.getElementById('gacha-knob').onclick = function() {{
                     this.style.transform = 'rotate(360deg)';
