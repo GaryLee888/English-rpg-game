@@ -1252,7 +1252,7 @@ elif st.session_state.page == 'game':
             js_force = f"""
             <div style="text-align:center; margin-bottom: 20px;">
                 <button id="tts-btn" onclick="window.playForce()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold; animation: pulse 2s infinite;">
-                    🔊 準備播放... (若無聲請手動點擊)
+                    &#128266; 準備播放... (若無聲請手動點擊)
                 </button>
             </div>
             <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.02); }} 100% {{ transform: scale(1); }} }}</style>
@@ -1266,19 +1266,19 @@ elif st.session_state.page == 'game':
                 function speakWord() {{
                     let btn = document.getElementById('tts-btn'); if (!btn) return;
                     if (playCount >= 3) {{
-                        btn.innerText = "✅ 已完成 3 次！請點下方按鈕繼續"; btn.style.backgroundColor = "#27ae60"; btn.style.animation = "none";
+                        btn.innerHTML = "&#9989; 已完成 3 次！請點下方按鈕繼續"; btn.style.backgroundColor = "#27ae60"; btn.style.animation = "none";
                         if(window.parent.continueQuestBtn) window.parent.continueQuestBtn.style.display = 'inline-flex'; return;
                     }}
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
                     let msg = new SpeechSynthesisUtterance("{tts_word}"); msg.lang = 'en-US'; msg.rate = 0.85; msg.volume = 0.8;
                     let started = false; let ended = false;
-                    msg.onstart = function() {{ started = true; isSpeaking = true; btn.innerText = "🔊 播放中，請跟著唸... (" + (playCount + 1) + "/3)"; btn.style.animation = "none"; }};
+                    msg.onstart = function() {{ started = true; isSpeaking = true; btn.innerHTML = "&#128266; 播放中，請跟著唸... (" + (playCount + 1) + "/3)"; btn.style.animation = "none"; }};
                     msg.onend = function() {{
                         if (ended) return; ended = true; isSpeaking = false; playCount++;
-                        if (playCount < 3) {{ btn.innerText = "⏳ 停頓 1.5 秒... (" + playCount + "/3)"; timeoutId = setTimeout(speakWord, 1500); 
+                        if (playCount < 3) {{ btn.innerHTML = "&#8987; 停頓 1.5 秒... (" + playCount + "/3)"; timeoutId = setTimeout(speakWord, 1500); 
                         }} else speakWord(); 
                     }};
-                    setTimeout(() => {{ if (!started && playCount === 0) {{ isSpeaking = false; btn.innerText = "👉 手機限制：請點我開始播放"; btn.style.animation = "pulse 1.5s infinite"; }} else if (started && !ended) msg.onend(); }}, 3500);
+                    setTimeout(() => {{ if (!started && playCount === 0) {{ isSpeaking = false; btn.innerHTML = "&#128073; 手機限制：請點我開始播放"; btn.style.animation = "pulse 1.5s infinite"; }} else if (started && !ended) msg.onend(); }}, 3500);
                     window.speechSynthesis.speak(msg);
                 }}
                 setTimeout(window.playForce, 500);
