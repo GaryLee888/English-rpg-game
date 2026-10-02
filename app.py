@@ -1070,30 +1070,32 @@ elif st.session_state.page == 'game':
     snd_boss_win = "let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination); let now = ctx.currentTime; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(440, now + 0.15); osc.frequency.setValueAtTime(440, now + 0.3); osc.frequency.setValueAtTime(587, now + 0.45); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 1.0); osc.start(now); osc.stop(now + 1.0);"
 
     if anim == 'attack':
-        h_s += " animation: heroDash 0.7s ease-in-out;"
-        m_s += " animation: shakeHurt 0.7s ease-in-out 0.2s;"
+        # 動畫加上 0.6s 延遲，受擊加上 0.8s 延遲 (0.6 + 0.2)
+        h_s += " animation: heroDash 0.7s ease-in-out 0.6s;"
+        m_s += " animation: shakeHurt 0.7s ease-in-out 0.8s;"
         fx_html = f'<div class="m-fx">{char_d["fx"]}</div>'
-        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{char_d['snd_type']}'; osc.frequency.setValueAtTime({char_d['snd_freq']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d['snd_drop']}, ctx.currentTime + {char_d['snd_len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d['snd_len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d['snd_len']}); }}</script>"
+        # 音效透過 setTimeout 延遲 600 毫秒發動
+        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{char_d['snd_type']}'; osc.frequency.setValueAtTime({char_d['snd_freq']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d['snd_drop']}, ctx.currentTime + {char_d['snd_len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d['snd_len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d['snd_len']}); }} }}, 600);</script>"
     elif anim == 'hurt':
-        m_s += " animation: monsterDash 0.7s ease-in-out;"
-        h_s += " animation: heroHurt 0.7s ease-in-out 0.2s;"
+        m_s += " animation: monsterDash 0.7s ease-in-out 0.6s;"
+        h_s += " animation: heroHurt 0.7s ease-in-out 0.8s;"
         h_snd = random.choice(HURT_SOUNDS)
-        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{h_snd['type']}'; osc.frequency.setValueAtTime({h_snd['f1']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd['f2']}, ctx.currentTime + {h_snd['len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd['len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd['len']}); }}</script>"
+        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{h_snd['type']}'; osc.frequency.setValueAtTime({h_snd['f1']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd['f2']}, ctx.currentTime + {h_snd['len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd['len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd['len']}); }} }}, 600);</script>"
     elif anim == 'shield_block':
-        m_s += " animation: monsterDash 0.7s ease-in-out;"
-        h_s += " animation: heroDash 0.5s ease-in-out 0.2s;"
-        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.3); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); }}</script>"
+        m_s += " animation: monsterDash 0.7s ease-in-out 0.6s;"
+        h_s += " animation: heroDash 0.5s ease-in-out 0.8s;"
+        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.3); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); }} }}, 600);</script>"
     elif anim == 'dead':
-        h_s += " animation: heroDead 1s forwards;"
-        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5); }}</script>"
+        h_s += " animation: heroDead 1s forwards 0.6s;"
+        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5); }} }}, 600);</script>"
     elif anim == 'heal':
-        h_s += " animation: healFx 1s ease-in-out;"
-        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5); }}</script>"
+        h_s += " animation: healFx 1s ease-in-out 0.6s;"
+        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5); }} }}, 600);</script>"
     elif anim == 'boss_defeat':
-        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_boss_win} }}</script>"
+        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_boss_win} }} }}, 600);</script>"
 
     if st.session_state.get('level_up_flag'):
-        audio_js += f"<script>let ctx_lvl = window.parent.gameAudioCtx; if(ctx_lvl) {{ if(ctx_lvl.state === 'suspended') ctx_lvl.resume(); {snd_lvlup} }}</script>"
+        audio_js += f"<script>setTimeout(() => {{ let ctx_lvl = window.parent.gameAudioCtx; if(ctx_lvl) {{ if(ctx_lvl.state === 'suspended') ctx_lvl.resume(); {snd_lvlup} }} }}, 600);</script>"
         st.session_state.level_up_flag = False
 
     is_boss = u_data.get('is_boss_fight', False)
