@@ -1249,7 +1249,6 @@ elif st.session_state.page == 'game':
             
             st.markdown(v_html, unsafe_allow_html=True)
             
-            # 👇 注意這裡只有 3個雙引號，且跟上面的 st.markdown 對齊 👇
             js_force = f"""
             <div style="text-align:center; margin-bottom: 20px;">
                 <button id="tts-btn" onclick="window.playForce()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold; animation: pulse 2s infinite;">
