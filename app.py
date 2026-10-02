@@ -1171,6 +1171,18 @@ elif st.session_state.page == 'game':
             else: st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
         
         st.info("⚔ 結算中，請稍候...")
+
+        # 👇 加入這段 JS，偵測到播放動畫時自動把畫面平滑捲動到 `.arena-bg` (打怪區)
+        st.components.v1.html("""
+            <script>
+                setTimeout(() => {
+                    const arena = window.parent.document.querySelector('.arena-bg');
+                    if(arena) arena.scrollIntoView({behavior: 'smooth', block: 'center'});
+                }, 100);
+            </script>
+        """, height=0)
+        # 👆 結束新增
+
         time.sleep(1.8)
         
         st.session_state.action_anim = None
