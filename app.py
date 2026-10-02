@@ -833,10 +833,7 @@ elif st.session_state.page == 'game':
                         u_data['exp'] = (u_data['level'] - 1) * 100
                     else: 
                         st.session_state.level_dropped = False
-                        # Lv.1 死亡不扣經驗值
-                    
-                    # 👇 補回這行：角色不支倒地後，必須要恢復該等級的最大血量重新挑戰！
-                    u_data['hero_hp'] = get_max_hp(u_data['level'])
+                        # Lv.1 死亡不扣經驗值 (或你可以在這寫 u_data['exp'] = max(0, u_data['exp'] - 10) 扣微量當懲罰)
                     
                     if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
                     st.session_state.action_anim = 'dead'
@@ -944,50 +941,25 @@ elif st.session_state.page == 'game':
                     <div style="background: #feca57; width: 100px; height: 30px; border: 4px solid #2f3542; border-radius: 20px 20px 0 0; position: absolute; top: -34px; left: 50%; transform: translateX(-50%);">
                         <div style="background: #ff6b6b; width: 14px; height: 14px; border-radius: 50%; margin: 4px auto; border: 2px solid #2f3542;"></div>
                     </div>
-                    
                     <div class="gacha-glass">
-                        <!-- 第一層 (底層)：平穩排列 -->
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 2px; left: 5px; transform: rotate(-15deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 0px; left: 45px; transform: rotate(20deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 4px; left: 85px; transform: rotate(-5deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 1px; left: 125px; transform: rotate(10deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 5px; left: 165px; transform: rotate(-25deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 2px; left: 205px; transform: rotate(15deg);"></div>
-
-                        <!-- 第二層：自然交錯 -->
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 38px; left: 20px; transform: rotate(30deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 42px; left: 60px; transform: rotate(-20deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["一獎"]}'); bottom: 35px; left: 105px; transform: rotate(5deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 40px; left: 145px; transform: rotate(-10deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["二獎"]}'); bottom: 38px; left: 185px; transform: rotate(25deg);"></div>
-
-                        <!-- 第三層：稍微收攏 -->
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 75px; left: 40px; transform: rotate(-35deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 80px; left: 85px; transform: rotate(15deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["特獎"]}'); bottom: 72px; left: 130px; transform: rotate(-5deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 78px; left: 170px; transform: rotate(40deg);"></div>
-
-                        <!-- 第四層 (頂層)：零星點綴 -->
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["二獎"]}'); bottom: 110px; left: 65px; transform: rotate(20deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 105px; left: 110px; transform: rotate(-15deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 108px; left: 155px; transform: rotate(10deg);"></div>
-                        
-                        <!-- 光澤遮罩 -->
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["一獎"]}'); top: 10px; left:10px; transform: rotate(20deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); top: 40px; left:50px; transform: rotate(-15deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); top: 15px; left:110px; transform: rotate(45deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); top: 70px; left:10px; transform: rotate(-30deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["二獎"]}'); top: 90px; left:80px; transform: rotate(10deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["特獎"]}'); top: 60px; left:140px; transform: rotate(60deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 5px; left:30px; transform: rotate(80deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 10px; left:110px; transform: rotate(-40deg);"></div>
                         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 50%); pointer-events: none;"></div>
                     </div>
-                    
-                    <!-- 👇 被刪掉的旋轉鈕補回來了 👇 -->
                     <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 5px;">
                         <div style="font-weight: bold; color: white; text-shadow: 1px 1px 0px #000; font-size: 1.1rem; text-align: left; line-height: 1.2;">點擊旋轉<br>({gacha_cfg['cost']}G) 👉</div>
                         <div id="gacha-knob" style="width: 70px; height: 70px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.5s; box-shadow: 0 4px 0 #10ac84, inset 0 2px 5px rgba(255,255,255,0.5);">
                             <div style="width: 50px; height: 12px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg); border-radius: 5px;"></div>
                         </div>
                     </div>
-                    <!-- 👆 旋轉鈕結束 👆 -->
-                    
                 </div>
             </div>
-            """
             <script>
                 document.getElementById('gacha-knob').onclick = function() {{
                     this.style.transform = 'rotate(360deg)';
@@ -1098,35 +1070,30 @@ elif st.session_state.page == 'game':
     snd_boss_win = "let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination); let now = ctx.currentTime; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(440, now + 0.15); osc.frequency.setValueAtTime(440, now + 0.3); osc.frequency.setValueAtTime(587, now + 0.45); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 1.0); osc.start(now); osc.stop(now + 1.0);"
 
     if anim == 'attack':
-        # 動畫加上 0.6s 延遲，受擊加上 0.8s 延遲 (0.6 + 0.2)
-        h_s += " animation: heroDash 0.7s ease-in-out 0.6s;"
-        m_s += " animation: shakeHurt 0.7s ease-in-out 0.8s;"
-        
-        # 將特效初始透明度設為 0，並完美延遲 0.8 秒後才華麗爆發
-        fx_html = f'<style>@keyframes fxHit {{ 0% {{opacity:0; transform:scale(0);}} 20% {{opacity:1; transform:scale(1.5);}} 80% {{opacity:1; transform:scale(1);}} 100% {{opacity:0; transform:scale(2);}} }}</style><div class="m-fx" style="opacity:0; animation: fxHit 0.5s forwards 0.8s;">{char_d["fx"]}</div>'
-        
-        # 音效透過 setTimeout 延遲 600 毫秒發動 (完整的程式碼)
-        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{char_d['snd_type']}'; osc.frequency.setValueAtTime({char_d['snd_freq']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d['snd_drop']}, ctx.currentTime + {char_d['snd_len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d['snd_len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d['snd_len']}); }} }}, 600);</script>"
+        h_s += " animation: heroDash 0.7s ease-in-out;"
+        m_s += " animation: shakeHurt 0.7s ease-in-out 0.2s;"
+        fx_html = f'<div class="m-fx">{char_d["fx"]}</div>'
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{char_d['snd_type']}'; osc.frequency.setValueAtTime({char_d['snd_freq']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({char_d['snd_drop']}, ctx.currentTime + {char_d['snd_len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {char_d['snd_len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {char_d['snd_len']}); }}</script>"
     elif anim == 'hurt':
-        m_s += " animation: monsterDash 0.7s ease-in-out 0.6s;"
-        h_s += " animation: heroHurt 0.7s ease-in-out 0.8s;"
+        m_s += " animation: monsterDash 0.7s ease-in-out;"
+        h_s += " animation: heroHurt 0.7s ease-in-out 0.2s;"
         h_snd = random.choice(HURT_SOUNDS)
-        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{h_snd['type']}'; osc.frequency.setValueAtTime({h_snd['f1']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd['f2']}, ctx.currentTime + {h_snd['len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd['len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd['len']}); }} }}, 600);</script>"
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = '{h_snd['type']}'; osc.frequency.setValueAtTime({h_snd['f1']}, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime({h_snd['f2']}, ctx.currentTime + {h_snd['len']}); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + {h_snd['len']}); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + {h_snd['len']}); }}</script>"
     elif anim == 'shield_block':
-        m_s += " animation: monsterDash 0.7s ease-in-out 0.6s;"
-        h_s += " animation: heroDash 0.5s ease-in-out 0.8s;"
-        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.3); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); }} }}, 600);</script>"
+        m_s += " animation: monsterDash 0.7s ease-in-out;"
+        h_s += " animation: heroDash 0.5s ease-in-out 0.2s;"
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.3); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); }}</script>"
     elif anim == 'dead':
-        h_s += " animation: heroDead 1s forwards 0.6s;"
-        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5); }} }}, 600);</script>"
+        h_s += " animation: heroDead 1s forwards;"
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, ctx.currentTime); osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 1.5); gain.gain.setValueAtTime(0.8 * 0.25, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 1.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 1.5); }}</script>"
     elif anim == 'heal':
-        h_s += " animation: healFx 1s ease-in-out 0.6s;"
-        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5); }} }}, 600);</script>"
+        h_s += " animation: healFx 1s ease-in-out;"
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); let osc = ctx.createOscillator(); let gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5); }}</script>"
     elif anim == 'boss_defeat':
-        audio_js = f"<script>setTimeout(() => {{ let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_boss_win} }} }}, 600);</script>"
+        audio_js = f"<script>let ctx = window.parent.gameAudioCtx; if(ctx) {{ if(ctx.state === 'suspended') ctx.resume(); {snd_boss_win} }}</script>"
 
     if st.session_state.get('level_up_flag'):
-        audio_js += f"<script>setTimeout(() => {{ let ctx_lvl = window.parent.gameAudioCtx; if(ctx_lvl) {{ if(ctx_lvl.state === 'suspended') ctx_lvl.resume(); {snd_lvlup} }} }}, 600);</script>"
+        audio_js += f"<script>let ctx_lvl = window.parent.gameAudioCtx; if(ctx_lvl) {{ if(ctx_lvl.state === 'suspended') ctx_lvl.resume(); {snd_lvlup} }}</script>"
         st.session_state.level_up_flag = False
 
     is_boss = u_data.get('is_boss_fight', False)
@@ -1161,25 +1128,7 @@ elif st.session_state.page == 'game':
     )
     
     st.markdown(arena_html, unsafe_allow_html=True)
-    
-    # 👇 新增這段：當發生戰鬥動畫時，強制手機畫面平滑滾動到戰鬥區塊 👇
-    scroll_js = ""
-    if anim:
-        scroll_js = """
-        <script>
-            setTimeout(() => {
-                const arena = window.parent.document.querySelector('.arena-bg');
-                if (arena) {
-                    arena.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else {
-                    window.parent.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }, 100);
-        </script>
-        """
-        
-    combined_js = (audio_js if audio_js else "") + scroll_js
-    st.components.v1.html(combined_js if combined_js else " ", height=0)
+    st.components.v1.html(audio_js if audio_js else " ", height=0)
 
    # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
     if anim:
@@ -1246,13 +1195,12 @@ elif st.session_state.page == 'game':
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
-            
             st.markdown(v_html, unsafe_allow_html=True)
             
             js_force = f"""
             <div style="text-align:center; margin-bottom: 20px;">
                 <button id="tts-btn" onclick="window.playForce()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold; animation: pulse 2s infinite;">
-                    &#128266; 準備播放... (若無聲請手動點擊)
+                    🔊 準備播放... (若無聲請手動點擊)
                 </button>
             </div>
             <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.02); }} 100% {{ transform: scale(1); }} }}</style>
@@ -1266,19 +1214,19 @@ elif st.session_state.page == 'game':
                 function speakWord() {{
                     let btn = document.getElementById('tts-btn'); if (!btn) return;
                     if (playCount >= 3) {{
-                        btn.innerHTML = "&#9989; 已完成 3 次！請點下方按鈕繼續"; btn.style.backgroundColor = "#27ae60"; btn.style.animation = "none";
+                        btn.innerText = "✅ 已完成 3 次！請點下方按鈕繼續"; btn.style.backgroundColor = "#27ae60"; btn.style.animation = "none";
                         if(window.parent.continueQuestBtn) window.parent.continueQuestBtn.style.display = 'inline-flex'; return;
                     }}
                     if (window.speechSynthesis) window.speechSynthesis.cancel();
                     let msg = new SpeechSynthesisUtterance("{tts_word}"); msg.lang = 'en-US'; msg.rate = 0.85; msg.volume = 0.8;
                     let started = false; let ended = false;
-                    msg.onstart = function() {{ started = true; isSpeaking = true; btn.innerHTML = "&#128266; 播放中，請跟著唸... (" + (playCount + 1) + "/3)"; btn.style.animation = "none"; }};
+                    msg.onstart = function() {{ started = true; isSpeaking = true; btn.innerText = "🔊 播放中，請跟著唸... (" + (playCount + 1) + "/3)"; btn.style.animation = "none"; }};
                     msg.onend = function() {{
                         if (ended) return; ended = true; isSpeaking = false; playCount++;
-                        if (playCount < 3) {{ btn.innerHTML = "&#8987; 停頓 1.5 秒... (" + playCount + "/3)"; timeoutId = setTimeout(speakWord, 1500); 
+                        if (playCount < 3) {{ btn.innerText = "⏳ 停頓 1.5 秒... (" + playCount + "/3)"; timeoutId = setTimeout(speakWord, 1500); 
                         }} else speakWord(); 
                     }};
-                    setTimeout(() => {{ if (!started && playCount === 0) {{ isSpeaking = false; btn.innerHTML = "&#128073; 手機限制：請點我開始播放"; btn.style.animation = "pulse 1.5s infinite"; }} else if (started && !ended) msg.onend(); }}, 3500);
+                    setTimeout(() => {{ if (!started && playCount === 0) {{ isSpeaking = false; btn.innerText = "👉 手機限制：請點我開始播放"; btn.style.animation = "pulse 1.5s infinite"; }} else if (started && !ended) msg.onend(); }}, 3500);
                     window.speechSynthesis.speak(msg);
                 }}
                 setTimeout(window.playForce, 500);
