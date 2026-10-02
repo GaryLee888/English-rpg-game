@@ -945,41 +945,55 @@ elif st.session_state.page == 'game':
                         <div style="background: #ff6b6b; width: 14px; height: 14px; border-radius: 50%; margin: 4px auto; border: 2px solid #2f3542;"></div>
                     </div>
                     <div class="gacha-glass">
-                        <!-- 底部第一排 -->
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 5px; left: 5px; transform: rotate(15deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 5px; left: 45px; transform: rotate(-25deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 5px; left: 85px; transform: rotate(45deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 5px; left: 125px; transform: rotate(-10deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 5px; left: 165px; transform: rotate(60deg);"></div>
+                        <!-- 💥 凌亂底層 (最密集) -->
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: -5px; left: -5px; transform: rotate(17deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 2px; left: 20px; transform: rotate(-45deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: -2px; left: 45px; transform: rotate(88deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 5px; left: 70px; transform: rotate(-12deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 0px; left: 95px; transform: rotate(104deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 8px; left: 120px; transform: rotate(-65deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 1px; left: 145px; transform: rotate(33deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 6px; left: 175px; transform: rotate(-99deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: -3px; left: 200px; transform: rotate(41deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 4px; left: 225px; transform: rotate(-22deg);"></div>
 
-                        <!-- 底部第二排 -->
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["一獎"]}'); bottom: 40px; left: 20px; transform: rotate(80deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 45px; left: 65px; transform: rotate(-15deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["二獎"]}'); bottom: 40px; left: 110px; transform: rotate(10deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 45px; left: 150px; transform: rotate(-45deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 35px; left: 185px; transform: rotate(30deg);"></div>
+                        <!-- 💥 凌亂中下層 -->
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 22px; left: 5px; transform: rotate(-77deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 28px; left: 32px; transform: rotate(115deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["二獎"]}'); bottom: 18px; left: 60px; transform: rotate(-35deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 35px; left: 82px; transform: rotate(62deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["一獎"]}'); bottom: 20px; left: 110px; transform: rotate(-105deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 38px; left: 135px; transform: rotate(27deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 25px; left: 165px; transform: rotate(-58deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 32px; left: 195px; transform: rotate(140deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 20px; left: 215px; transform: rotate(-15deg);"></div>
 
-                        <!-- 底部第三排 -->
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 75px; left: 10px; transform: rotate(-30deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 85px; left: 50px; transform: rotate(20deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["特獎"]}'); bottom: 80px; left: 95px; transform: rotate(50deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 85px; left: 135px; transform: rotate(-20deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 75px; left: 175px; transform: rotate(70deg);"></div>
+                        <!-- 💥 凌亂中上層 -->
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 50px; left: 15px; transform: rotate(48deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["特獎"]}'); bottom: 55px; left: 45px; transform: rotate(-88deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 48px; left: 75px; transform: rotate(15deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 65px; left: 100px; transform: rotate(-130deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 52px; left: 128px; transform: rotate(73deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 60px; left: 155px; transform: rotate(-29deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["一獎"]}'); bottom: 45px; left: 185px; transform: rotate(105deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 55px; left: 210px; transform: rotate(-50deg);"></div>
 
-                        <!-- 頂部散落 -->
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["二獎"]}'); top: 10px; left: 30px; transform: rotate(110deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); top: 15px; left: 80px; transform: rotate(-60deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["一獎"]}'); top: 10px; left: 125px; transform: rotate(35deg);"></div>
-                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); top: 20px; left: 170px; transform: rotate(-80deg);"></div>
+                        <!-- 💥 凌亂頂層散落 -->
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 80px; left: 28px; transform: rotate(20deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 95px; left: 60px; transform: rotate(-110deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 85px; left: 88px; transform: rotate(55deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["二獎"]}'); bottom: 98px; left: 120px; transform: rotate(-15deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 82px; left: 150px; transform: rotate(125deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["四獎"]}'); bottom: 92px; left: 180px; transform: rotate(-65deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["五獎"]}'); bottom: 78px; left: 205px; transform: rotate(8deg);"></div>
                         
+                        <!-- 💥 最頂點零星點綴 -->
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["一獎"]}'); bottom: 120px; left: 75px; transform: rotate(-40deg);"></div>
+                        <div class="gacha-ball" style="background-image: url('{BALL_IMAGES["三獎"]}'); bottom: 115px; left: 135px; transform: rotate(70deg);"></div>
+
                         <!-- 光澤遮罩 -->
                         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 50%); pointer-events: none;"></div>
                     </div>
-                    <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 5px;">
-                        <div style="font-weight: bold; color: white; text-shadow: 1px 1px 0px #000; font-size: 1.1rem; text-align: left; line-height: 1.2;">點擊旋轉<br>({gacha_cfg['cost']}G) 👉</div>
-                        <div id="gacha-knob" style="width: 70px; height: 70px; background: #1dd1a1; border: 4px solid #2f3542; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.5s; box-shadow: 0 4px 0 #10ac84, inset 0 2px 5px rgba(255,255,255,0.5);">
-                            <div style="width: 50px; height: 12px; background: #feca57; border: 2px solid #2f3542; transform: rotate(45deg); border-radius: 5px;"></div>
-                        </div>
                     </div>
                 </div>
             </div>
