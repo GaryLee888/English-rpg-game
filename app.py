@@ -833,7 +833,10 @@ elif st.session_state.page == 'game':
                         u_data['exp'] = (u_data['level'] - 1) * 100
                     else: 
                         st.session_state.level_dropped = False
-                        # Lv.1 死亡不扣經驗值 (或你可以在這寫 u_data['exp'] = max(0, u_data['exp'] - 10) 扣微量當懲罰)
+                        # Lv.1 死亡不扣經驗值
+                    
+                    # 👇 補回這行：角色不支倒地後，必須要恢復該等級的最大血量重新挑戰！
+                    u_data['hero_hp'] = get_max_hp(u_data['level'])
                     
                     if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
                     st.session_state.action_anim = 'dead'
