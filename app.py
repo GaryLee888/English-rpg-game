@@ -829,7 +829,7 @@ elif st.session_state.page == 'game':
                     
                     if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
                     st.session_state.action_anim = 'dead'
-                else: st.session_state.action_anim = 'hurt'
+            else: st.session_state.action_anim = 'hurt'
         save_user_data(u_key, u_data)
 
     def text_input_submit():
