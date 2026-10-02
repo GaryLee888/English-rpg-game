@@ -1,59 +1,73 @@
 import os
-import sys
-import subprocess
 import random
 import time
 import re
 from datetime import datetime, timedelta
 import pandas as pd
 import eng_to_ipa as ipa
-
-# --- 自動環境檢查與安裝模組 ---
-def setup_environment():
-    required_packages = {
-        "streamlit": "streamlit",
-        "pandas": "pandas",
-        "eng-to-ipa": "eng_to_ipa",
-        "firebase-admin": "firebase_admin"
-    }
-    missing = []
-    for pip_name, import_name in required_packages.items():
-        try:
-            __import__(import_name)
-        except ImportError:
-            missing.append(pip_name)
-            
-    if missing:
-        print(f"🔧 偵測到缺少必要套件 {missing}，正在背景自動安裝...")
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", *missing])
-            print("✅ 安裝完成！正在重新啟動遊戲...")
-            os.execv(sys.executable, [sys.executable, "-m", "streamlit", "run", sys.argv[0]])
-        except Exception as e:
-            print(f"❌ 自動安裝失敗: {e}")
-            sys.exit(1)
-
-setup_environment()
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
+import requests
 
 # ==========================================
 # 🚀 雲端資料庫 Firebase 連線初始化
 # ==========================================
-if not firebase_admin._apps:
+@st.cache_resource
+def init_firebase():
+    if not firebase_admin._apps:
+        try:
+            cert_dict = dict(st.secrets["firebase"])
+            db_url = cert_dict.pop("databaseURL")
+            cert_dict["private_key"] = cert_dict["private_key"].replace('\\n', '\n')
+            
+            cred = credentials.Certificate(cert_dict)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': db_url
+            })
+        except Exception as e:
+            st.error(f"🚨 Firebase 初始化失敗！請檢查 Streamlit Secrets 設定是否正確。錯誤訊息：{e}")
+            st.stop()
+    return True
+
+init_firebase()
+
+# ==========================================
+# 🧬 寶可夢全圖鑑動態生成 (1~649) 與階段設定
+# ==========================================
+# 階段對應最大 ID (分做6個階段)
+STAGE_MAX_IDS = {1: 151, 2: 251, 3: 386, 4: 493, 5: 570, 6: 649} 
+# 傳說/幻之寶可夢 ID (將作為 Boss)
+LEGENDARY_IDS = {144,145,146,150,151, 243,244,245,249,250,251, 377,378,379,380,381,382,383,384,385,386, 
+                 480,481,482,483,484,485,486,487,488,489,490,491,492,493,494, 638,639,640,641,642,643,644,645,646,647,648,649}
+
+@st.cache_data(ttl=86400)
+def get_pokemon_names():
     try:
-        cert_dict = dict(st.secrets["firebase"])
-        db_url = cert_dict.pop("databaseURL")
-        cert_dict["private_key"] = cert_dict["private_key"].replace('\\n', '\n')
-        
-        cred = credentials.Certificate(cert_dict)
-        firebase_admin.initialize_app(cred, {
-            'databaseURL': db_url
-        })
-    except Exception as e:
-        st.error(f"🚨 Firebase 初始化失敗！請檢查 Streamlit Secrets 設定是否正確。錯誤訊息：{e}")
-        st.stop()
+        # 使用開源資料獲取繁體中文名稱快取
+        return requests.get("https://raw.githubusercontent.com/sindresorhus/pokemon/main/data/zh-hant.json").json()
+    except:
+        return []
+
+POKE_NAMES = get_pokemon_names()
+
+def get_poke_name(p_id):
+    if p_id - 1 < len(POKE_NAMES): return POKE_NAMES[p_id - 1]
+    return f"未知名稱 #{p_id}"
+
+def get_poke_url(p_id):
+    return f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{p_id}.gif"
+
+def spawn_enemy(unlocked_stage, is_boss=False):
+    max_id = STAGE_MAX_IDS.get(unlocked_stage, 151)
+    if is_boss:
+        valid_ids = [i for i in LEGENDARY_IDS if i <= max_id]
+        if not valid_ids: valid_ids = [150] # 備用防錯
+    else:
+        valid_ids = [i for i in range(1, max_id + 1) if i not in LEGENDARY_IDS]
+    
+    p_id = random.choice(valid_ids)
+    return {"id": p_id, "name": get_poke_name(p_id), "url": get_poke_url(p_id)}
 
 # --- 寶可夢角色與屬性設定 ---
 EMOJI_LIST = ["🎮", "🧸", "🎲", "🧩", "🎯", "🪀", "🪁", "🚂", "🍔", "🍟", "🍕", "🍦", "🍩", "🍫", "🍬", "🍿", "🥤", "🧋", "👑", "🏆", "🥇", "⭐", "💰", "💎", "🐬", "🎬", "🚲", "⚽", "🏀", "🏊", "⛺", "🚀", "📖", "🖍️", "🎨", "🎒"]
@@ -70,66 +84,6 @@ HURT_SOUNDS = [
     {"type": "square", "f1": 200, "f2": 80, "len": 0.2},
     {"type": "triangle", "f1": 100, "f2": 20, "len": 0.4}
 ]
-
-BOSS_DATA = [
-    (144,"急凍鳥"), (145,"閃電鳥"), (146,"火焰鳥"), (149,"快龍"), (150,"超夢"), (151,"夢幻"),
-    (243,"雷公"), (244,"炎帝"), (245,"水君"), (248,"班基拉斯"), (249,"洛奇亞"), (250,"鳳王"), (251,"時拉比"),
-    (373,"暴飛龍"), (376,"巨金怪"), (377,"雷吉洛克"), (378,"雷吉艾斯"), (379,"雷吉斯奇魯"),
-    (380,"拉帝亞斯"), (381,"拉帝歐斯"), (382,"蓋歐卡"), (383,"固拉多"), (384,"烈空坐"),
-    (385,"基拉祈"), (386,"代歐奇希斯"), (445,"烈咬陸鯊"), (480,"由克希"), (481,"艾姆利多"), (482,"亞克諾姆"),
-    (483,"帝牙盧卡"), (484,"帕路奇亞"), (485,"席多藍恩"), (486,"雷吉奇卡斯"),
-    (487,"騎拉帝納"), (488,"克雷色利亞"), (491,"達克萊伊"), (493,"阿爾宙斯"),
-    (494,"比克提尼"), (635,"三首惡龍"), (638,"勾帕路翁"), (639,"代拉基翁"), (640,"畢力吉翁"),
-    (641,"龍捲雲"), (642,"雷電雲"), (643,"萊希拉姆"), (644,"捷克羅姆"), (645,"土地雲"), (646,"酋雷姆")
-]
-BOSSES = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in BOSS_DATA]
-
-MONSTER_DATA = [
-    (10,"綠毛蟲"),(11,"鐵甲蛹"),(12,"巴大蝶"), (13,"獨角蟲"),(14,"鐵殼蛹"),(15,"大針蜂"),
-    (16,"波波"),(17,"比比鳥"),(18,"大比鳥"), (19,"小拉達"),(20,"拉達"), (21,"烈雀"),(22,"大嘴雀"),
-    (23,"阿柏蛇"),(24,"阿柏怪"), (27,"穿山鼠"),(28,"穿山王"),
-    (29,"尼多蘭"),(30,"尼多娜"),(31,"尼多后"), (32,"尼多朗"),(33,"尼多力諾"),(34,"尼多王"),
-    (35,"皮皮"),(36,"皮可西"), (37,"六尾"),(38,"九尾"), (39,"胖丁"),(40,"胖可丁"),
-    (41,"超音蝠"),(42,"大嘴蝠"),(169,"叉字蝠"),
-    (43,"走路草"),(44,"臭臭花"),(45,"霸王花"),(182,"美麗花"),
-    (46,"派拉斯"),(47,"派拉斯特"), (48,"毛球"),(49,"摩魯蛾"),
-    (50,"地鼠"),(51,"三地鼠"), (52,"喵喵"),(53,"貓老大"),
-    (54,"可達鴨"),(55,"哥達鴨"), (56,"猴怪"),(57,"火爆猴"), (58,"卡蒂狗"),(59,"風速狗"),
-    (60,"蚊香蝌蚪"),(61,"蚊香君"),(62,"蚊香泳士"),(186,"蚊香蛙皇"),
-    (63,"凱西"),(64,"勇基拉"),(65,"胡地"), (66,"腕力"),(67,"豪力"),(68,"怪力"),
-    (69,"喇叭芽"),(70,"口呆花"),(71,"大食花"), (72,"瑪瑙水母"),(73,"毒刺水母"),
-    (74,"小拳石"),(75,"隆隆石"),(76,"隆隆岩"), (77,"小火馬"),(78,"烈焰馬"),
-    (79,"呆呆獸"),(80,"呆殼獸"),(199,"呆呆王"), (81,"小磁怪"),(82,"三合一磁怪"),
-    (83,"大蔥鴨"), (84,"嘟嘟"),(85,"嘟嘟利"), (86,"小海獅"),(87,"白海獅"),
-    (88,"臭泥"),(89,"臭臭泥"), (90,"大舌貝"),(91,"刺甲貝"),
-    (92,"鬼斯"),(93,"鬼斯通"),(94,"耿鬼"), (95,"大岩蛇"),(208,"大鋼蛇"),
-    (96,"催眠貘"),(97,"引夢貘人"), (98,"大鉗蟹"),(99,"巨鉗蟹"),
-    (100,"霹靂電球"),(101,"頑皮雷彈"), (102,"蛋蛋"),(103,"椰蛋樹"),
-    (104,"卡拉卡拉"),(105,"嘎啦嘎啦"), (108,"大舌頭"),
-    (109,"瓦斯彈"),(110,"雙彈瓦斯"), (111,"獨角犀牛"),(112,"鑽角犀獸"), (114,"蔓藤怪"),
-    (116,"墨海馬"),(117,"海刺龍"),(230,"刺龍王"), (118,"角金魚"),(119,"金魚王"),
-    (120,"海星星"),(121,"寶石海星"), (127,"凱羅斯"), (128,"肯泰羅"),
-    (129,"鯉魚王"),(130,"暴鯉龍"), (131,"拉普拉斯"), (132,"百變怪"),
-    (133,"伊布"),(134,"水伊布"),(135,"雷伊布"),(136,"火伊布"),(196,"太陽伊布"),(197,"月亮伊布"),
-    (137,"多邊獸"),(233,"多邊獸Ⅱ"), (143,"卡比獸"),
-    (147,"迷你龍"),(148,"哈克龍"),
-    (161,"尾立"),(162,"大尾立"), (163,"咕咕"),(164,"貓頭夜鷹"),
-    (165,"芭瓢蟲"),(166,"安瓢蟲"), (167,"圓絲蛛"),(168,"阿利多斯"),
-    (170,"燈籠魚"),(171,"電燈怪"), (175,"波克比"),(176,"波克基古"),
-    (177,"天然雀"),(178,"天然鳥"), (179,"咩利羊"),(180,"茸茸羊"),(181,"電龍"),
-    (183,"瑪力露"),(184,"瑪力露麗"), (185,"胡說樹"),
-    (187,"毽子草"),(188,"毽子花"),(189,"毽子棉"), (190,"長尾怪手"),
-    (191,"向日種子"),(192,"向日花怪"), (193,"陽々瑪"),
-    (194,"烏波"),(195,"沼王"), (198,"黑暗鴉"), (200,"夢妖"), (202,"果然翁"),
-    (204,"榛果球"),(205,"佛烈托斯"), (206,"土龍弟弟"), (209,"布魯"),(210,"布魯皇"),
-    (213,"壺壺"), (214,"赫拉克羅斯"), (216,"熊寶寶"),(217,"圈圈熊"),
-    (218,"熔岩蟲"),(219,"熔岩蝸牛"), (220,"小山豬"),(221,"長毛豬"),
-    (222,"太陽珊瑚"), (223,"鐵炮魚"),(224,"章魚桶"), (225,"信使鳥"),
-    (228,"戴魯比"),(229,"黑魯加"), (231,"小小象"),(232,"頓甲"),
-    (235,"圖圖犬"), (236,"巴爾郎"),(237,"戰舞郎"), (241,"大奶罐"),
-    (246,"幼基拉斯"),(247,"沙基拉斯")
-]
-MONSTERS = [{"name": n, "url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{i}.gif"} for i, n in MONSTER_DATA]
 
 # ==========================================
 # ☁️ 核心 API (Firebase Realtime DB) 與預設數值
@@ -150,24 +104,28 @@ DEFAULT_GACHA = {
         {"name": "五獎：安慰小紅包 (100G)", "prob": 35, "type": "gold", "val": 100}
     ]
 }
-DEFAULT_STORE = {"potion": 200, "shield": 250, "magnifier": 100}
+DEFAULT_STORE = {"potion": 200, "shield": 250, "magnifier": 100, "scroll": 500}
 
-# 🌟 HD 高清 3D 寶可夢精靈球
+# 🌟 確保這裡只有一個左括號和一個右括號配對，不要有多餘的 '}'
+# 設定 GitHub Raw 的基礎路徑
+GITHUB_BASE_URL = "https://raw.githubusercontent.com/garyleeplus-gy/EnglishGame/main/assets/items/"
+
 BALL_IMAGES = {
-    "特獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beast-ball.png", 
-    "一獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luxury-ball.png", 
-    "二獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png", 
-    "三獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png",  
-    "四獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",  
-    "五獎": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"    
+    "特獎": f"{GITHUB_BASE_URL}beast-ball.png",
+    "一獎": f"{GITHUB_BASE_URL}luxury-ball.png",
+    "二獎": f"{GITHUB_BASE_URL}master-ball.png",
+    "三獎": f"{GITHUB_BASE_URL}ultra-ball.png",
+    "四獎": f"{GITHUB_BASE_URL}great-ball.png",
+    "五獎": f"{GITHUB_BASE_URL}poke-ball.png"
 }
 
-@st.cache_data(ttl=300) 
+@st.cache_data(ttl=30) 
 def get_admin(): 
     cfg = db.reference("system/admin").get() or {}
     return {
         "admin_id": cfg.get("admin_id", "admin"), 
         "password": cfg.get("password", "1234"), 
+        "unlocked_stage": cfg.get("unlocked_stage", 1), # 全域圖鑑開放階段
         "default_hero_limit": cfg.get("default_hero_limit", 3), 
         "default_bank_limit": cfg.get("default_bank_limit", 3),
         "default_reward_limit": cfg.get("default_reward_limit", 99),
@@ -181,8 +139,7 @@ def save_admin(d):
     db.reference("system/admin").set(d)
     get_admin.clear()
 
-# 🎯 最佳化：只抓取單一家長，不再做全表掃描
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=30)
 def get_parent_info(parent_id):
     return db.reference(f"parents/{parent_id}").get() or {}
 
@@ -190,7 +147,6 @@ def save_parent_info(parent_id, d):
     db.reference(f"parents/{parent_id}").set(d)
     get_parent_info.clear()
 
-# 🎯 最佳化：利用 Firebase index 搜尋該家庭下的英雄
 def get_family_heroes(parent_id):
     heroes = db.reference("users").order_by_child("parent").equal_to(parent_id).get()
     return heroes if heroes else {}
@@ -214,7 +170,6 @@ def save_vocab_db(bank_key, df):
     db.reference(f"vocab_banks/{bank_key}").set(records)
     load_vocab_db.clear()
 
-# 🎯 解決方案 2：利用 st.cache_resource 避免每次點擊都耗用 Firebase 流量去檢查
 @st.cache_resource
 def init_default_vocabs():
     if not db.reference("vocab_banks/國小/0").get(): save_vocab_db("國小", pd.DataFrame({"en": ["apple", "cat", "dog"], "zh": ["蘋果", "貓", "狗"], "hint": ["水果", "動物", "動物"]}))
@@ -231,8 +186,8 @@ def load_user_data(u_key):
         d = {
             "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
             "history": [], "total_questions": 0, "difficulty": "簡單", "trophies": [], "monster_dex": [], 
-            "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False,
-            "last_login_date": "", "login_streak": 0, "inventory": {"potion": 0, "shield": 0, "magnifier": 0},
+            "vocab_bank": "國小", "word_stats": {}, "gold": 0, "shield_active": False, "custom_avatar": None,
+            "last_login_date": "", "login_streak": 0, "inventory": {"potion": 0, "shield": 0, "magnifier": 0, "scroll": 0},
             "reward_counts": {}, "play_date": "", "time_played_sec": 0, "extra_time_sec": 0
         }
     else:
@@ -242,8 +197,8 @@ def load_user_data(u_key):
         if "shield_active" not in d: d["shield_active"] = False
         if "last_login_date" not in d: d["last_login_date"] = ""
         if "login_streak" not in d: d["login_streak"] = 0
-        if "death_count" in d: del d["death_count"]
-        if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0}
+        if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0, "scroll": 0}
+        if "scroll" not in d["inventory"]: d["inventory"]["scroll"] = 0
         if "history" not in d: d["history"] = []
         if "trophies" not in d: d["trophies"] = []
         if "monster_dex" not in d: d["monster_dex"] = []
@@ -251,6 +206,7 @@ def load_user_data(u_key):
         if "play_date" not in d: d["play_date"] = ""
         if "time_played_sec" not in d: d["time_played_sec"] = 0
         if "extra_time_sec" not in d: d["extra_time_sec"] = 0
+        if "custom_avatar" not in d: d["custom_avatar"] = None
     return d
 
 def save_user_data(u_key, d): db.reference(f"user_data/{u_key}").set(d)
@@ -266,9 +222,9 @@ def reset_user_data(u_key):
     d = load_user_data(u_key)
     d.update({
         "exp": 0, "level": 1, "hero_hp": 3, "medals": 0, "combo": 0, "is_boss_fight": False, "boss_hp": 3, 
-        "history": [], "total_questions": 0, "trophies": [], "monster_dex": [], 
+        "history": [], "total_questions": 0, "trophies": [], "monster_dex": [], "custom_avatar": None,
         "word_stats": {}, "gold": 0, "shield_active": False, "login_streak": 0,
-        "inventory": {"potion": 0, "shield": 0, "magnifier": 0}, "reward_counts": {},
+        "inventory": {"potion": 0, "shield": 0, "magnifier": 0, "scroll": 0}, "reward_counts": {},
         "time_played_sec": 0, "extra_time_sec": 0
     })
     save_user_data(u_key, d)
@@ -311,7 +267,7 @@ def generate_options(c_v, f_list):
 
 st.set_page_config(page_title="寶可夢英文挑戰", page_icon="⚡", layout="wide")
 
-# 🎨 深度排版與佈局 CSS 優化
+# 🎨 深度排版與佈局 CSS 優化 (支援 4 欄道具店)
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
@@ -339,27 +295,18 @@ st.markdown("""
 .hp-badge-enemy { color: #ff6b6b; }
 .monster-name { color:white; font-weight:bold; margin-top:8px; text-shadow: 1px 1px 3px #000; font-size: 1.1rem; background: rgba(0,0,0,0.4); padding: 2px 10px; border-radius: 10px;}
 
-/* 🛍️ 道具店三小格強制同行 */
-div[data-testid="column"]:nth-child(1), div[data-testid="column"]:nth-child(2), div[data-testid="column"]:nth-child(3) { width: 33.33% !important; flex: 1 1 33.33% !important; min-width: 30% !important; }
-div[data-testid="column"] button { height: 55px; padding: 0 !important; font-size: 0.95rem !important; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: pre-line; }
-
-/* 🌟 全域防護：強制抹除 Streamlit 生成的隱藏按鈕的一切痕跡 */
-.hide-native-input div[data-testid="stTextInput"], .hide-native-input button { position: absolute; opacity: 0; height: 0; width: 0; overflow: hidden; pointer-events: none; margin: 0; padding: 0; display: none !important; }
+/* 🛍️ 道具店4小格強制同行 */
+div[data-testid="column"]:nth-child(1), div[data-testid="column"]:nth-child(2), div[data-testid="column"]:nth-child(3), div[data-testid="column"]:nth-child(4) { width: 25% !important; flex: 1 1 25% !important; min-width: 22% !important; }
+div[data-testid="column"] button { height: 55px; padding: 0 !important; font-size: 0.85rem !important; border-radius: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: pre-line; }
 
 /* 單字卡與圖鑑 */
 .vocab-card { text-align:center; padding: 5%; background: #ffffff; border-radius: 12px; border: 3px solid #3498db; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }
 .vocab-word { color:#2980b9; font-size: 3.5rem; margin: 5px 0; font-weight: 800; word-wrap: break-word;}
 .vocab-hint-str { color:#34495e; font-size: 2.5rem; margin: 10px 0; font-weight: bold; letter-spacing: 5px; word-wrap: break-word;}
 .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 12px; text-align: center; padding: 10px 0; }
-.dex-item img { width: 100%; max-width: 60px; height: auto; transition: transform 0.2s; }
+.dex-item img { width: 100%; max-width: 60px; height: auto; transition: transform 0.2s; cursor: pointer; }
 .dex-item img:hover { transform: scale(1.2); }
 .dex-name { font-size: 0.75rem; color: #555; margin-top: 5px; font-weight: bold; }
-
-/* 🎰 扭蛋機完美置中與動畫 */
-.gacha-wrapper { display: flex; justify-content: center; align-items: center; padding: 15px 0; width: 100%; margin: 0 auto; }
-.gacha-machine { background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; width: 280px; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative; margin: 0 auto; }
-.gacha-glass { background-color: #f1f2f6; border: 4px solid #2f3542; border-radius: 15px; height: 160px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }
-.gacha-ball { position: absolute; width: 45px; height: 45px; background-size: contain; background-repeat: no-repeat; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); image-rendering: pixelated; }
 
 @media screen and (max-width: 600px) {
     .poke-title { font-size: 2rem; }
@@ -369,21 +316,17 @@ div[data-testid="column"] button { height: 55px; padding: 0 !important; font-siz
     .vs-text { font-size: 2rem; }
     .hp-badge { font-size: 0.75rem; padding: 2px 8px; margin-bottom: 5px;}
     .monster-name { font-size: 0.85rem; }
-    .m-fx { font-size: 40px !important; }
     .vocab-word { font-size: 2.5rem; }
-    .vocab-hint-str { font-size: 1.8rem; letter-spacing: 3px;}
-    .dash-val { font-size: 1rem; }
-    div[data-testid="column"] button { font-size: 0.8rem !important; height: 50px;}
+    div[data-testid="column"] button { font-size: 0.75rem !important; height: 50px;}
 }
 
 @keyframes heroDash { 0% { transform: scaleX(-1) translateX(0px); } 30% { transform: scaleX(-1) translateX(-40px); } 100% { transform: scaleX(-1) translateX(0px); } }
 @keyframes shakeHurt { 0% { transform: translateX(0); filter: brightness(1); } 20% { transform: translateX(-10px); filter: brightness(2.5) drop-shadow(0 0 25px red); } 40% { transform: translateX(10px); } 60% { transform: translateX(-10px); } 80% { transform: translateX(10px); } 100% { transform: translateX(0); filter: brightness(1); } }
 @keyframes monsterDash { 0% { transform: translateX(0px); } 30% { transform: translateX(-40px); } 100% { transform: translateX(0px); } }
-@keyframes heroHurt { 0% { transform: scaleX(-1) translateX(0); filter: brightness(1); } 20% { transform: scaleX(-1) translateX(-8px); filter: brightness(0.4) sepia(1) hue-rotate(-50deg) saturate(6); } 40% { transform: scaleX(-1) translateX(8px); } 60% { transform: scaleX(-1) translateX(-8px); } 80% { transform: scaleX(-1) translateX(8px); } 100% { transform: scaleX(-1) translateX(0); filter: brightness(1); } }
-@keyframes mBall { 0% { left: 20%; transform: scale(0.5); opacity: 0; } 30% { opacity: 1; transform: scale(1.5); } 70% { left: 70%; transform: scale(2); opacity: 1; } 100% { left: 80%; transform: scale(0.5); opacity: 0; } }
+@keyframes heroHurt { 0% { transform: scaleX(-1) translateX(0); filter: brightness(1); } 20% { transform: scaleX(-1) translateX(-8px); filter: brightness(0.4) sepia(1) hue-rotate(-50deg) saturate(6); } 100% { transform: scaleX(-1) translateX(0); filter: brightness(1); } }
 @keyframes heroDead { 0% { transform: scaleX(-1) rotate(0deg); filter: grayscale(0%); } 100% { transform: scaleX(-1) rotate(90deg) translateY(20px); filter: grayscale(100%); } }
 @keyframes healFx { 0% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } 50% { filter: brightness(1.5) drop-shadow(0 0 20px #2ecc71); } 100% { filter: brightness(1) drop-shadow(0 0 0px #2ecc71); } }
-.m-fx { position: absolute; top: 40%; font-size: 60px; animation: mBall 0.7s ease-in-out forwards; z-index: 10; }
+.m-fx { position: absolute; top: 40%; font-size: 60px; z-index: 10; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -402,6 +345,7 @@ if 'play_auto_audio' not in st.session_state: st.session_state.play_auto_audio =
 if 'magnifier_active' not in st.session_state: st.session_state.magnifier_active = False
 if 'spell_input' not in st.session_state: st.session_state.spell_input = ""
 if 'level_up_flag' not in st.session_state: st.session_state.level_up_flag = False
+if 'show_transform_modal' not in st.session_state: st.session_state.show_transform_modal = False
 
 # ==================== 登入大廳 ====================
 if st.session_state.page == 'login':
@@ -416,7 +360,6 @@ if st.session_state.page == 'login':
     family_input = st.text_input("1️⃣ 請輸入您的家庭帳號", placeholder="輸入後按下 Enter 鍵確認...")
     
     if family_input:
-        # 🤫 彩蛋觸發：隱藏入口跳轉
         if family_input == "#ddmm":
             st.session_state.page = 'parent_login'
             st.rerun()
@@ -424,11 +367,9 @@ if st.session_state.page == 'login':
             st.session_state.page = 'admin_login'
             st.rerun()
             
-        # --- 以下為正常的訓練家登入邏輯 ---
         parent_data = get_parent_info(family_input)
         if parent_data:
             family_heroes = get_family_heroes(family_input)
-            
             if not family_heroes: st.warning("這個家庭還沒有建立訓練家帳號，請家長先登入控制台建立喔！")
             else:
                 hero_display = {k: v["name"] for k, v in family_heroes.items()}
@@ -535,26 +476,21 @@ elif st.session_state.page == 'game':
     
     p_info = get_parent_info(parent_id)
     admin_cfg = get_admin()
+    unlocked_stage = admin_cfg.get("unlocked_stage", 1)
 
     now_ts = time.time()
     if 'last_db_sync' not in st.session_state:
         st.session_state.last_db_sync = now_ts
         
-    # 如果距離上次同步超過 5 秒，就從雲端抓取家長剛修改的最新數值
     if now_ts - st.session_state.last_db_sync > 5:
         latest_db_data = load_user_data(u_key)
-        # 同步「家長可能會改的數值」，不動血量或連擊數，避免戰鬥衝突
         u_data['gold'] = latest_db_data.get('gold', u_data.get('gold', 0))
         u_data['medals'] = latest_db_data.get('medals', u_data.get('medals', 0))
-        
-        # 👇 確保歷史紀錄與兌換次數同步
         u_data['history'] = latest_db_data.get('history', [])
         u_data['reward_counts'] = latest_db_data.get('reward_counts', {})
-        
         u_data['extra_time_sec'] = latest_db_data.get('extra_time_sec', u_data.get('extra_time_sec', 0))
         u_data['daily_play_time_min'] = latest_db_data.get('daily_play_time_min', u_data.get('daily_play_time_min', 30))
         u_data['level'] = latest_db_data.get('level', u_data.get('level', 1))
-        
         st.session_state.last_db_sync = now_ts
         
     # --- ⏳ 當日遊玩時間與 7:00 AM 重置邏輯 ---
@@ -575,41 +511,88 @@ elif st.session_state.page == 'game':
             u_data['time_played_sec'] = u_data.get('time_played_sec', 0) + elapsed
     st.session_state.last_tick_time = now_ts
     
-    # 判斷時間額度
     base_quota_min = u_data.get("daily_play_time_min", p_info.get("daily_play_time_min", admin_cfg.get("default_play_time_min", 30)))
     total_allowed_sec = (base_quota_min * 60) + u_data.get('extra_time_sec', 0)
     remaining_sec = max(0, total_allowed_sec - u_data['time_played_sec'])
     
-    # 🚨 若時間歸零，立即強制停止渲染任何後續元件
     if remaining_sec <= 0:
         st.markdown("""
         <div style="background:#c0392b; padding:40px 20px; border-radius:15px; text-align:center; color:white; box-shadow: 0 10px 20px rgba(0,0,0,0.3); margin-top:30px;">
-            <h1 style="font-size:3rem; margin-bottom:15px; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);">⏳ 時間到囉！</h1>
-            <h3 style="font-size:1.5rem; line-height:1.6; text-shadow: 1px 1px 0px rgba(0,0,0,0.5);">
-                今天的遊戲額度已經用完囉！<br>
-                請好好休息，保護眼睛！每天早上 7:00 會重新補滿時間。<br><br>
+            <h1 style="font-size:3rem; margin-bottom:15px;">⏳ 時間到囉！</h1>
+            <h3 style="font-size:1.5rem; line-height:1.6;">
+                今天的遊戲額度已經用完囉！<br>請好好休息，保護眼睛！每天早上 7:00 會重新補滿時間。<br><br>
                 <span style="color:#f1c40f;">💡 如果有需要，可以請家長到「家庭控制台」幫你解鎖加時喔！</span>
             </h3>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🚪 點我返回登入大廳", use_container_width=True, type="primary"):
             st.session_state.page = 'login'
             st.rerun()
         st.stop()
+
+    # --- ✨ 讀取所有已經收集的 ID 以備變身及圖鑑使用 ---
+    def name_to_id(val):
+        if isinstance(val, int): return val
+        # 相容舊版 string name
+        try:
+            return POKE_NAMES.index(val) + 1
+        except:
+            return 132 # 百變怪
+
+    dex_ids = list(set([name_to_id(x) for x in u_data.get('monster_dex', []) + u_data.get('trophies', [])]))
+    dex_ids.sort()
+
+    # --- 📜 變形卷軸彈窗 ---
+    if st.session_state.show_transform_modal:
+        st.markdown("<h2 style='text-align: center; color: #8e44ad;'>📜 變形卷軸：選擇你的新外觀！</h2>", unsafe_allow_html=True)
+        
+        if not dex_ids:
+            st.warning("你還沒有在圖鑑中收集到任何寶可夢喔！快去打怪收集吧！")
+            if st.button("❌ 取消返回"):
+                st.session_state.show_transform_modal = False
+                st.rerun()
+        else:
+            st.info("點擊下方你已收集到的寶可夢，即可變身！(消耗 1 張變形卷軸)")
+            t_cols = st.columns(5)
+            for i, pid in enumerate(dex_ids):
+                with t_cols[i % 5]:
+                    st.image(get_poke_url(pid))
+                    if st.button(get_poke_name(pid), key=f"tf_btn_{pid}"):
+                        u_data['custom_avatar'] = pid
+                        if u_data['inventory'].get('scroll', 0) > 0:
+                            u_data['inventory']['scroll'] -= 1
+                        save_user_data(u_key, u_data)
+                        st.session_state.show_transform_modal = False
+                        st.success(f"✨ 成功變身為 {get_poke_name(pid)}！")
+                        st.rerun()
+            
+            st.markdown("<hr>", unsafe_allow_html=True)
+            t_cancel1, t_cancel2 = st.columns(2)
+            if t_cancel1.button("❌ 取消並返回", use_container_width=True):
+                st.session_state.show_transform_modal = False
+                st.rerun()
+            if u_data.get('custom_avatar'):
+                if t_cancel2.button("🔄 恢復原本的主角外觀", use_container_width=True):
+                    u_data['custom_avatar'] = None
+                    save_user_data(u_key, u_data)
+                    st.session_state.show_transform_modal = False
+                    st.success("已恢復原始夥伴外觀！")
+                    st.rerun()
+        st.stop() # 停止渲染遊戲底層畫面
 
     # ==================== 🎁 全螢幕扭蛋巨球結果視窗 ====================
     if st.session_state.get('show_gacha_result', False):
         prize = st.session_state.gacha_result_prize
         b_color = "#bdc3c7"
         
+        GITHUB_BASE_URL = "https://raw.githubusercontent.com/garyleeplus-gy/EnglishGame/main/assets/items/"
         HD_BALL_IMAGES = {
-            "特獎": "https://www.serebii.net/itemdex/sprites/pgl/beastball.png",
-            "一獎": "https://www.serebii.net/itemdex/sprites/pgl/luxuryball.png",
-            "二獎": "https://www.serebii.net/itemdex/sprites/pgl/masterball.png",
-            "三獎": "https://www.serebii.net/itemdex/sprites/pgl/ultraball.png",
-            "四獎": "https://www.serebii.net/itemdex/sprites/pgl/greatball.png",
-            "五獎": "https://www.serebii.net/itemdex/sprites/pgl/pokeball.png"
+            "特獎": f"{GITHUB_BASE_URL}hd_beast-ball.png",
+            "一獎": f"{GITHUB_BASE_URL}hd_luxury-ball.png",
+            "二獎": f"{GITHUB_BASE_URL}hd_master-ball.png",
+            "三獎": f"{GITHUB_BASE_URL}hd_ultra-ball.png",
+            "四獎": f"{GITHUB_BASE_URL}hd_great-ball.png",
+            "五獎": f"{GITHUB_BASE_URL}hd_poke-ball.png"
         }
         
         b_img = HD_BALL_IMAGES["五獎"]
@@ -688,87 +671,51 @@ elif st.session_state.page == 'game':
             st.rerun()
         st.stop()
 
-
     # --- 儀表板上方：當地時間與倒數計時 ---
     st.markdown(f"""
-    <div style="display:flex; justify-content:space-between; align-items:center; background: linear-gradient(135deg, #1e293b, #0f172a); color:white; padding:12px 20px; border-radius:12px; margin-bottom:15px; box-shadow: 0 6px 12px rgba(0,0,0,0.2); border: 2px solid #38bdf8;">
-        <div id="local-clock" style="font-size:1.2rem; font-weight:bold; letter-spacing: 1px; color:#a78bfa;">⏰ 時間讀取中...</div>
-        <div id="countdown-timer" style="font-size:1.3rem; font-weight:900; color:#facc15; text-shadow: 1px 1px 2px black;">⏳ 剩餘時間: {int(remaining_sec//60)}分 {int(remaining_sec%60)}秒</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; background: linear-gradient(135deg, #1e293b, #0f172a); color:white; padding:12px 20px; border-radius:12px; margin-bottom:15px; border: 2px solid #38bdf8;">
+        <div id="local-clock" style="font-size:1.2rem; font-weight:bold; color:#a78bfa;">⏰ 時間讀取中...</div>
+        <div id="countdown-timer" style="font-size:1.3rem; font-weight:900; color:#facc15;">⏳ 剩餘時間: {int(remaining_sec//60)}分 {int(remaining_sec%60)}秒</div>
     </div>
-    """, unsafe_allow_html=True)
-    
-    st.components.v1.html(f"""
     <script>
         if (window.parent.timerInterval) clearInterval(window.parent.timerInterval);
-        window.parent.hasTriggeredTimeUp = false; 
-        
         let remain = {remaining_sec};
         window.parent.timerInterval = setInterval(() => {{
             const clockEl = window.parent.document.getElementById('local-clock');
             if(clockEl) clockEl.innerText = "⏰ 當地時間: " + new Date().toLocaleTimeString('zh-TW', {{ timeZone: 'Asia/Taipei', hour12: false }});
-            
             if(remain > 0) {{
                 remain -= 1;
-                let m = Math.floor(remain / 60);
-                let s = Math.floor(remain % 60);
+                let m = Math.floor(remain / 60); let s = Math.floor(remain % 60);
                 const timerEl = window.parent.document.getElementById('countdown-timer');
                 if(timerEl) timerEl.innerText = "⏳ 剩餘時間: " + m + "分 " + s + "秒";
-            }} else if (!window.parent.hasTriggeredTimeUp) {{
-                window.parent.hasTriggeredTimeUp = true;
-                clearInterval(window.parent.timerInterval);
-                
-                const btns = window.parent.document.querySelectorAll('button');
-                for(let b of btns) {{
-                    if(b.innerText.includes('TimeUpTrigger')) {{ b.click(); break; }}
-                }}
             }}
         }}, 1000);
-        
-        let hideAttempts = 0;
-        let hideInterval = setInterval(() => {{
-            const btns = window.parent.document.querySelectorAll('button');
-            for(let b of btns) {{
-                if(b.innerText.includes('TimeUpTrigger')) {{ 
-                    b.style.display = 'none'; 
-                    let parentBtn = b.closest('div[data-testid="stButton"]');
-                    if (parentBtn) parentBtn.style.display = 'none';
-                    clearInterval(hideInterval); 
-                }}
-            }}
-            hideAttempts++;
-            if(hideAttempts > 20) clearInterval(hideInterval);
-        }}, 100);
     </script>
-    """, height=0)
-    
-    if st.button("TimeUpTrigger", key="time_up_trigger_btn"):
-        st.rerun()
+    """, unsafe_allow_html=True)
 
-    # --- ✨ 經驗值進度條 ---
     exp_current = u_data.get('exp', 0) % 100
-    exp_pct = exp_current
     st.markdown(f"""
     <div style="margin-bottom: 15px; padding: 0 5px;">
         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #7f8c8d; font-weight: bold; margin-bottom: 5px;">
-            <span>✨ 經驗值進度 (EXP)</span>
-            <span>{exp_current} / 100</span>
+            <span>✨ 經驗值進度 (EXP)</span><span>{exp_current} / 100</span>
         </div>
-        <div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 12px; overflow: hidden; border: 1px solid #cbd5e1;">
-            <div style="width: {exp_pct}%; background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; border-radius: 10px; transition: width 0.5s ease-in-out;"></div>
+        <div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 12px;">
+            <div style="width: {exp_current}%; background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; border-radius: 10px;"></div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     raw_rates = p_info.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
-    if "簡單" not in raw_rates: 
-        raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
-        
+    if "簡單" not in raw_rates: raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
     diff = u_data.get('difficulty', "簡單")
     rates = raw_rates.get(diff, raw_rates["簡單"])
     
-    store_prices = p_info.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
+    # 🌟 修正：確保新舊價格能正確疊加 (預設 < GM < 家長)
+    store_prices = DEFAULT_STORE.copy()
+    if isinstance(admin_cfg.get("store_prices"), dict): store_prices.update(admin_cfg["store_prices"])
+    if isinstance(p_info.get("store_prices"), dict): store_prices.update(p_info["store_prices"])
+    
     gacha_cfg = p_info.get("gacha", admin_cfg.get("gacha", DEFAULT_GACHA))
-
     if 'show_streak' in st.session_state:
         st.toast(st.session_state.show_streak, icon="🔥")
         del st.session_state.show_streak
@@ -776,15 +723,19 @@ elif st.session_state.page == 'game':
     hero_name = st.session_state.hero_name
     char_d = CHARACTERS[st.session_state.hero_char]  
     
-    stage_idx = 0 if u_data['level'] < 5 else (1 if u_data['level'] < 10 else 2)
-    hero_img_id, hero_img_name = char_d["stages"][stage_idx]
-    hero_url = f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{hero_img_id}.gif"
+    if u_data.get('custom_avatar'):
+        hero_url = get_poke_url(u_data['custom_avatar'])
+    else:
+        stage_idx = 0 if u_data['level'] < 5 else (1 if u_data['level'] < 10 else 2)
+        hero_img_id, hero_img_name = char_d["stages"][stage_idx]
+        hero_url = get_poke_url(hero_img_id)
 
     bank_id = u_data.get('vocab_bank', '國小')
     bank_name = bank_id
     if bank_id.startswith("custom_"):
         cb_id = bank_id.split("_")[1]
         v_list = load_vocab_db(f"custom_{parent_id}_{cb_id}")
+        # 👇 確保這裡只有賦值，沒有 st.warning
         if not v_list: v_list = [{"en": "apple", "zh": "蘋果", "hint": "預設單字"}]
         bank_name = next((b["name"] for b in p_info.get("custom_banks", []) if b["id"] == cb_id), "自訂字庫")
     else:
@@ -793,7 +744,9 @@ elif st.session_state.page == 'game':
     
     r_list = p_info.get("rewards", [])
 
-    if 'current_monster' not in st.session_state: st.session_state.current_monster = random.choice(MONSTERS)
+    if 'current_monster' not in st.session_state: 
+        st.session_state.current_monster = spawn_enemy(unlocked_stage, is_boss=u_data.get('is_boss_fight', False))
+        
     if 'action_anim' not in st.session_state: st.session_state.action_anim = None
     if 'current_vocab' not in st.session_state: 
         st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
@@ -808,22 +761,16 @@ elif st.session_state.page == 'game':
         st.session_state.magnifier_active = False 
         if "spell_input" in st.session_state: st.session_state.spell_input = "" 
         
-        # 🚨 [終極防護] 在處理任何資料前，強制先拉取最新的資料庫狀態！
-        # 這樣才能確保小孩答題存檔時，不會把家長剛剛在後台「退回」的資料給蓋掉。
         latest_db = load_user_data(u_key)
         u_data['gold'] = latest_db.get('gold', u_data.get('gold', 0))
         u_data['medals'] = latest_db.get('medals', u_data.get('medals', 0))
         u_data['history'] = latest_db.get('history', [])
         u_data['reward_counts'] = latest_db.get('reward_counts', {})
-        u_data['extra_time_sec'] = latest_db.get('extra_time_sec', u_data.get('extra_time_sec', 0))
-        u_data['daily_play_time_min'] = latest_db.get('daily_play_time_min', u_data.get('daily_play_time_min', 30))
-        u_data['level'] = latest_db.get('level', u_data.get('level', 1))
             
         u_data['total_questions'] += 1 
         word = c_w['en']
         
         if s.strip().lower() == c_w['zh'].strip().lower() or s.strip().lower() == word.strip().lower():
-            # 💡 修正 1-A：記錄錯誤次數 mistakes，並把移出錯題本門檻調高為 >= 4
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0, "mistakes": 0})
             stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
@@ -831,7 +778,6 @@ elif st.session_state.page == 'game':
             if word in st.session_state.error_log and stats["level"] >= 4:
                 st.session_state.error_log.remove(word)
                 save_error_log(u_key, st.session_state.error_log)
-                if not st.session_state.error_log: u_data['total_questions'] = 0
                     
             if u_data.get('is_boss_fight', False):
                 u_data['boss_hp'] -= 1
@@ -840,11 +786,10 @@ elif st.session_state.page == 'game':
                     u_data['medals'] += int(rates['boss_medal'])
                     u_data['gold'] += int(rates['boss_gold'])
                     
-                    if 'current_boss' in st.session_state:
-                        b_name = st.session_state.current_boss.get('name')
-                        if b_name:
-                            if 'trophies' not in u_data: u_data['trophies'] = []
-                            if b_name not in u_data['trophies']: u_data['trophies'].append(b_name)
+                    e_id = st.session_state.current_monster['id']
+                    if 'trophies' not in u_data: u_data['trophies'] = []
+                    if e_id not in u_data['trophies']: u_data['trophies'].append(e_id)
+                        
                     st.session_state.pending_boss_defeat = True
                     st.session_state.action_anim = 'boss_defeat'
                 else: st.session_state.action_anim = 'attack'
@@ -852,14 +797,11 @@ elif st.session_state.page == 'game':
                 u_data['exp'] += int(rates['normal_exp']) 
                 u_data['gold'] += int(rates['normal_gold'])
                 
-                if 'current_monster' in st.session_state:
-                    m_name = st.session_state.current_monster.get('name')
-                    if m_name:
-                        if 'monster_dex' not in u_data: u_data['monster_dex'] = []
-                        if m_name not in u_data['monster_dex']: u_data['monster_dex'].append(m_name)
+                e_id = st.session_state.current_monster['id']
+                if 'monster_dex' not in u_data: u_data['monster_dex'] = []
+                if e_id not in u_data['monster_dex']: u_data['monster_dex'].append(e_id)
                         
                 st.session_state.action_anim = 'attack'
-                
                 if u_data['combo'] >= 10 and not u_data.get('is_boss_fight', False):
                     st.session_state.pending_boss_fight = True
             
@@ -869,7 +811,6 @@ elif st.session_state.page == 'game':
                 st.session_state.level_up_flag = True
                 
         else:
-            # 💡 修正 1-B：答錯時，增加 mistakes 計數，永久記錄這是個易錯字
             stats = u_data['word_stats'].setdefault(word, {"level": 0, "next_review": 0, "mistakes": 0})
             stats["level"] = max(0, stats["level"] - 1)
             stats["mistakes"] = stats.get("mistakes", 0) + 1
@@ -888,9 +829,12 @@ elif st.session_state.page == 'game':
                     if u_data['level'] > 1:
                         u_data['level'] -= 1
                         st.session_state.level_dropped = True
-                    else: st.session_state.level_dropped = False
-                    u_data['exp'] = (u_data['level'] - 1) * 100
-                    u_data['hero_hp'] = get_max_hp(u_data['level'])
+                        # 只有在真的被降級時，才把經驗值退回該等級的起點
+                        u_data['exp'] = (u_data['level'] - 1) * 100
+                    else: 
+                        st.session_state.level_dropped = False
+                        # Lv.1 死亡不扣經驗值 (或你可以在這寫 u_data['exp'] = max(0, u_data['exp'] - 10) 扣微量當懲罰)
+                    
                     if u_data.get('is_boss_fight', False): u_data['boss_hp'] = 3
                     st.session_state.action_anim = 'dead'
                 else: st.session_state.action_anim = 'hurt'
@@ -925,45 +869,37 @@ elif st.session_state.page == 'game':
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 🏪 道具商店 ---
+    # --- 🏪 道具商店 (變更為 4 欄並加入變形卷軸) ---
     st.markdown("<div style='font-size:0.8rem; font-weight:bold; color:#7f8c8d; margin-bottom:5px;'>🏪 道具店 (點擊花費金幣立即發動)</div>", unsafe_allow_html=True)
-    c_btn1, c_btn2, c_btn3 = st.columns(3)
+    c_btn1, c_btn2, c_btn3, c_btn4 = st.columns(4)
     
     inv_p = u_data['inventory'].get('potion', 0)
-    btn1_lbl = f"🧪 藥水 ({inv_p})\n免費點擊發動" if inv_p > 0 else f"🧪 購買藥水\n{store_prices['potion']}G"
+    btn1_lbl = f"🧪 藥水 ({inv_p})\n點擊發動" if inv_p > 0 else f"🧪 買藥水\n{store_prices['potion']}G"
     if c_btn1.button(btn1_lbl, use_container_width=True, disabled=u_data['hero_hp']>=max_hp):
-        if inv_p > 0:
-            u_data['inventory']['potion'] -= 1
-            u_data['hero_hp'] = min(max_hp, u_data['hero_hp'] + 1)
-            st.session_state.action_anim = 'heal'
-            save_user_data(u_key, u_data); st.rerun()
-        elif u_data['gold'] >= store_prices['potion']:
-            u_data['gold'] -= store_prices['potion']
+        if inv_p > 0 or u_data['gold'] >= store_prices['potion']:
+            if inv_p > 0: u_data['inventory']['potion'] -= 1
+            else: u_data['gold'] -= store_prices['potion']
             u_data['hero_hp'] = min(max_hp, u_data['hero_hp'] + 1)
             st.session_state.action_anim = 'heal'
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣與庫存皆不足！")
             
     inv_s = u_data['inventory'].get('shield', 0)
-    btn2_lbl = f"🛡️ 護盾 ({inv_s})\n免費點擊發動" if inv_s > 0 else f"🛡️ 購買護盾\n{store_prices['shield']}G"
+    btn2_lbl = f"🛡️ 護盾 ({inv_s})\n點擊發動" if inv_s > 0 else f"🛡️ 買護盾\n{store_prices['shield']}G"
     if c_btn2.button(btn2_lbl, use_container_width=True, disabled=u_data.get('shield_active', False)):
-        if inv_s > 0:
-            u_data['inventory']['shield'] -= 1
-            u_data['shield_active'] = True
-            save_user_data(u_key, u_data); st.rerun()
-        elif u_data['gold'] >= store_prices['shield']:
-            u_data['gold'] -= store_prices['shield']
+        if inv_s > 0 or u_data['gold'] >= store_prices['shield']:
+            if inv_s > 0: u_data['inventory']['shield'] -= 1
+            else: u_data['gold'] -= store_prices['shield']
             u_data['shield_active'] = True
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣與庫存皆不足！")
             
     inv_m = u_data['inventory'].get('magnifier', 0)
-    btn3_lbl = f"🔍 放大鏡 ({inv_m})\n免費點擊發動" if inv_m > 0 else f"🔍 購買放大鏡\n{store_prices['magnifier']}G"
+    btn3_lbl = f"🔍 放大鏡 ({inv_m})\n點擊發動" if inv_m > 0 else f"🔍 買放大鏡\n{store_prices['magnifier']}G"
     if c_btn3.button(btn3_lbl, use_container_width=True, disabled=st.session_state.magnifier_active):
         if inv_m > 0 or u_data['gold'] >= store_prices['magnifier']:
             if inv_m > 0: u_data['inventory']['magnifier'] -= 1
             else: u_data['gold'] -= store_prices['magnifier']
-            
             st.session_state.magnifier_active = True
             if diff == '簡單':
                 correct_ans = c_w['zh']
@@ -974,7 +910,21 @@ elif st.session_state.page == 'game':
             save_user_data(u_key, u_data); st.rerun()
         else: st.error("金幣與庫存皆不足！")
 
-    # --- 🎰 幸運扭蛋機 ---
+    scroll_cost = store_prices.get('scroll', 500)
+    inv_scroll = u_data['inventory'].get('scroll', 0)
+    btn4_lbl = f"📜 變形卷軸 ({inv_scroll})\n點擊發動" if inv_scroll > 0 else f"📜 變形卷軸\n{scroll_cost}G"
+    if c_btn4.button(btn4_lbl, use_container_width=True):
+        if inv_scroll > 0 or u_data['gold'] >= scroll_cost:
+            if inv_scroll == 0: 
+                u_data['gold'] -= scroll_cost
+                u_data['inventory']['scroll'] += 1
+                save_user_data(u_key, u_data)
+            st.session_state.show_transform_modal = True
+            st.rerun()
+        else:
+            st.error("金幣與庫存皆不足！")
+
+# --- 🎰 幸運扭蛋機 ---
     with st.expander("🎰 幸運扭蛋機 (花費金幣抽大獎)", expanded=False):
         g_col1, g_col2 = st.columns([1, 1])
         with g_col1:
@@ -984,7 +934,7 @@ elif st.session_state.page == 'game':
                 .gacha-wrapper {{ display: flex; justify-content: center; align-items: center; padding: 25px 0 10px 0; width: 100%; }}
                 .gacha-machine {{ background-color: #ff4757; border: 4px solid #2f3542; border-radius: 20px; padding: 20px 15px 10px; width: 280px; text-align: center; box-shadow: inset -5px -5px 0px rgba(0,0,0,0.1), 0 8px 0 #ff6b81, 0 15px 20px rgba(0,0,0,0.3); position: relative; margin: 0 auto; }}
                 .gacha-glass {{ background-color: #f1f2f6; border: 4px solid #2f3542; border-radius: 15px; height: 160px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }}
-                .gacha-ball {{ position: absolute; width: 45px; height: 45px; background-size: contain; background-repeat: no-repeat; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }}
+                .gacha-ball {{ position: absolute; width: 45px; height: 45px; background-size: contain; background-repeat: no-repeat; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); image-rendering: pixelated; }}
             </style></head><body>
             <div class="gacha-wrapper">
                 <div class="gacha-machine">
@@ -1083,24 +1033,24 @@ elif st.session_state.page == 'game':
             if medal_history:
                 for item in reversed(medal_history[-10:]): st.caption(f"• {item}")
             else: st.caption("尚未兌換任何獎勵。")
-
-    # --- 冒險圖鑑 ---
-    with st.expander(f"📖 寶可夢圖鑑 (題庫: {bank_name} | 收集: {len(u_data.get('monster_dex', []))}/{len(MONSTERS)} | 傳說: {len(u_data.get('trophies', []))}/{len(BOSSES)})"):
+    
+    # --- 冒險圖鑑 (修改為依賴 ID) ---
+    with st.expander(f"📖 寶可夢圖鑑 (題庫: {bank_name} | 收集: {len(u_data.get('monster_dex', []))}/{STAGE_MAX_IDS[unlocked_stage]} | 傳說: {len(u_data.get('trophies', []))}/{len([i for i in LEGENDARY_IDS if i<=STAGE_MAX_IDS[unlocked_stage]])})"):
         d_tab1, d_tab2 = st.tabs(["🏆 傳說神獸", "👾 已收集寶可夢"])
         with d_tab1:
-            if u_data.get('trophies'):
-                boss_dict = {b['name']: b['url'] for b in BOSSES}
+            trophy_ids = [name_to_id(x) for x in u_data.get('trophies', [])]
+            if trophy_ids:
                 html_dex = '<div class="dex-grid">'
-                for t_name in u_data['trophies']:
-                    if t_name in boss_dict: html_dex += f'<div class="dex-item"><img src="{boss_dict[t_name]}"><div class="dex-name">{t_name}</div></div>'
+                for pid in set(trophy_ids):
+                    html_dex += f'<div class="dex-item"><img src="{get_poke_url(pid)}"><div class="dex-name">{get_poke_name(pid)}</div></div>'
                 html_dex += '</div>'; st.markdown(html_dex, unsafe_allow_html=True)
             else: st.write("尚未收集到神獸。")
         with d_tab2:
-            if u_data.get('monster_dex'):
-                mon_dict = {m['name']: m['url'] for m in MONSTERS}
+            mon_ids = [name_to_id(x) for x in u_data.get('monster_dex', [])]
+            if mon_ids:
                 html_dex = '<div class="dex-grid">'
-                for m_name in u_data['monster_dex']:
-                    if m_name in mon_dict: html_dex += f'<div class="dex-item"><img src="{mon_dict[m_name]}"><div class="dex-name">{m_name}</div></div>'
+                for pid in set(mon_ids):
+                    html_dex += f'<div class="dex-item"><img src="{get_poke_url(pid)}"><div class="dex-name">{get_poke_name(pid)}</div></div>'
                 html_dex += '</div>'; st.markdown(html_dex, unsafe_allow_html=True)
             else: st.write("尚未收集到寶可夢。")
 
@@ -1148,9 +1098,8 @@ elif st.session_state.page == 'game':
 
     is_boss = u_data.get('is_boss_fight', False)
     if is_boss:
-        if 'current_boss' not in st.session_state: st.session_state.current_boss = random.choice(BOSSES)
-        e_n = st.session_state.current_boss['name']
-        e_u = st.session_state.current_boss['url']
+        e_n = st.session_state.current_monster['name']
+        e_u = st.session_state.current_monster['url']
         e_hp = u_data.get('boss_hp', 3)
         m_hp = 3
         bg_s = "background: linear-gradient(135deg, #2b0b0f 0%, #4a0911 100%); border: 4px solid #ff4500;"
@@ -1179,26 +1128,20 @@ elif st.session_state.page == 'game':
     )
     
     st.markdown(arena_html, unsafe_allow_html=True)
-    if audio_js: st.components.v1.html(audio_js, height=0)
+    st.components.v1.html(audio_js if audio_js else " ", height=0)
 
    # ==================== ⚡ 答題區與動畫隱藏邏輯 ====================
     if anim:
-        if anim == 'attack':
-            st.success(f"💥 命中！獲得 {int(rates['normal_exp'])} EXP 與 {int(rates['normal_gold'])} G！")
-        elif anim == 'heal':
-            st.success("🧪 喝下生命藥水，生命值恢復了！")
-        elif anim == 'shield_block':
-            st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
-        elif anim == 'hurt':
-            st.error("🩸 遭受攻擊！連擊中斷！")
+        if anim == 'attack': st.success(f"💥 命中！獲得 {int(rates['normal_exp'])} EXP 與 {int(rates['normal_gold'])} G！")
+        elif anim == 'heal': st.success("🧪 喝下生命藥水，生命值恢復了！")
+        elif anim == 'shield_block': st.info("🛡️ 神聖護盾為你擋下了一次致命傷害！(但答錯了還是要進入記憶訓練喔！)")
+        elif anim == 'hurt': st.error("🩸 遭受攻擊！連擊中斷！")
         elif anim == 'boss_defeat':
             st.balloons()
             st.success(f"🎊 擊敗傳說寶可夢！獲得 {int(rates['boss_exp'])} EXP、{int(rates['boss_gold'])} G 與 {int(rates['boss_medal'])} 枚勳章！")
         elif anim == 'dead': 
-            if st.session_state.get('level_dropped', False):
-                st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
-            else:
-                st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
+            if st.session_state.get('level_dropped', False): st.error("😭 夥伴寶可夢不支倒地... (等級下降 1 級，經驗值重置！)")
+            else: st.error("😭 夥伴寶可夢不支倒地... (已經是最低等級 Lv.1 囉！)")
         
         st.info("⚔ 結算中，請稍候...")
         time.sleep(1.8)
@@ -1211,23 +1154,20 @@ elif st.session_state.page == 'game':
             u_data['is_boss_fight'] = False
             u_data['combo'] = 0 
             st.session_state.pending_boss_defeat = False
-            if 'current_boss' in st.session_state:
-                del st.session_state.current_boss
-            st.session_state.current_monster = random.choice(MONSTERS)
+            st.session_state.current_monster = spawn_enemy(unlocked_stage, is_boss=False)
         elif st.session_state.get('pending_boss_fight', False):
             u_data['is_boss_fight'] = True
             u_data['boss_hp'] = 3
-            st.session_state.current_boss = random.choice(BOSSES)
+            st.session_state.current_monster = spawn_enemy(unlocked_stage, is_boss=True)
             st.session_state.pending_boss_fight = False
         elif anim == 'attack' and not u_data.get('is_boss_fight', False):
-            st.session_state.current_monster = random.choice(MONSTERS)
+            st.session_state.current_monster = spawn_enemy(unlocked_stage, is_boss=False)
             
         save_user_data(u_key, u_data) 
 
         # --- 處理學習題目更新 ---
         if anim in ['hurt', 'dead', 'boss_defeat', 'shield_block']: 
-            if anim != 'boss_defeat':
-                st.session_state.force_learning = True
+            if anim != 'boss_defeat': st.session_state.force_learning = True
             else:
                 st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
                 st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
@@ -1301,9 +1241,11 @@ elif st.session_state.page == 'game':
                 st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
                 st.rerun()
 
-        # --- 正常出題模式 ---
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log: st.warning("🔥 累積滿 20 題！進入強制錯題複習模式！")
+
+            if bank_id.startswith("custom_") and len(v_list) == 1 and v_list[0]["en"] == "apple":
+                st.warning("⚠️ 家長注意：這個自訂字庫目前是空的！請盡快前往「家庭控制台」新增單字！")
                 
             v_html = f'<div class="vocab-card"><h3 style="margin:0; color:#7f8c8d; font-size: 1.2rem;">✨ 詠唱單字 ✨ {rev}</h3>'
             if diff == '簡單':
@@ -1312,15 +1254,22 @@ elif st.session_state.page == 'game':
             elif diff == '中等' or diff == '困難':
                 word_en = c_w['en']
                 w_len = len(word_en)
+                
+                # 先計算原本難度該給的基礎提示
+                base_indices = []
+                if diff == '中等':
+                    if w_len <= 3: base_indices = [w_len // 2]
+                    else: N = (w_len - 1) // 3 + 1; base_indices = [int(i * (w_len - 1) / (N - 1) + 0.5) for i in range(N)]
+                
+                # 如果有買放大鏡，則「額外」多開 2 個字母
                 if st.session_state.magnifier_active:
-                    reveal_count = min(1, w_len)
-                    r = random.Random(word_en)
-                    indices = sorted(r.sample(range(w_len), reveal_count))
-                else:
-                    if diff == '中等':
-                        if w_len <= 3: indices = [w_len // 2]
-                        else: N = (w_len - 1) // 3 + 1; indices = [int(i * (w_len - 1) / (N - 1) + 0.5) for i in range(N)]
-                    else: indices = []
+                    available = [i for i in range(w_len) if i not in base_indices and word_en[i] not in [' ', '-']]
+                    extra_reveal = min(2, len(available))
+                    if extra_reveal > 0:
+                        # 隨機挑選未解鎖的字母解鎖
+                        base_indices.extend(random.sample(available, extra_reveal))
+                        
+                indices = sorted(base_indices)
                         
                 hint_chars = [char if (i in indices or char in [' ', '-']) else '_' for i, char in enumerate(word_en)]
                 hint_str = " ".join(hint_chars)
@@ -1445,16 +1394,25 @@ elif st.session_state.page == 'parent':
                 n_bank = st.selectbox("選擇預設學習題庫", all_banks, format_func=format_bank)
                 n_diff = st.selectbox("選擇初始難度", ["簡單", "中等", "困難"], index=0)
                 if st.button("確認建立"):
-                    if not n_name.strip() or not n_pin.strip(): st.error("名稱與密碼不可為空")
+                    # 加入正則表達式，過濾掉 Firebase 嚴禁的符號 . # $ [ ] /
+                    safe_name = re.sub(r'[.#$\/[\]/]', '', n_name.strip())
+                    
+                    if not safe_name or not n_pin.strip(): 
+                        st.error("名稱與密碼不可為空，且名稱不能僅包含特殊符號！")
                     else:
-                        u_key = f"{p_id}_{n_name}"
-                        if db.reference(f"users/{u_key}").get(): st.error("這個名稱已經存在於您的家庭中了！")
+                        # 使用過濾後的安全字串來建立資料庫 Key
+                        u_key = f"{p_id}_{safe_name}"
+                        
+                        if db.reference(f"users/{u_key}").get(): 
+                            st.error("這個名稱已經存在於您的家庭中了！")
                         else:
                             c = random.choice(list(CHARACTERS.keys())) if n_char == "隨機" else n_char
-                            new_hero = {"name": n_name.strip(), "parent": p_id, "character": c, "created_at": str(datetime.now().date()), "pin": n_pin.strip()}
+                            # 顯示的名稱也改用 safe_name，避免後續讀取時發生非預期的錯誤
+                            new_hero = {"name": safe_name, "parent": p_id, "character": c, "created_at": str(datetime.now().date()), "pin": n_pin.strip()}
                             save_user_meta(u_key, new_hero)
                             
                             init_data = load_user_data(u_key)
+                            # ... (後續原始碼保持不變)
                             init_data["vocab_bank"] = n_bank
                             init_data["difficulty"] = n_diff
                             save_user_data(u_key, init_data)
@@ -1491,7 +1449,6 @@ elif st.session_state.page == 'parent':
                     if st.button("💾 覆寫剩餘時間", key=f"btn_set_rem_{u_key}", use_container_width=True):
                         target_sec = (new_rem_m * 60) + new_rem_s
                         d['play_date'] = logic_date
-                        # 逆向推算：要達到目標剩餘時間，調整額外的緩衝秒數
                         d['extra_time_sec'] = target_sec + time_played_sec - (base_quota_min * 60)
                         if 'time_played_sec' not in d: d['time_played_sec'] = time_played_sec
                         save_user_data(u_key, d)
@@ -1521,7 +1478,6 @@ elif st.session_state.page == 'parent':
 
                 st.markdown("---")
                 st.markdown("#### 📊 數據調整")
-                # 🌟 修復 1：移除倒地次數，將原本的 5 欄改為 4 欄
                 cA, cB, cC, cE = st.columns(4)
                 n_lvl = cA.number_input("等級", min_value=1, value=d['level'], key=f"lvl_{u_key}")
                 n_tq = cB.number_input("累積題數", min_value=0, value=d.get('total_questions', 0), key=f"tq_{u_key}")
@@ -1542,7 +1498,6 @@ elif st.session_state.page == 'parent':
                     save_user_meta(u_key, u_info)
                     st.success("密碼已更新！")
                 
-                # 🌟 修復 2：取消「數值不相等就自動儲存覆蓋」，改為使用明確的「按鈕觸發儲存」
                 if st.button("💾 儲存數據調整", key=f"save_data_{u_key}", type="primary"):
                     d['level'] = n_lvl
                     d['total_questions'] = n_tq
@@ -1554,22 +1509,17 @@ elif st.session_state.page == 'parent':
                     st.success("✅ 數據已成功更新！")
                     st.rerun()
 
-                # 💡 修正 1-C：雙軌錯題顯示機制
-                # 1. 遊戲中的短期復仇佇列
                 st.write("**🔥 復仇特訓中：**", ", ".join(e_log) if e_log else "目前無待復仇單字！")
 
-                # 2. 從 word_stats 抓出所有曾經錯過的單字，並依照錯誤次數(mistakes)由高到低排序
                 real_errors = [(w, s.get('mistakes', 0)) for w, s in d.get('word_stats', {}).items() if s.get('mistakes', 0) > 0]
                 real_errors.sort(key=lambda x: x[1], reverse=True)
 
-                # 只顯示前 20 名最常錯的單字
                 error_display = ", ".join([f"{w} (錯{c}次)" for w, c in real_errors[:20]])
                 st.write("**🔴 歷史高頻錯題 (由高到低)：**", error_display if error_display else "太棒了！無任何錯題紀錄！")
                 
                 # --- 📈 學習統整報告 ---
                 st.markdown("#### 📈 學習統整報告")
                 
-                # 自動計算題庫字數、學習字數與精熟度
                 bank_id = d.get('vocab_bank', '國小')
                 if bank_id == "家長自訂": bank_id = "custom_1"
                 if bank_id.startswith("custom_"):
@@ -1592,12 +1542,9 @@ elif st.session_state.page == 'parent':
                 mc2.metric("✨ 精熟度 (Lv3以上)", f"{mastered_words} 字", f"佔已學 {mast_pct}%")
                 mc3.metric("⚠️ 待補強 (錯題數)", f"{error_count} 字", "錯題本累積" if error_count > 0 else "完美無瑕")
                 
-                # 🌟 新增：將歷史錯題打包並提供一鍵匯出 CSV
                 if real_errors:
                     st.markdown("<br>", unsafe_allow_html=True)
-                    # 轉換為 pandas DataFrame
                     df_errors = pd.DataFrame(real_errors, columns=["英文單字", "歷史總錯誤次數"])
-                    # 使用 utf-8-sig 編碼，確保微軟 Excel 打開不會中文亂碼
                     csv_data = df_errors.to_csv(index=False).encode('utf-8-sig')
                     
                     st.download_button(
@@ -1619,7 +1566,6 @@ elif st.session_state.page == 'parent':
                         hA, hB, hC = st.columns([3, 1, 1])
                         hA.text(item)
                         
-                        # ✅ 已兌現：清除紀錄，不退還勳章
                         if hB.button("✅ 已兌現", key=f"ful_h_{u_key}_{i}"):
                             actual_idx = len(d['history']) - 1 - i
                             d['history'].pop(actual_idx)
@@ -1627,12 +1573,10 @@ elif st.session_state.page == 'parent':
                             st.success("✅ 已標記為兌現並清除紀錄！")
                             st.rerun()
                             
-                        # 🗑️ 退回：清除紀錄，並精準退還勳章與兌換次數
                         if hC.button("🗑️ 退回", key=f"del_h_{u_key}_{i}"):
                             actual_idx = len(d['history']) - 1 - i
                             item_str = d['history'][actual_idx]
                             
-                            # 自動解析退回的獎勵名稱並比對花費
                             r_name = item_str.split(" 兌換 ")[-1] if " 兌換 " in item_str else ""
                             refund_medal = 0
                             for r in p_data.get("rewards", []):
@@ -1640,7 +1584,6 @@ elif st.session_state.page == 'parent':
                                     refund_medal = r["cost_medals"]
                                     break
                             
-                            # 歸還勳章與次數
                             d['medals'] += refund_medal
                             if r_name in d.get("reward_counts", {}) and d["reward_counts"][r_name] > 0:
                                 d["reward_counts"][r_name] -= 1
@@ -1659,13 +1602,18 @@ elif st.session_state.page == 'parent':
 
     with t2:
         st.subheader("🛒 道具販售價格設定")
-        prices = p_data.get("store_prices", admin_cfg.get("store_prices", DEFAULT_STORE))
-        c1, c2, c3 = st.columns(3)
-        new_p = c1.number_input("🧪 藥水價格 (G)", min_value=1, value=prices["potion"])
-        new_s = c2.number_input("🛡️ 護盾價格 (G)", min_value=1, value=prices["shield"])
-        new_m = c3.number_input("🔍 放大鏡價格 (G)", min_value=1, value=prices["magnifier"])
+        # 🌟 修正：確保家長後台能正確繼承 GM 的預設值並補齊新道具
+        prices = DEFAULT_STORE.copy()
+        if isinstance(admin_cfg.get("store_prices"), dict): prices.update(admin_cfg["store_prices"])
+        if isinstance(p_data.get("store_prices"), dict): prices.update(p_data["store_prices"])
+        
+        c1, c2, c3, c4 = st.columns(4)
+        new_p = c1.number_input("🧪 藥水價格 (G)", min_value=1, value=prices.get("potion", 200))
+        new_s = c2.number_input("🛡️ 護盾價格 (G)", min_value=1, value=prices.get("shield", 250))
+        new_m = c3.number_input("🔍 放大鏡價格 (G)", min_value=1, value=prices.get("magnifier", 100))
+        new_scroll = c4.number_input("📜 變形卷軸 (G)", min_value=1, value=prices.get("scroll", 500))
         if st.button("💾 儲存道具價格", type="primary"):
-            p_data["store_prices"] = {"potion": new_p, "shield": new_s, "magnifier": new_m}
+            p_data["store_prices"] = {"potion": new_p, "shield": new_s, "magnifier": new_m, "scroll": new_scroll}
             save_parent_info(p_id, p_data)
             st.success("✅ 道具物價已更新！")
             
@@ -1703,7 +1651,7 @@ elif st.session_state.page == 'parent':
                 p_data["daily_play_time_min"] = p_play_time
                 save_parent_info(p_id, p_data); st.success("儲存成功！"); st.rerun()
                 
-        with st.expander("⚔️ 戰鬥掉落率設定", expanded=True):
+        with st.expander("⚔️️ 戰鬥掉落率設定", expanded=True):
             raw_rates = p_data.get("game_rates", admin_cfg.get("game_rates", DEFAULT_RATES))
             if "簡單" not in raw_rates:
                 raw_rates = {"簡單": raw_rates, "中等": {k:v*2 for k,v in raw_rates.items()}, "困難": {k:v*3 for k,v in raw_rates.items()}}
@@ -1729,7 +1677,6 @@ elif st.session_state.page == 'parent':
         with st.expander("🎰 幸運扭蛋機設定", expanded=True):
             g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 300))
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
-            
             st.caption("您可以自由設定獎品名稱、發放的類型(勳章/金幣/道具包)、給予的數量，以及中獎機率。")
             
             current_prizes = gacha.get("prizes", DEFAULT_GACHA["prizes"])
@@ -1903,22 +1850,6 @@ elif st.session_state.page == 'parent':
                 lvl_req = 1 if idx==0 else (5 if idx==1 else 10)
                 h_cols[idx].image(f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/{h_id}.gif", caption=f"Lv.{lvl_req} {h_name}")
         
-        st.markdown("---")
-        st.subheader(f"🏆 傳說 BOSS 挑戰圖鑑 (共 {len(BOSSES)} 隻)")
-        html_boss = '<div class="dex-grid">'
-        for b in BOSSES:
-            html_boss += f'<div class="dex-item"><img src="{b["url"]}"><div class="dex-name">{b["name"]}</div></div>'
-        html_boss += '</div>'
-        st.markdown(html_boss, unsafe_allow_html=True)
-            
-        st.markdown("---")
-        st.subheader(f"👾 一般野生寶可夢圖鑑 (共 {len(MONSTERS)} 隻)")
-        html_monster = '<div class="dex-grid">'
-        for m in MONSTERS:
-            html_monster += f'<div class="dex-item"><img src="{m["url"]}"><div class="dex-name">{m["name"]}</div></div>'
-        html_monster += '</div>'
-        st.markdown(html_monster, unsafe_allow_html=True)
-
     with t5:
         st.subheader("📝 官方字庫糾錯回饋")
         st.info("若您發現官方字庫 (國小/國中/高中/多益) 中有翻譯不精準或錯誤的地方，請填寫此表單。審核通過後，該單字將會全球同步更新！")
@@ -1949,7 +1880,6 @@ elif st.session_state.page == 'admin':
     admin_cfg = get_admin()
     
     with t1:
-        # GM 專屬：直接抓取整個庫，不使用快取以確保資料最新且不影響客戶端
         p_db = db.reference("parents").get() or {}
         u_db = db.reference("users").get() or {}
         
@@ -1995,8 +1925,40 @@ elif st.session_state.page == 'admin':
 
     with t5:
         st.subheader("⚙️ 系統全域遊戲參數預設值")
-        store = admin_cfg.get("store_prices", DEFAULT_STORE)
+        # 🌟 修正：確保 GM 後台遇到舊資料時，也能自動補齊新增的卷軸欄位
+        store = DEFAULT_STORE.copy()
+        if isinstance(admin_cfg.get("store_prices"), dict): store.update(admin_cfg["store_prices"])
+        
         gacha = admin_cfg.get("gacha", DEFAULT_GACHA)
+
+        with st.expander("📖 圖鑑世代解鎖階段設定", expanded=True):
+            st.info("透過下方開關控制全球玩家可以遭遇的寶可夢數量。階段越高，開放的世代與數量越多。")
+            
+            # 詳細說明 6 個階段的狀態
+            stage_options = {
+                1: "階段 1：初代經典 (No.1 ~ No.151) - 僅開放關都地區",
+                2: "階段 2：金銀復古 (No.1 ~ No.251) - 新增城都地區",
+                3: "階段 3：寶石冒險 (No.1 ~ No.386) - 新增豐緣地區",
+                4: "階段 4：珍珠鑽石 (No.1 ~ No.493) - 新增神奧地區",
+                5: "階段 5：黑白前期 (No.1 ~ No.570) - 新增合眾地區",
+                6: "階段 6：全圖鑑解鎖 (No.1 ~ No.649) - 649 隻全數開放"
+            }
+            
+            current_stage = admin_cfg.get("unlocked_stage", 1)
+            
+            # 使用互斥開關 (Radio) 來取代拉桿
+            new_stage = st.radio(
+                "請選擇要開放的圖鑑階段：",
+                options=list(stage_options.keys()),
+                format_func=lambda x: stage_options[x],
+                index=current_stage - 1
+            )
+            
+            if st.button("💾 儲存圖鑑階段"):
+                admin_cfg["unlocked_stage"] = new_stage
+                save_admin(admin_cfg)
+                st.success(f"✅ 設定已更新！目前伺服器狀態為：{stage_options[new_stage]}")
+                st.rerun()
         
         with st.expander("⏳ 系統遊玩時間預設值", expanded=True):
             new_play_time = st.number_input("全域預設每日遊玩時間 (分鐘)", min_value=1, value=admin_cfg.get("default_play_time_min", 30))
@@ -2028,18 +1990,18 @@ elif st.session_state.page == 'admin':
                 save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
                 
         with st.expander("🏪 商店物價預設值", expanded=True):
-            s1, s2, s3 = st.columns(3)
+            s1, s2, s3, s4 = st.columns(4)
             p_pot = s1.number_input("藥水價格", min_value=1, value=store.get("potion", 200))
             p_shi = s2.number_input("護盾價格", min_value=1, value=store.get("shield", 250))
             p_mag = s3.number_input("放大鏡價格", min_value=1, value=store.get("magnifier", 100))
+            p_scr = s4.number_input("📜 變形卷軸", min_value=1, value=store.get("scroll", 500))
             if st.button("💾 儲存全域商店物價"):
-                admin_cfg["store_prices"] = {"potion": p_pot, "shield": p_shi, "magnifier": p_mag}
+                admin_cfg["store_prices"] = {"potion": p_pot, "shield": p_shi, "magnifier": p_mag, "scroll": p_scr}
                 save_admin(admin_cfg); st.success("儲存成功！"); st.rerun()
 
         with st.expander("🎰 扭蛋機預設值", expanded=True):
             g_cost = st.number_input("扭蛋單次花費 (G)", min_value=10, value=gacha.get("cost", 300), key="gm_g_cost")
             st.caption("設定各獎項內容與機率 (總和必須為 100%)")
-            
             st.caption("您可以自由設定獎品名稱、發放的類型(勳章/金幣/道具包)、給予的數量，以及中獎機率。")
             
             current_prizes = gacha.get("prizes", DEFAULT_GACHA["prizes"])
