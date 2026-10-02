@@ -1285,7 +1285,6 @@ elif st.session_state.page == 'game':
             </script>
             """
             st.components.v1.html(js_force, height=80)
-            # 👆 貼到這裡結束 👆
             
             if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
                 st.session_state.force_learning = False
