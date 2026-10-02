@@ -1246,7 +1246,6 @@ elif st.session_state.page == 'game':
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
-            st.markdown(v_html, unsafe_allow_html=True)
             
             st.markdown(v_html, unsafe_allow_html=True)
             
