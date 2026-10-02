@@ -823,15 +823,7 @@ elif st.session_state.page == 'game':
             if u_data.get('shield_active', False):
                 u_data['shield_active'] = False
                 st.session_state.action_anim = 'shield_block'
-            else:
-                u_data['hero_hp'] -= 1
-                if u_data['hero_hp'] <= 0:
-                    if u_data['level'] > 1:
-                        u_data['level'] -= 1
-                        st.session_state.level_dropped = True
-                        # 只有在真的被降級時，才把經驗值退回該等級的起點
-                        u_data['exp'] = (u_data['level'] - 1) * 100
-                   else: 
+            else: 
                         st.session_state.level_dropped = False
                         # Lv.1 死亡不扣經驗值
                     
