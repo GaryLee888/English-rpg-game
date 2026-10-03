@@ -264,9 +264,9 @@ def pick_next_question(v_list, err_log, total_q, word_stats):
 
 def generate_options(c_v, f_list):
     o = [c_v['zh']]
-    w = [v['zh'] for v in f_list if v['zh'] != c_v['zh']]
+    w = list(set([v['zh'] for v in f_list if v['zh'] != c_v['zh']]))
     o.extend(random.sample(w, min(3, max(0, len(w)))))
-    while len(o) < 4: o.append("錯誤選項")
+    while len(o) < 4: o.append(f"錯誤選項 {len(o)}") # 加個數字防重複
     random.shuffle(o)
     return o
 
