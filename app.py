@@ -1895,6 +1895,7 @@ elif st.session_state.page == 'parent':
                     st.rerun()
                     
             edited_df = st.data_editor(v_df, num_rows="dynamic", use_container_width=True,
+                                       key=f"editor_parent_{sel_bank_id}",
                                        column_order=["en", "zh", "hint"],
                                        column_config={
                                            "en": st.column_config.TextColumn("英文單字 (en)", required=True),
