@@ -2199,7 +2199,6 @@ elif st.session_state.page == 'admin':
             st.success(f"【{edit_bank}】題庫更新成功！")
             
     with t4:
-        with t4:
         st.subheader("系統安全設定")
         with st.form("admin_settings"):
             new_a_id = st.text_input("GM 帳號", value=admin_cfg.get("admin_id", "admin"))
@@ -2217,4 +2216,5 @@ elif st.session_state.page == 'admin':
                     if new_a_pwd.strip():
                         admin_cfg["password"] = hash_pwd(new_a_pwd.strip())
                     admin_cfg["default_hero_limit"] = new_h_limit
+                    # ... 略 (下方保持不變)
                     save_admin(admin_cfg); st.success("系統設定已儲存！"); st.rerun()
