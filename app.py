@@ -44,9 +44,10 @@ LEGENDARY_IDS = {144,145,146,150,151, 243,244,245,249,250,251, 377,378,379,380,3
 @st.cache_data(ttl=86400)
 def get_pokemon_names():
     try:
-        # 使用開源資料獲取繁體中文名稱快取
-        return requests.get("https://raw.githubusercontent.com/sindresorhus/pokemon/main/data/zh-hant.json").json()
-    except:
+        # 加上 timeout=3，如果 3 秒內沒回應就放棄，避免卡死
+        return requests.get("https://raw.githubusercontent.com/sindresorhus/pokemon/main/data/zh-hant.json", timeout=3).json()
+    except Exception as e:
+        print(f"圖鑑名稱 API 讀取失敗: {e}") # 可在後台看錯誤紀錄
         return []
 
 POKE_NAMES = get_pokemon_names()
