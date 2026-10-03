@@ -1144,6 +1144,9 @@ elif st.session_state.page == 'game':
         m_hp = 1
         bg_s = "background: linear-gradient(135deg, #2980b9 0%, #6dd5fa 100%); border: 4px solid #fff;"
 
+    # 👇 新增這一行：把原本的 e_n 拿去安全過濾，變成 safe_e_n
+    safe_e_n = html.escape(str(e_n))
+
     arena_html = (
         f'<div class="arena-bg" style="{bg_s}">'
         f'{fx_html}'
@@ -1155,7 +1158,7 @@ elif st.session_state.page == 'game':
         f'<div class="monster-box">'
         f'<div class="hp-badge hp-badge-enemy">{"🩸"*e_hp}{"🖤"*(m_hp-e_hp)}</div>'
         f'<img src="{e_u}" style="{m_s}">'
-        f'<div class="monster-name">{e_n}</div>'
+        f'<div class="monster-name">{safe_e_n}</div>'  # 👈 這裡的 {e_n} 替換成 {safe_e_n}
         f'</div></div>'
     )
     
