@@ -2217,5 +2217,4 @@ elif st.session_state.page == 'admin':
                     if new_a_pwd.strip():
                         admin_cfg["password"] = hash_pwd(new_a_pwd.strip())
                     admin_cfg["default_hero_limit"] = new_h_limit
-                    # ... 略 (下方保持不變)
                     save_admin(admin_cfg); st.success("系統設定已儲存！"); st.rerun()
