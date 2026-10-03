@@ -797,7 +797,7 @@ elif st.session_state.page == 'game':
             stats["level"] = min(len(EBBINGHAUS_INTERVALS)-1, stats["level"] + 1)
             stats["next_review"] = time.time() + EBBINGHAUS_INTERVALS[stats["level"]]
             u_data['combo'] += 1
-            if word in st.session_state.error_log and stats["level"] >= 4:
+            if word in st.session_state.error_log:
                 st.session_state.error_log.remove(word)
                 save_error_log(u_key, st.session_state.error_log)
                     
