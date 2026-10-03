@@ -428,7 +428,8 @@ elif st.session_state.page == 'parent_login':
         l_pwd = st.text_input("密碼", type="password", key="l_pwd")
         if st.button("確認登入", use_container_width=True, type="primary"):
             p_data = get_parent_info(l_acc)
-            if p_data and p_data.get("password") == l_pwd:
+            # 👇 替換這一行：同時比對明文與加密後的密碼
+            if p_data and (p_data.get("password") == l_pwd or p_data.get("password") == hash_pwd(l_pwd)):
                 st.session_state.current_parent = l_acc
                 st.session_state.page = 'parent'; st.rerun()
             else: st.error("帳號或密碼錯誤！")
