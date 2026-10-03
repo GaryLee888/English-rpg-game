@@ -9,7 +9,11 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
 import requests
+import html
+import hashlib
 
+def hash_pwd(pwd):
+    return hashlib.sha256(pwd.encode()).hexdigest()
 # ==========================================
 # 🚀 雲端資料庫 Firebase 連線初始化
 # ==========================================
