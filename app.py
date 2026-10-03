@@ -1409,8 +1409,9 @@ elif st.session_state.page == 'parent':
             o_pw = st.text_input("舊密碼", type="password")
             n_pw = st.text_input("新密碼", type="password")
             if st.button("確認修改"):
-                if o_pw == p_data["password"] and n_pw.strip():
-                    p_data["password"] = n_pw.strip()
+                # 👇 替換以下這兩行：驗證舊密碼時支援新舊版，新密碼存入前先加密
+                if (o_pw == p_data["password"] or hash_pwd(o_pw) == p_data["password"]) and n_pw.strip():
+                    p_data["password"] = hash_pwd(n_pw.strip())
                     save_parent_info(p_id, p_data)
                     st.success("✅ 成功！")
                 else: st.error("錯誤")
