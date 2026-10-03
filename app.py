@@ -466,9 +466,7 @@ elif st.session_state.page == 'admin_login':
         gm_id = st.text_input("管理員帳號", key="gm_id")
         gm_pwd = st.text_input("輸入 GM 密碼", type="password", key="gm_pwd")
         if st.button("GM 登入", use_container_width=True, type="primary"):
-            # 👇 替換為支援 hash_pwd 驗證的寫法
-            is_valid_pwd = (gm_pwd == admin_db.get("password", "1234") or hash_pwd(gm_pwd) == admin_db.get("password", "1234"))
-            if gm_id == admin_db.get("admin_id", "admin") and is_valid_pwd: 
+            if gm_id == admin_db.get("admin_id", "admin") and gm_pwd == admin_db.get("password", "1234"): 
                 st.session_state.page = 'admin'; st.rerun()
             else: st.error("帳號或密碼錯誤！")
         
@@ -2139,8 +2137,7 @@ elif st.session_state.page == 'admin':
         st.subheader("系統安全設定")
         with st.form("admin_settings"):
             new_a_id = st.text_input("GM 帳號", value=admin_cfg.get("admin_id", "admin"))
-            # 👇 1. 這裡改成預設為空字串，才不會顯示一長串的 Hash 碼
-            new_a_pwd = st.text_input("重設 GM 密碼 (若不修改請留空)", value="", type="password")
+            new_a_pwd = st.text_input("GM 密碼", value=admin_cfg.get("password", "1234"), type="password")
             new_h_limit = st.number_input("全域預設帳號上限", min_value=1, value=admin_cfg.get("default_hero_limit", 3))
             new_b_limit = st.number_input("全域預設字庫上限", min_value=1, value=admin_cfg.get("default_bank_limit", 3))
             new_r_limit = st.number_input("全域預設家庭獎勵兌換上限", min_value=1, value=admin_cfg.get("default_reward_limit", 99))
@@ -2149,9 +2146,8 @@ elif st.session_state.page == 'admin':
                     st.error("帳號不可為空！")
                 else:
                     admin_cfg["admin_id"] = new_a_id.strip()
-                    # 👇 2. 判斷如果有輸入新密碼，才進行加密存檔
-                    if new_a_pwd.strip():
-                        admin_cfg["password"] = hash_pwd(new_a_pwd.strip())
+                    admin_cfg["password"] = new_a_pwd
                     admin_cfg["default_hero_limit"] = new_h_limit
-                    # ... 略 (下方保持不變)
+                    admin_cfg["default_bank_limit"] = new_b_limit
+                    admin_cfg["default_reward_limit"] = new_r_limit
                     save_admin(admin_cfg); st.success("系統設定已儲存！"); st.rerun()
