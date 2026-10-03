@@ -1237,7 +1237,7 @@ elif st.session_state.page == 'game':
         ipa_d = f"[{ipa_txt}]" if ipa_txt and '*' not in ipa_txt else ""
         rev = '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 14px; vertical-align: top;">⚠️ 復仇題</span>' if c_w['en'] in st.session_state.error_log else ''
         
-        # 👇 1. 新增安全過濾變數
+        # 👇 1. 新增：安全防護變數，過濾家長自訂題庫可能出現的危險符號
         safe_en = html.escape(str(c_w["en"]))
         safe_zh = html.escape(str(c_w["zh"]))
         safe_hint = html.escape(str(c_w.get("hint", "")))
@@ -1246,13 +1246,59 @@ elif st.session_state.page == 'game':
             v_html = (
                 f'<div class="vocab-card" style="background: #fff5f5; border-color: #e74c3c;">'
                 f'<h3 style="margin:0; color:#c0392b; font-size: 1.2rem;">❌ 答錯了！請跟著唸 3 次正確答案！</h3>'
-                # 👇 2. 替換為 safe_en 與 safe_zh
+                # 👇 2. 套用安全變數
                 f'<div class="vocab-word" style="color:#e74c3c;">{safe_en} = {safe_zh}</div>'
                 f'<h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 f'</div>'
             )
             st.markdown(v_html, unsafe_allow_html=True)
-            # ... (略過中間的 JS 程式碼，維持不變) ...
+            
+            # 👇 3. 補回：消失的語音按鈕與自動播放的 JS 程式碼
+            js_force = f"""
+            <div style="text-align:center; margin-bottom: 20px;">
+                <button id="tts-btn" onclick="window.playForce()" style="background-color: #e74c3c; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold; animation: pulse 2s infinite;">
+                    🔊 準備播放... (若無聲請手動點擊)
+                </button>
+            </div>
+            <style>@keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.02); }} 100% {{ transform: scale(1); }} }}</style>
+            <script>
+                setTimeout(() => {{
+                    const btns = window.parent.document.querySelectorAll('button');
+                    btns.forEach(b => {{ if(b.innerText.includes('繼續冒險')) {{ b.style.display = 'none'; window.parent.continueQuestBtn = b; }} }});
+                }}, 100);
+                let playCount = 0; let isSpeaking = false; let timeoutId = null;
+                window.playForce = function() {{ if (isSpeaking) return; playCount = 0; clearTimeout(timeoutId); speakWord(); }};
+                function speakWord() {{
+                    let btn = document.getElementById('tts-btn'); if (!btn) return;
+                    if (playCount >= 3) {{
+                        btn.innerText = "✅ 已完成 3 次！請點下方按鈕繼續"; btn.style.backgroundColor = "#27ae60"; btn.style.animation = "none";
+                        if(window.parent.continueQuestBtn) window.parent.continueQuestBtn.style.display = 'inline-flex'; return;
+                    }}
+                    if (window.speechSynthesis) window.speechSynthesis.cancel();
+                    let msg = new SpeechSynthesisUtterance("{tts_word}"); msg.lang = 'en-US'; msg.rate = 0.85; msg.volume = 0.8;
+                    let started = false; let ended = false;
+                    msg.onstart = function() {{ started = true; isSpeaking = true; btn.innerText = "🔊 播放中，請跟著唸... (" + (playCount + 1) + "/3)"; btn.style.animation = "none"; }};
+                    msg.onend = function() {{
+                        if (ended) return; ended = true; isSpeaking = false; playCount++;
+                        if (playCount < 3) {{ btn.innerText = "⏳ 停頓 1.5 秒... (" + playCount + "/3)"; timeoutId = setTimeout(speakWord, 1500); 
+                        }} else speakWord(); 
+                    }};
+                    setTimeout(() => {{ if (!started && playCount === 0) {{ isSpeaking = false; btn.innerText = "👉 手機限制：請點我開始播放"; btn.style.animation = "pulse 1.5s infinite"; }} else if (started && !ended) msg.onend(); }}, 3500);
+                    window.speechSynthesis.speak(msg);
+                }}
+                setTimeout(window.playForce, 500);
+            </script>
+            """
+            st.components.v1.html(js_force, height=80)
+            
+            # 👇 4. 補回：消失的「繼續冒險」按鈕
+            if st.button("💪 我記住了！繼續冒險！", use_container_width=True, type="primary"):
+                st.session_state.force_learning = False
+                st.session_state.play_auto_audio = True
+                st.session_state.current_vocab = pick_next_question(v_list, st.session_state.error_log, u_data['total_questions'], u_data['word_stats'])
+                st.session_state.current_options = generate_options(st.session_state.current_vocab, v_list)
+                st.rerun()
+
         else:
             if u_data['total_questions'] >= 20 and st.session_state.error_log: st.warning("🔥 累積滿 20 題！進入強制錯題複習模式！")
 
@@ -1261,15 +1307,32 @@ elif st.session_state.page == 'game':
                 
             v_html = f'<div class="vocab-card"><h3 style="margin:0; color:#7f8c8d; font-size: 1.2rem;">✨ 詠唱單字 ✨ {rev}</h3>'
             if diff == '簡單':
-                # 👇 3. 替換為 safe_en 與 safe_hint
+                # 👇 5. 套用安全變數
                 v_html += f'<div class="vocab-word">{safe_en}</div><h3 style="color:#e67e22; margin:0 0 15px 0; font-family: monospace; font-size: 1.5rem;">{ipa_d}</h3>'
                 if c_w.get('hint'): v_html += f'<p style="color: #16a085; font-size: 1rem; margin: 0; background: #e8f8f5; padding: 8px; border-radius: 5px; font-weight: bold;">💡 提示：{safe_hint}</p>'
             elif diff == '中等' or diff == '困難':
                 word_en = c_w['en']
-                # ... (略過中困難的字母隱藏邏輯，維持不變) ...
+                w_len = len(word_en)
+                
+                # 先計算原本難度該給的基礎提示
+                base_indices = []
+                if diff == '中等':
+                    if w_len <= 3: base_indices = [w_len // 2]
+                    else: N = (w_len - 1) // 3 + 1; base_indices = [int(i * (w_len - 1) / (N - 1) + 0.5) for i in range(N)]
+                
+                # 如果有買放大鏡，則「額外」多開 2 個字母
+                if st.session_state.magnifier_active:
+                    available = [i for i in range(w_len) if i not in base_indices and word_en[i] not in [' ', '-']]
+                    extra_reveal = min(2, len(available))
+                    if extra_reveal > 0:
+                        # 隨機挑選未解鎖的字母解鎖
+                        base_indices.extend(random.sample(available, extra_reveal))
+                        
+                indices = sorted(base_indices)
+                        
                 hint_chars = [char if (i in indices or char in [' ', '-']) else '_' for i, char in enumerate(word_en)]
                 hint_str = " ".join(hint_chars)
-                # 👇 4. 替換為 safe_zh
+                # 👇 6. 套用安全變數
                 v_html += f'<h1 style="color:#2980b9; font-size: 1.8rem; margin: 10px 0; font-weight: 800;">{safe_zh}</h1>'
                 if ipa_d: v_html += f'<h3 style="color:#e67e22; margin:0 0 5px 0; font-family: monospace; font-size: 1.2rem;">{ipa_d}</h3>'
                 v_html += f'<div class="vocab-hint-str">{hint_str}</div><h3 style="color:#7f8c8d; margin:0 0 10px 0; font-size: 0.9rem;">請拼出對應的英文單字</h3>'
