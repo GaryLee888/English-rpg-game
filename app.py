@@ -1398,7 +1398,6 @@ elif st.session_state.page == 'parent':
         p_data["custom_banks"] = [{"id": "1", "name": "預設自建字庫"}]
         save_parent_info(p_id, p_data)
         old_file = f"vocab_custom_{p_id}.csv"
-        if os.path.exists(old_file): os.rename(old_file, f"vocab_custom_{p_id}_1.csv")
 
     st.markdown("<h1 style='text-align: center; color:#e67e22;'>👨‍👩‍👧 家庭專區</h1><hr>", unsafe_allow_html=True)
     c_top1, c_top2 = st.columns([1, 1])
