@@ -248,7 +248,7 @@ EBBINGHAUS_INTERVALS = [0, 60, 600, 86400, 86400*3, 86400*7, 86400*15]
 def pick_next_question(v_list, err_log, total_q, word_stats):
     now = time.time()
     valid_err = [w for w in err_log if any(v['en'] == w for v in v_list)]
-    if valid_err and (total_q >= 15 or random.random() < 0.3):
+    if valid_err and random.random() < 0.3:
         w = random.choice(valid_err)
         for v in v_list:
             if v['en'] == w: return v
