@@ -1459,9 +1459,25 @@ elif st.session_state.page == 'parent':
                             st.success("✅ 建立成功！"); st.rerun()
         
         st.markdown("#### 訓練家列表")
+        
+        # 👇 一次性把所有的進度與錯題抓下來，避免迴圈內狂發請求 (解決 N+1 問題)
+        all_user_data = db.reference("user_data").get() or {}
+        all_error_log = db.reference("error_log").get() or {}
+
         for u_key, u_info in my_heroes.items():
-            d = load_user_data(u_key)
-            e_log = load_error_log(u_key)
+            # 改為從剛抓好的大字典裡取值，提升 10 倍速度
+            raw_d = all_user_data.get(u_key)
+            if not raw_d:
+                d = load_user_data(u_key) # 新玩家防呆初始化
+            else:
+                d = raw_d
+                # 補齊可能的缺漏欄位
+                if "vocab_bank" not in d or d["vocab_bank"] == "家長自訂": d["vocab_bank"] = "custom_1"
+                if "inventory" not in d: d["inventory"] = {"potion": 0, "shield": 0, "magnifier": 0, "scroll": 0}
+                if "scroll" not in d["inventory"]: d["inventory"]["scroll"] = 0
+                
+            e_log = all_error_log.get(u_key, [])
+
             with st.expander(f"👤 {u_info['name']} ({u_info['character']})"):
                 
                 # --- ⏳ 當日遊玩時間管理 ---
