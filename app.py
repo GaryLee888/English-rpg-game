@@ -443,7 +443,8 @@ elif st.session_state.page == 'parent_login':
             elif get_parent_info(r_acc): st.error("帳號已存在！")
             else:
                 new_p = {
-                    "password": r_pwd, "hero_limit": None, "bank_limit": None,
+                    # 👇 替換這一行：把 r_pwd 變成 hash_pwd(r_pwd)
+                    "password": hash_pwd(r_pwd), "hero_limit": None, "bank_limit": None,
                     "rewards": [{"reward": "週末多玩 30 分鐘 Switch", "cost_medals": 1, "icon": "🎮", "limit": 99}],
                     "custom_banks": [{"id": "1", "name": "預設自建字庫"}]
                 }
