@@ -500,6 +500,12 @@ elif st.session_state.page == 'game':
         u_data['extra_time_sec'] = latest_db_data.get('extra_time_sec', u_data.get('extra_time_sec', 0))
         u_data['daily_play_time_min'] = latest_db_data.get('daily_play_time_min', u_data.get('daily_play_time_min', 30))
         u_data['level'] = latest_db_data.get('level', u_data.get('level', 1))
+        
+        # --- 👇 新增這兩行：同步家長後台更改的難度與字庫 ---
+        u_data['difficulty'] = latest_db_data.get('difficulty', u_data.get('difficulty', '簡單'))
+        u_data['vocab_bank'] = latest_db_data.get('vocab_bank', u_data.get('vocab_bank', '國小'))
+        # ------------------------------------------------
+        
         st.session_state.last_db_sync = now_ts
         
     # --- ⏳ 當日遊玩時間與 7:00 AM 重置邏輯 ---
