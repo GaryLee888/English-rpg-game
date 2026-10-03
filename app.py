@@ -780,9 +780,11 @@ elif st.session_state.page == 'game':
         u_data['gold'] = latest_db.get('gold', u_data.get('gold', 0))
         u_data['medals'] = latest_db.get('medals', u_data.get('medals', 0))
         u_data['history'] = latest_db.get('history', [])
-        u_data['reward_counts'] = latest_db_data.get('reward_counts', {})
         
-        # --- 👇 新增這兩行：防止答題瞬間舊資料把家長設定蓋掉 ---
+        # 👇 這裡將原本錯誤的 latest_db_data 改回 latest_db
+        u_data['reward_counts'] = latest_db.get('reward_counts', {})
+        
+        # --- 新增的這兩行也要確保是使用 latest_db ---
         u_data['difficulty'] = latest_db.get('difficulty', u_data.get('difficulty', '簡單'))
         u_data['vocab_bank'] = latest_db.get('vocab_bank', u_data.get('vocab_bank', '國小'))
         # ------------------------------------------------
