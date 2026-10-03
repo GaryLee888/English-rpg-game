@@ -466,7 +466,9 @@ elif st.session_state.page == 'admin_login':
         gm_id = st.text_input("管理員帳號", key="gm_id")
         gm_pwd = st.text_input("輸入 GM 密碼", type="password", key="gm_pwd")
         if st.button("GM 登入", use_container_width=True, type="primary"):
-            if gm_id == admin_db.get("admin_id", "admin") and gm_pwd == admin_db.get("password", "1234"): 
+            # 👇 替換為支援 hash_pwd 驗證的寫法
+            is_valid_pwd = (gm_pwd == admin_db.get("password", "1234") or hash_pwd(gm_pwd) == admin_db.get("password", "1234"))
+            if gm_id == admin_db.get("admin_id", "admin") and is_valid_pwd: 
                 st.session_state.page = 'admin'; st.rerun()
             else: st.error("帳號或密碼錯誤！")
         
