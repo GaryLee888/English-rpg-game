@@ -1144,7 +1144,24 @@ elif st.session_state.page == 'game':
 
     anim = st.session_state.action_anim
     h_s = f"width: {h_width}%; max-width: 250px; transform: scaleX(-1); image-rendering: pixelated; transition: width 0.5s;"
-    if u_data.get('shield_active', False): h_s += " filter: drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 25px #ffd700) brightness(1.3) contrast(1.1);"
+    
+    # 特效完美疊加系統：護盾(金白) + 20級霸氣光環(紅橘)
+    filters = []
+    
+    if u_data.get('shield_active', False):
+        filters.append("drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 25px #ffd700)")
+        
+    if u_data['level'] >= 20:
+        filters.append("drop-shadow(0 0 15px #ff4757) drop-shadow(0 0 30px #e67e22)")
+        
+    if filters:
+        # 如果有護盾，亮度調高並增加對比；如果只有光環，微調亮度即可，避免兩者同時存在時過度曝光
+        if u_data.get('shield_active', False):
+            filters.append("brightness(1.3) contrast(1.1)")
+        else:
+            filters.append("brightness(1.15)")
+            
+        h_s += f" filter: {' '.join(filters)};"
     
     m_s = "width: 100%; max-width: 180px; image-rendering: pixelated;"
     fx_html = ""
