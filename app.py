@@ -1426,9 +1426,12 @@ elif st.session_state.page == 'parent':
         old_file = f"vocab_custom_{p_id}.csv"
 
     st.markdown("<h1 style='text-align: center; color:#e67e22;'>👨‍👩‍👧 家庭專區</h1><hr>", unsafe_allow_html=True)
-    c_top1, c_top2 = st.columns([1, 1])
+    # 👇 改成 3 個欄位，加入重新整理按鈕
+    c_top1, c_top1_5, c_top2 = st.columns([1, 1, 1])
     with c_top1:
         if st.button("⬅ 登出並返回大廳", use_container_width=True): st.session_state.page = 'login'; st.rerun()
+    with c_top1_5:
+        if st.button("🔄 重新整理資料", use_container_width=True): st.rerun()
     with c_top2:
         with st.expander("🔐 更改密碼"):
             o_pw = st.text_input("舊密碼", type="password")
