@@ -1954,7 +1954,7 @@ elif st.session_state.page == 'parent':
                         })
                     p_data["gacha"] = {"cost": g_cost, "prizes": final_prizes}
                     save_parent_info(p_id, p_data); st.success("扭蛋機設定已儲存！"); st.rerun()
-                    with st.expander("🎣 鯉魚王釣魚場設定", expanded=True):
+        with st.expander("🎣 鯉魚王釣魚場設定", expanded=True):
             fish_cfg = p_data.get("fishing", admin_cfg.get("fishing", DEFAULT_FISHING))
             f_cost = st.number_input("釣魚單次花費 (G)", min_value=10, value=fish_cfg.get("cost", 50), key="p_fish_cost")
             st.caption("設定由低到高 4 個等級的獎品，機率總和必須為 100%")
