@@ -738,12 +738,16 @@ elif st.session_state.page == 'game':
     hero_name = st.session_state.hero_name
     char_d = CHARACTERS[st.session_state.hero_char]  
     
+    is_shiny = u_data['level'] >= 15
+    base_sprite_url = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/"
+    
     if u_data.get('custom_avatar'):
-        hero_url = get_poke_url(u_data['custom_avatar'])
+        avatar_id = u_data['custom_avatar']
+        hero_url = f"{base_sprite_url}shiny/{avatar_id}.gif" if is_shiny else f"{base_sprite_url}{avatar_id}.gif"
     else:
         stage_idx = 0 if u_data['level'] < 5 else (1 if u_data['level'] < 10 else 2)
         hero_img_id, hero_img_name = char_d["stages"][stage_idx]
-        hero_url = get_poke_url(hero_img_id)
+        hero_url = f"{base_sprite_url}shiny/{hero_img_id}.gif" if is_shiny else f"{base_sprite_url}{hero_img_id}.gif"
 
     bank_id = u_data.get('vocab_bank', '國小')
     bank_name = bank_id
