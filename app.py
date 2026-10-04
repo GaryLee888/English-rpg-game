@@ -1089,9 +1089,9 @@ elif st.session_state.page == 'game':
                         c_bg, c_border = "linear-gradient(135deg, #f1c40f, #e67e22)", "#fff200"
                         r_msg = "👑 傳說大獎！"
                         
-                    # 📝 寫入釣魚歷史紀錄
+                    # 📝 寫入釣魚歷史紀錄 (加上金幣結果)
                     if 'fishing_history' not in u_data: u_data['fishing_history'] = []
-                    u_data['fishing_history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 釣到：{p_name}")
+                    u_data['fishing_history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 釣到：{p_name} (+{p_gold}G)")
                     u_data['fishing_history'] = u_data['fishing_history'][-10:] # 只保留最新 10 筆
                     
                     u_data['gold'] += p_gold
@@ -1113,7 +1113,7 @@ elif st.session_state.page == 'game':
 </style>
 """, unsafe_allow_html=True)
                     
-                    time.sleep(1.0) # 暫停 1.0 秒營造懸念
+                    time.sleep(1.0) # ⏳ 暫停 1 秒營造懸念
                     
                     # --- 第二階段：寶可夢卡牌翻轉出現 (完全在格子內，不超出版面) ---
                     anim_holder.markdown(f"""
