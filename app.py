@@ -877,13 +877,19 @@ elif st.session_state.page == 'game':
             st.session_state.spell_input = "" 
             process_ans(ans)
 
-    # --- 🎛️ 絕美深色儀表板 ---
     hero_title = get_title(u_data['level'])
+    
+    # 判斷 15 級以上與 20 級以上的專屬尊爵特效
+    is_shiny_ui = u_data['level'] >= 15
+    is_master_ui = u_data['level'] >= 20
+    lvl_badge = "👑" if is_master_ui else ("✨" if is_shiny_ui else "")
+    lvl_glow = "text-shadow: 0 0 10px #facc15, 0 0 20px #facc15; color: #fff;" if is_shiny_ui else ""
+
     st.markdown(f"""
     <div class="dash-board">
         <div class="dash-item">
-            <div class="dash-label">{hero_title}</div>
-            <div class="dash-val val-lvl">Lv.{u_data['level']}</div>
+            <div class="dash-label" style="font-size:0.85rem;">{hero_title}</div>
+            <div class="dash-val val-lvl" style="{lvl_glow}">{lvl_badge} Lv.{u_data['level']} {lvl_badge}</div>
         </div>
         <div class="dash-item">
             <div class="dash-label">❤ 生命</div>
