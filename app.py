@@ -1060,41 +1060,49 @@ elif st.session_state.page == 'game':
 
     # 👇 -------- 新增：鯉魚王釣魚小遊戲 -------- 👇
     with st.expander("🎣 鯉魚王釣魚場 (每次花費 50G)", expanded=False):
-        st.markdown("<div style='font-size:1.1rem; font-weight:bold; color:#2980b9; margin-bottom:10px;'>🎣 試試手氣！釣魚賺金幣！</div>", unsafe_allow_html=True)
-        st.write("花費 50G 拋出釣竿，有機會釣到價值不菲的寶物喔！(機率：破靴子 40% / 鯉魚王 35% / 大珍珠 20% / 大金珠 5%)")
+        f_col1, f_col2 = st.columns([1, 1])
         
-        if st.button("🎣 拋出釣竿 (消耗 50G)", use_container_width=True):
-            if u_data.get('gold', 0) >= 50:
-                u_data['gold'] -= 50
-                
-                # 決定獎品與卡牌屬性
-                fish_luck = random.randint(1, 100)
-                if fish_luck <= 40:
-                    p_name, p_gold, p_emoji = "破舊的靴子", 0, "🥾"
-                    c_bg, c_border = "linear-gradient(135deg, #7f8c8d, #34495e)", "#bdc3c7"
-                    r_msg = "💨 虧爛了..."
-                elif fish_luck <= 75:
-                    p_name, p_gold, p_emoji = "活蹦亂跳鯉魚王", 20, "🐟"
-                    c_bg, c_border = "linear-gradient(135deg, #3498db, #2980b9)", "#74b9ff"
-                    r_msg = "🪙 小虧一點"
-                elif fish_luck <= 95:
-                    p_name, p_gold, p_emoji = "漂亮的大珍珠", 100, "⚪"
-                    c_bg, c_border = "linear-gradient(135deg, #9b59b6, #8e44ad)", "#e056fd"
-                    r_msg = "💰 賺翻啦！"
-                else:
-                    p_name, p_gold, p_emoji = "閃亮亮大金珠", 300, "🌟"
-                    c_bg, c_border = "linear-gradient(135deg, #f1c40f, #e67e22)", "#fff200"
-                    r_msg = "👑 傳說大獎！"
+        with f_col1:
+            st.markdown("<div style='font-size:1.1rem; font-weight:bold; color:#2980b9; margin-bottom:10px;'>🎣 試試手氣！釣魚賺金幣！</div>", unsafe_allow_html=True)
+            st.write("花費 50G 拋出釣竿，有機會釣到寶物！(機率：破靴子40% / 鯉魚王35% / 大珍珠20% / 大金珠5%)")
+            
+            if st.button("🎣 拋出釣竿 (消耗 50G)", use_container_width=True):
+                if u_data.get('gold', 0) >= 50:
+                    u_data['gold'] -= 50
                     
-                u_data['gold'] += p_gold
-                save_user_data(u_key, u_data) 
-                
-                # 建立一個佔位符來控制動畫替換，並用時間戳產生唯一的動畫 ID
-                anim_holder = st.empty()
-                anim_id = int(time.time() * 1000)
-                
-                # --- 第一階段：釣魚等待畫面 (不使用 absolute，自然佔用空間) ---
-                anim_holder.markdown(f"""
+                    # 決定獎品與卡牌屬性
+                    fish_luck = random.randint(1, 100)
+                    if fish_luck <= 40:
+                        p_name, p_gold, p_emoji = "破舊的靴子", 0, "🥾"
+                        c_bg, c_border = "linear-gradient(135deg, #7f8c8d, #34495e)", "#bdc3c7"
+                        r_msg = "💨 虧爛了..."
+                    elif fish_luck <= 75:
+                        p_name, p_gold, p_emoji = "活蹦亂跳鯉魚王", 20, "🐟"
+                        c_bg, c_border = "linear-gradient(135deg, #3498db, #2980b9)", "#74b9ff"
+                        r_msg = "🪙 小虧一點"
+                    elif fish_luck <= 95:
+                        p_name, p_gold, p_emoji = "漂亮的大珍珠", 100, "⚪"
+                        c_bg, c_border = "linear-gradient(135deg, #9b59b6, #8e44ad)", "#e056fd"
+                        r_msg = "💰 賺翻啦！"
+                    else:
+                        p_name, p_gold, p_emoji = "閃亮亮大金珠", 300, "🌟"
+                        c_bg, c_border = "linear-gradient(135deg, #f1c40f, #e67e22)", "#fff200"
+                        r_msg = "👑 傳說大獎！"
+                        
+                    # 📝 寫入釣魚歷史紀錄
+                    if 'fishing_history' not in u_data: u_data['fishing_history'] = []
+                    u_data['fishing_history'].append(f"{datetime.now().strftime('%m-%d %H:%M')} 釣到：{p_name}")
+                    u_data['fishing_history'] = u_data['fishing_history'][-10:] # 只保留最新 10 筆
+                    
+                    u_data['gold'] += p_gold
+                    save_user_data(u_key, u_data) 
+                    
+                    # 建立一個佔位符來控制動畫替換，並用時間戳產生唯一的動畫 ID
+                    anim_holder = st.empty()
+                    anim_id = int(time.time() * 1000)
+                    
+                    # --- 第一階段：釣魚等待畫面 (不使用 absolute，自然佔用空間) ---
+                    anim_holder.markdown(f"""
 <div style="text-align:center; padding: 20px; background: #e0f7fa; border-radius: 12px; border: 2px dashed #00bcd4; margin-bottom: 15px;">
 <div style="font-size: 4rem; display:inline-block; animation: bobbing_{anim_id} 0.5s ease-in-out infinite alternate;">🎣</div>
 <div style="color: #0097a7; font-weight: bold; font-size: 1.1rem; margin-top: 10px; animation: pulse_{anim_id} 1s infinite;">拋出釣竿... 等待上鉤中 💦</div>
@@ -1104,11 +1112,11 @@ elif st.session_state.page == 'game':
 @keyframes pulse_{anim_id} {{ 0% {{ opacity: 0.5; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.5; }} }}
 </style>
 """, unsafe_allow_html=True)
-                
-                time.sleep(1.5) # 暫停 1.5 秒營造懸念
-                
-                # --- 第二階段：寶可夢卡牌翻轉出現 (完全在格子內，不超出版面) ---
-                anim_holder.markdown(f"""
+                    
+                    time.sleep(1.0) # 暫停 1.0 秒營造懸念
+                    
+                    # --- 第二階段：寶可夢卡牌翻轉出現 (完全在格子內，不超出版面) ---
+                    anim_holder.markdown(f"""
 <div style="display: flex; justify-content: center; margin-bottom: 15px; perspective: 1000px;">
 <div style="width: 240px; background: #ffeaa7; padding: 8px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 4px solid {c_border}; animation: cardFlip_{anim_id} 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
 <div style="background: {c_bg}; border-radius: 8px; padding: 12px; color: white; height: 100%; box-shadow: inset 0 0 10px rgba(0,0,0,0.2);">
@@ -1128,11 +1136,17 @@ elif st.session_state.page == 'game':
 @keyframes cardFlip_{anim_id} {{ 0% {{ transform: translateY(50px) scale(0.8) rotateY(90deg); opacity: 0; }} 100% {{ transform: translateY(0) scale(1) rotateY(0deg); opacity: 1; }} }}
 </style>
 """, unsafe_allow_html=True)
-                
-                if p_gold > 50:
-                    st.balloons()
-            else:
-                st.error("❌ 金幣不足 50G！快去打怪賺錢吧！")
+                    
+                    if p_gold > 50:
+                        st.balloons()
+                else:
+                    st.error("❌ 金幣不足 50G！快去打怪賺錢吧！")
+
+        with f_col2:
+            st.markdown("<div style='font-size:1.1rem; font-weight:bold; color:#0097a7; margin-bottom:10px;'>📜 最新釣魚紀錄</div>", unsafe_allow_html=True)
+            if u_data.get('fishing_history'):
+                for item in reversed(u_data['fishing_history']): st.caption(f"• {item}")
+            else: st.caption("尚未有釣魚紀錄。")
     # 👆 -------- 新增區塊結束 -------- 👆
 
     # --- 🎁 家庭獎勵兌換系統 ---
