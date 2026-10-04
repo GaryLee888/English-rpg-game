@@ -1047,6 +1047,41 @@ elif st.session_state.page == 'game':
                 for item in reversed(u_data['gacha_history']): st.caption(f"• {item}")
             else: st.caption("尚未有扭蛋紀錄。")
 
+    # 👇 -------- 新增：鯉魚王釣魚小遊戲 -------- 👇
+    with st.expander("🎣 鯉魚王釣魚場 (每次花費 50G)", expanded=False):
+        st.markdown("<div style='font-size:1.1rem; font-weight:bold; color:#2980b9; margin-bottom:10px;'>🎣 試試手氣！釣魚賺金幣！</div>", unsafe_allow_html=True)
+        st.write("花費 50G 拋出釣竿，有機會釣到價值不菲的寶物喔！(機率：破靴子 40% / 鯉魚王 35% / 大珍珠 20% / 大金珠 5%)")
+        
+        if st.button("🎣 拋出釣竿 (消耗 50G)", use_container_width=True):
+            if u_data.get('gold', 0) >= 50:
+                u_data['gold'] -= 50 # 先扣除遊玩費用
+                fish_luck = random.randint(1, 100)
+                
+                # 判定釣到的物品
+                if fish_luck <= 40:
+                    prize_name, prize_gold = "破舊的靴子 🥾", 0
+                elif fish_luck <= 75:
+                    prize_name, prize_gold = "活蹦亂跳的鯉魚王 🐟", 20
+                elif fish_luck <= 95:
+                    prize_name, prize_gold = "漂亮的大珍珠 ⚪", 100
+                else:
+                    prize_name, prize_gold = "閃亮亮的大金珠 🌟", 300
+                    
+                u_data['gold'] += prize_gold
+                # 結算後只做一次 Firebase 寫入，極低耗損
+                save_user_data(u_key, u_data) 
+                
+                if prize_gold > 50:
+                    st.success(f"🎉 太棒了！你釣到了 **{prize_name}**，賣掉獲得 {prize_gold} G！賺翻啦！")
+                    st.balloons()
+                elif prize_gold > 0:
+                    st.info(f"不錯喔！你釣到了 **{prize_name}**，賣掉獲得 {prize_gold} G！(小虧一點)")
+                else:
+                    st.error(f"哎呀... 你釣到了 **{prize_name}**，一文不值... 再接再厲！")
+            else:
+                st.error("❌ 金幣不足 50G！快去打怪賺錢吧！")
+    # 👆 -------- 新增區塊結束 -------- 👆
+
     # --- 🎁 家庭獎勵兌換系統 ---
     with st.expander("🎁 家庭獎勵兌換與紀錄 (花費勳章)", expanded=False):
         r_cols = st.columns(2)
