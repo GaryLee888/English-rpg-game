@@ -240,8 +240,9 @@ def get_title(level):
     if level < 3: return "🌱 新手訓練家"
     if level < 7: return "⚔️ 道館挑戰者"
     if level < 12: return "🌟 菁英訓練家"
-    if level < 20: return "🔥 四天王候補"
-    return "👑 寶可夢大師"
+    if level < 15: return "🔥 四天王候補"
+    if level < 20: return "✨ 閃光冠軍"  # 15級專屬稱號
+    return "👑 霸氣大師"             # 20級專屬稱號
 
 EBBINGHAUS_INTERVALS = [0, 60, 600, 86400, 86400*3, 86400*7, 86400*15]
 
