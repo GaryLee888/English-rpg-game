@@ -2305,6 +2305,30 @@ elif st.session_state.page == 'admin':
                         })
                     admin_cfg["gacha"] = {"cost": g_cost, "prizes": final_prizes}
                     save_admin(admin_cfg); st.success("扭蛋機設定已儲存！"); st.rerun()
+        with st.expander("🎣 釣魚場預設值", expanded=True):
+            fish_cfg = admin_cfg.get("fishing", DEFAULT_FISHING)
+            f_cost = st.number_input("釣魚單次花費 (G)", min_value=10, value=fish_cfg.get("cost", 50), key="gm_fish_cost")
+            
+            fish_df = pd.DataFrame(fish_cfg.get("prizes", DEFAULT_FISHING["prizes"]))
+            edited_fish = st.data_editor(
+                fish_df,
+                num_rows="fixed",
+                column_config={
+                    "name": st.column_config.TextColumn("獎品名稱", required=True),
+                    "emoji": st.column_config.TextColumn("圖示", required=True),
+                    "gold": st.column_config.NumberColumn("獲得金幣", min_value=0, required=True),
+                    "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True)
+                },
+                hide_index=True,
+                key="gm_fish_editor"
+            )
+            
+            if st.button("💾 儲存全域釣魚場設定"):
+                if round(edited_fish['prob'].sum()) != 100:
+                    st.error(f"❌ 機率總和必須等於 100%！目前為 {edited_fish['prob'].sum()}%")
+                else:
+                    admin_cfg["fishing"] = {"cost": f_cost, "prizes": edited_fish.to_dict('records')}
+                    save_admin(admin_cfg); st.success("釣魚場設定已儲存！"); st.rerun()
 
     with t2:
         st.subheader("📋 官方字庫回饋審核")
