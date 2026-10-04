@@ -1066,9 +1066,9 @@ elif st.session_state.page == 'game':
         if st.button("🎣 拋出釣竿 (消耗 50G)", use_container_width=True):
             if u_data.get('gold', 0) >= 50:
                 u_data['gold'] -= 50 # 先扣除遊玩費用
-                fish_luck = random.randint(1, 100)
                 
-                # 判定釣到的物品
+                # 決定獎品
+                fish_luck = random.randint(1, 100)
                 if fish_luck <= 40:
                     prize_name, prize_gold = "破舊的靴子 🥾", 0
                 elif fish_luck <= 75:
@@ -1079,8 +1079,24 @@ elif st.session_state.page == 'game':
                     prize_name, prize_gold = "閃亮亮的大金珠 🌟", 300
                     
                 u_data['gold'] += prize_gold
-                # 結算後只做一次 Firebase 寫入，極低耗損
                 save_user_data(u_key, u_data) 
+                
+                # --- 動畫懸念區塊 ---
+                fish_anim = st.empty()
+                fish_anim.markdown("""
+                <div style="text-align:center; padding: 15px; background: #e0f7fa; border-radius: 12px; margin-bottom: 15px; border: 2px dashed #00bcd4;">
+                    <div style="font-size: 3.5rem; display: inline-block; animation: bobbing 0.5s ease-in-out infinite alternate;">🎣</div>
+                    <div style="color: #0097a7; font-weight: bold; font-size: 1.1rem; margin-top: 5px; animation: pulse 1s infinite;">等待魚兒上鉤... 💦</div>
+                </div>
+                <style>
+                @keyframes bobbing { 0% { transform: translateY(0px) rotate(0deg); } 100% { transform: translateY(12px) rotate(15deg); } }
+                @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                time.sleep(1.5) # 營造 1.5 秒的期待感
+                fish_anim.empty() # 時間到，清除釣魚動畫
+                # --------------------
                 
                 if prize_gold > 50:
                     st.success(f"🎉 太棒了！你釣到了 **{prize_name}**，賣掉獲得 {prize_gold} G！賺翻啦！")
@@ -1091,6 +1107,7 @@ elif st.session_state.page == 'game':
                     st.error(f"哎呀... 你釣到了 **{prize_name}**，一文不值... 再接再厲！")
             else:
                 st.error("❌ 金幣不足 50G！快去打怪賺錢吧！")
+    # 👆 -------- 新增區塊結束 -------- 👆
     # 👆 -------- 新增區塊結束 -------- 👆
 
     # --- 🎁 家庭獎勵兌換系統 ---
