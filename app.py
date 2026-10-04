@@ -1954,6 +1954,31 @@ elif st.session_state.page == 'parent':
                         })
                     p_data["gacha"] = {"cost": g_cost, "prizes": final_prizes}
                     save_parent_info(p_id, p_data); st.success("扭蛋機設定已儲存！"); st.rerun()
+                    with st.expander("🎣 鯉魚王釣魚場設定", expanded=True):
+            fish_cfg = p_data.get("fishing", admin_cfg.get("fishing", DEFAULT_FISHING))
+            f_cost = st.number_input("釣魚單次花費 (G)", min_value=10, value=fish_cfg.get("cost", 50), key="p_fish_cost")
+            st.caption("設定由低到高 4 個等級的獎品，機率總和必須為 100%")
+            
+            fish_df = pd.DataFrame(fish_cfg.get("prizes", DEFAULT_FISHING["prizes"]))
+            edited_fish = st.data_editor(
+                fish_df,
+                num_rows="fixed",
+                column_config={
+                    "name": st.column_config.TextColumn("獎品名稱", required=True),
+                    "emoji": st.column_config.TextColumn("圖示", required=True),
+                    "gold": st.column_config.NumberColumn("獲得金幣", min_value=0, required=True),
+                    "prob": st.column_config.NumberColumn("機率(%)", min_value=0, max_value=100, required=True)
+                },
+                hide_index=True,
+                key="parent_fish_editor"
+            )
+            
+            if st.button("💾 儲存釣魚場設定"):
+                if round(edited_fish['prob'].sum()) != 100:
+                    st.error(f"❌ 機率總和必須等於 100%！目前為 {edited_fish['prob'].sum()}%")
+                else:
+                    p_data["fishing"] = {"cost": f_cost, "prizes": edited_fish.to_dict('records')}
+                    save_parent_info(p_id, p_data); st.success("釣魚場設定已儲存！"); st.rerun()
 
     with t3:
         bank_limit = p_data.get("bank_limit")
