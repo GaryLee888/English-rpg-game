@@ -1118,7 +1118,7 @@ elif st.session_state.page == 'game':
                     # --- 第二階段：寶可夢卡牌翻轉出現 (完全在格子內，不超出版面) ---
                     anim_holder.markdown(f"""
 <div style="display: flex; justify-content: center; margin-bottom: 15px; perspective: 1000px;">
-<div style="width: 240px; background: #ffeaa7; padding: 8px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 4px solid {c_border}; animation: cardFlip_{anim_id} 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
+<div style="width: 250px; background: #ffeaa7; padding: 8px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 4px solid {c_border}; animation: cardFlip_{anim_id} 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
 <div style="background: {c_bg}; border-radius: 8px; padding: 12px; color: white; height: 100%; box-shadow: inset 0 0 10px rgba(0,0,0,0.2);">
 <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 1.1rem; margin-bottom: 10px; border-bottom: 2px solid rgba(255,255,255,0.3); padding-bottom: 5px;">
 <span>{p_name}</span><span>HP {p_gold}</span>
@@ -1126,7 +1126,7 @@ elif st.session_state.page == 'game':
 <div style="background: rgba(255,255,255,0.2); border-radius: 5px; height: 130px; display: flex; align-items: center; justify-content: center; font-size: 5rem; border: 2px solid rgba(255,255,255,0.5); box-shadow: inset 0 4px 10px rgba(0,0,0,0.2);">
 {p_emoji}
 </div>
-<div style="margin-top: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 20px;">
+<div style="margin-top: 15px; text-align: center; font-weight: bold; font-size: 0.95rem; white-space: nowrap; background: rgba(0,0,0,0.4); padding: 8px 5px; border-radius: 20px;">
 {r_msg} (+{p_gold} G)
 </div>
 </div>
