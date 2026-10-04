@@ -111,6 +111,17 @@ DEFAULT_GACHA = {
 }
 DEFAULT_STORE = {"potion": 200, "shield": 250, "magnifier": 100, "scroll": 500}
 
+# 👇 新增：釣魚遊戲預設值
+DEFAULT_FISHING = {
+    "cost": 50,
+    "prizes": [
+        {"name": "破舊的靴子", "emoji": "🥾", "gold": 0, "prob": 40},
+        {"name": "活蹦亂跳鯉魚王", "emoji": "🐟", "gold": 20, "prob": 35},
+        {"name": "漂亮的大珍珠", "emoji": "⚪", "gold": 100, "prob": 20},
+        {"name": "閃亮亮大金珠", "emoji": "🌟", "gold": 300, "prob": 5}
+    ]
+}
+
 # 🌟 確保這裡只有一個左括號和一個右括號配對，不要有多餘的 '}'
 # 設定 GitHub Raw 的基礎路徑
 GITHUB_BASE_URL = "https://raw.githubusercontent.com/garyleeplus-gy/EnglishGame/main/assets/items/"
