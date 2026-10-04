@@ -1080,34 +1080,28 @@ elif st.session_state.page == 'game':
                 u_data['gold'] += prize_gold
                 save_user_data(u_key, u_data) 
                 
-                # 依據獎品決定卡片顏色
                 bg_color = "#d4edda" if prize_gold > 50 else ("#cce5ff" if prize_gold > 0 else "#f8d7da")
                 text_color = "#155724" if prize_gold > 50 else ("#004085" if prize_gold > 0 else "#721c24")
                 
-                # --- CSS 動畫與獎品彈出區塊 ---
-                # ⚠️ 關鍵修正：下方的 HTML 必須「完全靠左」，不留任何前方空格，避免被當成程式碼顯示！
+                # ⚠️ 終極解法：把這裡面的 HTML 全部退到最左邊，不留任何前方空白！
                 st.markdown(f"""
 <div style="position: relative; min-height: 180px; margin-bottom: 15px;">
-    <!-- 🎣 釣魚等待動畫 (1.5秒後自動隱藏) -->
-    <div style="position: absolute; width: 100%; text-align: center; animation: fadeOut 0.2s 1.5s forwards;">
-        <div style="display: inline-block; padding: 20px; background: #e0f7fa; border-radius: 12px; border: 2px dashed #00bcd4; width: 80%; max-width: 300px;">
-            <div style="font-size: 4rem; animation: bobbing 0.5s ease-in-out 3 alternate;">🎣</div>
-            <div style="color: #0097a7; font-weight: bold; font-size: 1.1rem; margin-top: 5px; animation: pulse 1s infinite;">等待魚兒上鉤... 💦</div>
-        </div>
-    </div>
-    
-    <!-- 🎁 獎品彈出卡片 (1.5秒後Ｑ彈出現) -->
-    <div style="position: absolute; width: 100%; text-align: center; opacity: 0; transform: scale(0.5); animation: popCard 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1.5s forwards;">
-        <div style="display: inline-block; padding: 25px; background: {bg_color}; border-radius: 15px; border: 3px solid {text_color}; box-shadow: 0 8px 20px rgba(0,0,0,0.15); width: 80%; max-width: 350px;">
-            <h3 style="color: {text_color}; margin: 0 0 10px 0;">✨ 上鉤啦！ ✨</h3>
-            <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-bottom: 12px; text-shadow: 1px 1px 0px rgba(255,255,255,0.5);">{prize_name}</div>
-            <div style="font-size: 1.2rem; font-weight: bold; color: {text_color}; background: rgba(255,255,255,0.6); padding: 8px; border-radius: 8px; display: inline-block;">
-                {"💰 賺翻啦！+" if prize_gold > 50 else ("🪙 小賺！+" if prize_gold > 0 else "💨 虧爛了... ")}{prize_gold} G
-            </div>
-        </div>
-    </div>
+<div style="position: absolute; width: 100%; text-align: center; animation: fadeOut 0.2s 1.5s forwards;">
+<div style="display: inline-block; padding: 20px; background: #e0f7fa; border-radius: 12px; border: 2px dashed #00bcd4; width: 80%; max-width: 300px;">
+<div style="font-size: 4rem; animation: bobbing 0.5s ease-in-out 3 alternate;">🎣</div>
+<div style="color: #0097a7; font-weight: bold; font-size: 1.1rem; margin-top: 5px; animation: pulse 1s infinite;">等待魚兒上鉤... 💦</div>
 </div>
-
+</div>
+<div style="position: absolute; width: 100%; text-align: center; opacity: 0; transform: scale(0.5); animation: popCard 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1.5s forwards;">
+<div style="display: inline-block; padding: 25px; background: {bg_color}; border-radius: 15px; border: 3px solid {text_color}; box-shadow: 0 8px 20px rgba(0,0,0,0.15); width: 80%; max-width: 350px;">
+<h3 style="color: {text_color}; margin: 0 0 10px 0;">✨ 上鉤啦！ ✨</h3>
+<div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-bottom: 12px; text-shadow: 1px 1px 0px rgba(255,255,255,0.5);">{prize_name}</div>
+<div style="font-size: 1.2rem; font-weight: bold; color: {text_color}; background: rgba(255,255,255,0.6); padding: 8px; border-radius: 8px; display: inline-block;">
+{"💰 賺翻啦！+" if prize_gold > 50 else ("🪙 小賺！+" if prize_gold > 0 else "💨 虧爛了... ")}{prize_gold} G
+</div>
+</div>
+</div>
+</div>
 <style>
 @keyframes bobbing {{ 0% {{ transform: translateY(0px) rotate(0deg); }} 100% {{ transform: translateY(15px) rotate(15deg); }} }}
 @keyframes pulse {{ 0% {{ opacity: 0.5; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.5; }} }}
