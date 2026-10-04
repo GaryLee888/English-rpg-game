@@ -1067,50 +1067,69 @@ elif st.session_state.page == 'game':
             if u_data.get('gold', 0) >= 50:
                 u_data['gold'] -= 50
                 
+                # 決定獎品與卡牌屬性
                 fish_luck = random.randint(1, 100)
                 if fish_luck <= 40:
-                    prize_name, prize_gold = "破舊的靴子 🥾", 0
+                    p_name, p_gold, p_emoji = "破舊的靴子", 0, "🥾"
+                    c_bg, c_border = "linear-gradient(135deg, #7f8c8d, #34495e)", "#bdc3c7"
+                    r_msg = "💨 虧爛了..."
                 elif fish_luck <= 75:
-                    prize_name, prize_gold = "活蹦亂跳的鯉魚王 🐟", 20
+                    p_name, p_gold, p_emoji = "活蹦亂跳鯉魚王", 20, "🐟"
+                    c_bg, c_border = "linear-gradient(135deg, #3498db, #2980b9)", "#74b9ff"
+                    r_msg = "🪙 小虧一點"
                 elif fish_luck <= 95:
-                    prize_name, prize_gold = "漂亮的大珍珠 ⚪", 100
+                    p_name, p_gold, p_emoji = "漂亮的大珍珠", 100, "⚪"
+                    c_bg, c_border = "linear-gradient(135deg, #9b59b6, #8e44ad)", "#e056fd"
+                    r_msg = "💰 賺翻啦！"
                 else:
-                    prize_name, prize_gold = "閃亮亮的大金珠 🌟", 300
+                    p_name, p_gold, p_emoji = "閃亮亮大金珠", 300, "🌟"
+                    c_bg, c_border = "linear-gradient(135deg, #f1c40f, #e67e22)", "#fff200"
+                    r_msg = "👑 傳說大獎！"
                     
-                u_data['gold'] += prize_gold
+                u_data['gold'] += p_gold
                 save_user_data(u_key, u_data) 
                 
-                bg_color = "#d4edda" if prize_gold > 50 else ("#cce5ff" if prize_gold > 0 else "#f8d7da")
-                text_color = "#155724" if prize_gold > 50 else ("#004085" if prize_gold > 0 else "#721c24")
+                # 建立一個佔位符來控制動畫替換，並用時間戳產生唯一的動畫 ID
+                anim_holder = st.empty()
+                anim_id = int(time.time() * 1000)
                 
-                # ⚠️ 終極解法：把這裡面的 HTML 全部退到最左邊，不留任何前方空白！
-                st.markdown(f"""
-<div style="position: relative; min-height: 180px; margin-bottom: 15px;">
-<div style="position: absolute; width: 100%; text-align: center; animation: fadeOut 0.2s 1.5s forwards;">
-<div style="display: inline-block; padding: 20px; background: #e0f7fa; border-radius: 12px; border: 2px dashed #00bcd4; width: 80%; max-width: 300px;">
-<div style="font-size: 4rem; animation: bobbing 0.5s ease-in-out 3 alternate;">🎣</div>
-<div style="color: #0097a7; font-weight: bold; font-size: 1.1rem; margin-top: 5px; animation: pulse 1s infinite;">等待魚兒上鉤... 💦</div>
+                # --- 第一階段：釣魚等待畫面 (不使用 absolute，自然佔用空間) ---
+                anim_holder.markdown(f"""
+<div style="text-align:center; padding: 20px; background: #e0f7fa; border-radius: 12px; border: 2px dashed #00bcd4; margin-bottom: 15px;">
+<div style="font-size: 4rem; display:inline-block; animation: bobbing_{anim_id} 0.5s ease-in-out infinite alternate;">🎣</div>
+<div style="color: #0097a7; font-weight: bold; font-size: 1.1rem; margin-top: 10px; animation: pulse_{anim_id} 1s infinite;">拋出釣竿... 等待上鉤中 💦</div>
 </div>
+<style>
+@keyframes bobbing_{anim_id} {{ 0% {{ transform: translateY(0px) rotate(0deg); }} 100% {{ transform: translateY(15px) rotate(15deg); }} }}
+@keyframes pulse_{anim_id} {{ 0% {{ opacity: 0.5; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.5; }} }}
+</style>
+""", unsafe_allow_html=True)
+                
+                time.sleep(1.5) # 暫停 1.5 秒營造懸念
+                
+                # --- 第二階段：寶可夢卡牌翻轉出現 (完全在格子內，不超出版面) ---
+                anim_holder.markdown(f"""
+<div style="display: flex; justify-content: center; margin-bottom: 15px; perspective: 1000px;">
+<div style="width: 240px; background: #ffeaa7; padding: 8px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 4px solid {c_border}; animation: cardFlip_{anim_id} 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">
+<div style="background: {c_bg}; border-radius: 8px; padding: 12px; color: white; height: 100%; box-shadow: inset 0 0 10px rgba(0,0,0,0.2);">
+<div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 1.1rem; margin-bottom: 10px; border-bottom: 2px solid rgba(255,255,255,0.3); padding-bottom: 5px;">
+<span>{p_name}</span><span>HP {p_gold}</span>
 </div>
-<div style="position: absolute; width: 100%; text-align: center; opacity: 0; transform: scale(0.5); animation: popCard 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1.5s forwards;">
-<div style="display: inline-block; padding: 25px; background: {bg_color}; border-radius: 15px; border: 3px solid {text_color}; box-shadow: 0 8px 20px rgba(0,0,0,0.15); width: 80%; max-width: 350px;">
-<h3 style="color: {text_color}; margin: 0 0 10px 0;">✨ 上鉤啦！ ✨</h3>
-<div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-bottom: 12px; text-shadow: 1px 1px 0px rgba(255,255,255,0.5);">{prize_name}</div>
-<div style="font-size: 1.2rem; font-weight: bold; color: {text_color}; background: rgba(255,255,255,0.6); padding: 8px; border-radius: 8px; display: inline-block;">
-{"💰 賺翻啦！+" if prize_gold > 50 else ("🪙 小賺！+" if prize_gold > 0 else "💨 虧爛了... ")}{prize_gold} G
+<div style="background: rgba(255,255,255,0.2); border-radius: 5px; height: 130px; display: flex; align-items: center; justify-content: center; font-size: 5rem; border: 2px solid rgba(255,255,255,0.5); box-shadow: inset 0 4px 10px rgba(0,0,0,0.2);">
+{p_emoji}
+</div>
+<div style="margin-top: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 20px;">
+{r_msg} (+{p_gold} G)
 </div>
 </div>
 </div>
 </div>
 <style>
-@keyframes bobbing {{ 0% {{ transform: translateY(0px) rotate(0deg); }} 100% {{ transform: translateY(15px) rotate(15deg); }} }}
-@keyframes pulse {{ 0% {{ opacity: 0.5; }} 50% {{ opacity: 1; }} 100% {{ opacity: 0.5; }} }}
-@keyframes fadeOut {{ to {{ opacity: 0; visibility: hidden; }} }}
-@keyframes popCard {{ to {{ opacity: 1; transform: scale(1); }} }}
+@keyframes cardFlip_{anim_id} {{ 0% {{ transform: translateY(50px) scale(0.8) rotateY(90deg); opacity: 0; }} 100% {{ transform: translateY(0) scale(1) rotateY(0deg); opacity: 1; }} }}
 </style>
 """, unsafe_allow_html=True)
                 
-                if prize_gold > 50:
+                if p_gold > 50:
                     st.balloons()
             else:
                 st.error("❌ 金幣不足 50G！快去打怪賺錢吧！")
